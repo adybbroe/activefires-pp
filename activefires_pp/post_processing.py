@@ -345,45 +345,11 @@ class ActiveFiresPostprocessing(Thread):
             raise IOError("No file pattern provided: In order to read all " +
                           "meta data in the file (and from the filename) the file pattern is required!")
 
-        p__ = Parser(self.infile_pattern)
-        fname = os.path.basename(filepath)
-        try:
-            res = p__.parse(fname)
-        except ValueError:
-            # Do something!
-            return None
-
-        # Fix the end time:
-        endtime = datetime(res['start_time'].year, res['start_time'].month,
-                           res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
-                           res['end_hour'].second)
-        if endtime < res['start_time']:
-            endtime = endtime + timedelta(days=1)
-
-        res['end_time'] = endtime
-
-        return res
+        return get_metadata_from_filename(self.infile_pattern, filepath)
 
     def read_af_data(self, filepath, file_mda, localtime=True):
         """Read the Active Fire results from file."""
-
-        df = pd.read_csv(filepath, index_col=None, header=None, comment='#', names=COL_NAMES)
-        # Add start and end times:
-        if localtime:
-            logger.info("Convert to local time zone!")
-            starttime = datetime_from_utc_to_local(file_mda['start_time'])
-            endtime = datetime_from_utc_to_local(file_mda['end_time'])
-        else:
-            starttime = file_mda['start_time']
-            endtime = file_mda['end_time']
-
-        logger.info('Start and end times: %s %s', str(starttime), str(endtime))
-
-        # Apply timezone offset:
-        df['starttime'] = np.repeat(starttime + starttime.utcoffset(), len(df)).astype(np.datetime64)
-        df['endtime'] = np.repeat(endtime + endtime.utcoffset(), len(df)).astype(np.datetime64)
-
-        return df
+        return read_af_data(filepath, file_mda, localtime)
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""
@@ -398,3 +364,47 @@ class ActiveFiresPostprocessing(Thread):
                 self.publisher.stop()
             except Exception:
                 logger.exception("Couldn't stop publisher.")
+
+
+def read_af_data(filepath, file_mda, localtime=True):
+    """Read the Active Fire results from file."""
+
+    df = pd.read_csv(filepath, index_col=None, header=None, comment='#', names=COL_NAMES)
+    # Add start and end times:
+    if localtime:
+        logger.info("Convert to local time zone!")
+        starttime = datetime_from_utc_to_local(file_mda['start_time'])
+        endtime = datetime_from_utc_to_local(file_mda['end_time'])
+    else:
+        starttime = file_mda['start_time']
+        endtime = file_mda['end_time']
+
+    logger.info('Start and end times: %s %s', str(starttime), str(endtime))
+
+    # Apply timezone offset:
+    df['starttime'] = np.repeat(starttime + starttime.utcoffset(), len(df)).astype(np.datetime64)
+    df['endtime'] = np.repeat(endtime + endtime.utcoffset(), len(df)).astype(np.datetime64)
+
+    return df
+
+
+def get_metadata_from_filename(infile_pattern, filepath):
+    """From the filename and its pattern get basic metadata of the satellite observations."""
+    p__ = Parser(infile_pattern)
+    fname = os.path.basename(filepath)
+    try:
+        res = p__.parse(fname)
+    except ValueError:
+        # Do something!
+        return None
+
+    # Fix the end time:
+    endtime = datetime(res['start_time'].year, res['start_time'].month,
+                       res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
+                       res['end_hour'].second)
+    if endtime < res['start_time']:
+        endtime = endtime + timedelta(days=1)
+
+    res['end_time'] = endtime
+
+    return res

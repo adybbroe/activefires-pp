@@ -75,3 +75,7 @@ def main():
         logger.debug("Interrupting")
     finally:
         fire_pp.close()
+
+
+if __name__ == "__main__":
+    main()
