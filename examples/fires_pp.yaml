@@ -1,0 +1,9 @@
+# Publish/subscribe
+publish_topic: /VIIRS/L2/Fires/PP
+subscribe_topics: VIIRS/L2/AFI
+
+af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
+
+geojson_file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+
+output_dir: /path/where/the/filtered/results/will/be/stored
