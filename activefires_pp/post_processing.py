@@ -44,6 +44,9 @@ from posttroll.publisher import NoisyPublisher
 import pyproj
 from matplotlib.path import Path
 import time
+import cartopy.io.shapereader as shpreader
+import shapely
+import pycrs
 
 from activefires_pp.utils import get_geometry_from_shapefile
 from activefires_pp.utils import datetime_from_utc_to_local
@@ -75,133 +78,304 @@ LOG_FORMAT = "[%(asctime)s %(levelname)-8s] %(message)s"
 logger = logging.getLogger(__name__)
 
 
-class FiresShapefileFilter(object):
-    def __init__(self, dataframe, outputfile, shp_boarders, shp_mask, platform_name=None):
-        self.shp_boarders = shp_boarders
-        self.shp_filtermask = shp_mask
-        self.data = dataframe
-        self.output_filename = outputfile
-        self.platform_name = platform_name
+class ShapeGeometry(object):
+    """Geometry from a shape file."""
 
-    def fires_inside_sweden_mpl(self, lons, lats):
-        """For an array of geographical positions (lon,lat) return a mask with points inside Sweden."""
-        geometries = get_geometry_from_shapefile(self.shp_boarders)
-        # Proj def hardcoded - FIXME!
-        proj_def = "+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-        p__ = pyproj.Proj(proj_def)
+    def __init__(self, shapefilepath):
+        self.filepath = shapefilepath
+        self.geometries = None
+        self.attributes = None
+        #self._records = shpreader.Reader(self.filepath).records()
+        self.proj4str = self._get_proj()
 
-        geometry = geometries[0]
+    def load(self):
+        self._load_geometries()
+        self._load_attributes()
 
-        metersx, metersy = p__(lons, lats)
-        points = np.vstack([metersx, metersy]).T
+    def _get_proj(self):
+        """Get and return the Proj.4 string."""
 
-        shape = geometry.geoms[0]
-        pth = Path(shape.exterior.coords)
-        mask = pth.contains_points(points)
-        for shape in geometry.geoms[1:]:
-            pth = Path(shape.exterior.coords)
-            mask = np.logical_or(mask, pth.contains_points(points))
+        prj_filename = self.filepath.strip('.shp') + '.prj'
+        crs = pycrs.load.from_file(prj_filename)
+        return crs.to_proj4()
 
-        return mask
+    def _load_geometries(self):
+        self.geometries = [c.geometry for c in shpreader.Reader(self.filepath).records()]
 
-    def fires_inside_populated_areas_mpl(self, lons, lats):
-        """Use a shapefile containing industries and populated areas and check if the fires are inside those areas."""
-        # swereff99 TM
-        # https://spatialreference.org/ref/epsg/sweref99-tm/proj4/
-        # Proj def hardcoded - FIXME!
-        proj_def = "+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-        p__ = pyproj.Proj(proj_def)
+    def _load_attributes(self):
+        self.attributes = [c.attributes for c in shpreader.Reader(self.filepath).records()]
 
-        geometries = get_geometry_from_shapefile(self.shp_filtermask)
 
-        metersx, metersy = p__(lons, lats)
-        points = np.vstack([metersx, metersy]).T
+class ActiveFiresShapefileFiltering(object):
+    """Reading, filtering and writing Active Fire detections.
 
-        shape = geometries[0].geoms[0]
-        pth = Path(shape.exterior.coords)
-        mask = pth.contains_points(points)
-        # Counting the first shape in the first geometry twice...
-        # FIXME!
-        for geometry in geometries:
-            for shape in geometry.geoms:
-                pth = Path(shape.exterior.coords)
-                mask = np.logical_or(mask, pth.contains_points(points))
+    Reading either the CSPP VIIRS AF output (txt files) or the Geojson formatted files.
+    Filtering for static and false alarms, and/or simply on geographical regions.
+    Data is stored in geojson format.
+    """
 
-        return mask
+    def __init__(self, filepath=None, afdata=None, platform_name=None):
+        self.input_filepath = filepath
+        self._afdata = afdata
 
-    def fires_filtering(self, detections):
+    def get_af_data(self, filepattern=None, localtime=True):
+        """Read the Active Fire results from file - ascii formatted output from CSPP VIIRS-AF.
+
+        """
+        if self._afdata is not None:
+            return self._afdata
+
+        if not self.input_filepath or not os.path.exists(self.input_filepath):
+            return self._afdata
+
+        if not filepattern:
+            raise AttributeError("file pattern must be provided in order to be able to read from file!")
+
+        file_mda = self._get_metadata_from_filename(filepattern)
+        self._afdata = read_af_data(self.input_filepath, file_mda, localtime)
+        return self._afdata
+
+    def _get_metadata_from_filename(self, infile_pattern):
+        """From the filename retrieve the metadata such as satellite and sensing time."""
+        return get_metadata_from_filename(infile_pattern, self.input_filepath)
+
+    def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
         """Remove fires outside Sweden and keep only those outside populated areas and away from industries."""
+        detections = self._afdata
+
         lons = detections.longitude.values
         lats = detections.latitude.values
 
         toc = time.time()
-        insides = self.fires_inside_sweden_mpl(lons, lats)
-        logger.debug("Time used checking inside Sweden - mpl path method: %f", time.time() - toc)
+        insides = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
+        logger.debug("Time used checking inside polygon - mpl path method: %f", time.time() - toc)
 
-        retv = detections[insides]
+        retv = detections[insides == inside]
 
         if len(retv) == 0:
-            logger.debug("No fires in Sweden in this file...")
-            return retv
+            logger.debug("No fires inside polygon...")
         else:
-            logger.debug("Number of detections inside Sweden: %d", len(retv))
+            logger.debug("Number of detections inside Polygon: %d", len(retv))
 
-        lons = retv.longitude.values
-        lats = retv.latitude.values
+        self._afdata = retv
 
-        # Filter for populated areas and industries:
-        toc = time.time()
-        populated = self.fires_inside_populated_areas_mpl(lons, lats)
-        logger.debug("Time used checking if fire is in a populated area or near an industry: %f", time.time() - toc)
+    def get_regional_filtermasks(self, shapefile):
 
-        return retv[populated == False]
+        detections = self._afdata
 
-    def store(self, detections):
-        """Store the filtered AF detections on disk."""
-        if len(detections) > 0:
-            detections.to_csv(self.output_filename, index=False)
-            return self.output_filename
-        else:
-            logger.debug("No detections to save!")
-            return None
+        lons = detections.longitude.values
+        lats = detections.latitude.values
 
-    def store_geojson(self, detections):
-        """Store the filtered AF detections on disk."""
-        if len(detections) > 0:
-            # Convert points to GeoJSON
-            features = []
-            for idx in range(len(detections)):
-                starttime = detections.iloc[idx].starttime
-                endtime = detections.iloc[idx].endtime
-                mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
-                                                                 starttime.to_pydatetime()) / 2.
-                prop = {'power': detections.iloc[idx].power,
-                        'tb': detections.iloc[idx].tb,
-                        'observation_time': json_serial(mean_granule_time)
-                        }
-                if self.platform_name:
-                    prop['platform_name'] = self.platform_name
-                else:
-                    logger.debug("No platform name specified for output")
+        shape_geom = ShapeGeometry(shapefile)
+        shape_geom.load()
 
-                feat = Feature(
-                    geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
-                    properties=prop)
-                features.append(feat)
+        p__ = pyproj.Proj(shape_geom.proj4str)
+        metersx, metersy = p__(lons, lats)
+        points = np.vstack([metersx, metersy]).T
 
-            feature_collection = FeatureCollection(features)
-            path = os.path.dirname(self.output_filename)
-            if not os.path.exists(path):
-                logger.info("Create directory: %s", path)
-                os.makedirs(path)
+        regional_masks = {}
 
-            with open(self.output_filename, 'w') as f:
-                dump(feature_collection, f)
+        for attr, geometry in zip(shape_geom.attributes, shape_geom.geometries):
+            test_omr = attr['Testomr']
+            all_inside_test_omr = False
+            print(u'Test area: {}'.format(str(test_omr)))
 
-            return self.output_filename
-        else:
-            logger.debug("No detections to save!")
-            return None
+            regional_masks[test_omr] = {'mask': None, 'attributes': attr}
+
+            if isinstance(geometry, shapely.geometry.multipolygon.MultiPolygon):
+                regional_masks[test_omr]['mask'], all_inside_test_omr = get_mask_from_multipolygon(points, geometry)
+            else:
+                shape = geometry
+                pth = Path(shape.exterior.coords)
+                regional_masks[test_omr]['mask'] = pth.contains_points(points)
+
+                if sum(regional_masks[test_omr]['mask']) == len(points):
+                    all_inside_test_omr = True
+                    print("All points inside test area!")
+
+            regional_masks[test_omr]['all_inside_test_area'] = all_inside_test_omr
+
+        return regional_masks
+
+
+def get_mask_from_multipolygon(points, geometry):
+    """Get mask for points from a shapely Multipolygon."""
+
+    shape = geometry.geoms[0]
+    pth = Path(shape.exterior.coords)
+    mask = pth.contains_points(points)
+
+    all_inside_test_omr = False
+
+    if sum(mask) == len(points):
+        all_inside_test_omr = True
+        print("All points inside test area!")
+        return mask, all_inside_test_omr
+
+    for shape in geometry.geoms[1:]:
+        pth = Path(shape.exterior.coords)
+        mask = np.logical_or(mask, pth.contains_points(points))
+        if sum(mask) == len(points):
+            all_inside_test_omr = True
+            print("All points inside test area!")
+            break
+
+    return mask, all_inside_test_omr
+
+
+def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
+    """Given geographical (lon,lat) points get a mask to apply when filtering."""
+    lons, lats = lonlats
+    shape_geom = ShapeGeometry(shapefile)
+    shape_geom.load()
+
+    p__ = pyproj.Proj(shape_geom.proj4str)
+
+    # There is only one geometry/multi-polygon!
+    geometry = shape_geom.geometries[0]
+
+    metersx, metersy = p__(lons, lats)
+    points = np.vstack([metersx, metersy]).T
+
+    shape = geometry.geoms[0]
+    pth = Path(shape.exterior.coords)
+    mask = pth.contains_points(points)
+    for shape in geometry.geoms[start_geom_index:]:
+        pth = Path(shape.exterior.coords)
+        mask = np.logical_or(mask, pth.contains_points(points))
+
+    return mask
+
+# class FiresShapefileFilter(object):
+#     def __init__(self, dataframe, outputfile, shp_boarders, shp_mask, platform_name=None):
+#         self.shp_boarders = shp_boarders
+#         self.shp_filtermask = shp_mask
+#         self.data = dataframe
+#         self.output_filename = outputfile
+#         self.platform_name = platform_name
+
+#     def fires_inside_sweden_mpl(self, lons, lats):
+#         """For an array of geographical positions (lon,lat) return a mask with points inside Sweden."""
+#         geometries = get_geometry_from_shapefile(self.shp_boarders)
+#         # Proj def hardcoded - FIXME!
+#         proj_def = "+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+#         p__ = pyproj.Proj(proj_def)
+
+#         geometry = geometries[0]
+
+#         metersx, metersy = p__(lons, lats)
+#         points = np.vstack([metersx, metersy]).T
+
+#         shape = geometry.geoms[0]
+#         pth = Path(shape.exterior.coords)
+#         mask = pth.contains_points(points)
+#         for shape in geometry.geoms[1:]:
+#             pth = Path(shape.exterior.coords)
+#             mask = np.logical_or(mask, pth.contains_points(points))
+
+#         return mask
+
+#     def fires_inside_populated_areas_mpl(self, lons, lats):
+#         """Use a shapefile containing industries and populated areas and check if the
+#            fires are inside those areas.
+#         """
+#         geometries = get_geometry_from_shapefile(self.shp_filtermask)
+#         # swereff99 TM
+#         # https://spatialreference.org/ref/epsg/sweref99-tm/proj4/
+#         # Proj def hardcoded - FIXME!
+#         proj_def = "+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+#         p__ = pyproj.Proj(proj_def)
+
+#         geometry = geometries[0]
+
+#         metersx, metersy = p__(lons, lats)
+#         points = np.vstack([metersx, metersy]).T
+
+#         shape = geometry.geoms[0]
+#         pth = Path(shape.exterior.coords)
+#         mask = pth.contains_points(points)
+#         # Counting the first shape in the first geometry twice...
+#         # FIXME!
+#         for geometry in geometries:
+#             for shape in geometry.geoms:
+#                 pth = Path(shape.exterior.coords)
+#                 mask = np.logical_or(mask, pth.contains_points(points))
+
+#         return mask
+
+#     def fires_filtering(self, detections):
+#         """Remove fires outside Sweden and keep only those outside populated areas and away from industries."""
+#         lons = detections.longitude.values
+#         lats = detections.latitude.values
+
+#         toc = time.time()
+#         insides = self.fires_inside_sweden_mpl(lons, lats)
+#         logger.debug("Time used checking inside Sweden - mpl path method: %f", time.time() - toc)
+
+#         retv = detections[insides]
+
+#         if len(retv) == 0:
+#             logger.debug("No fires in Sweden in this file...")
+#             return retv
+#         else:
+#             logger.debug("Number of detections inside Sweden: %d", len(retv))
+
+#         lons = retv.longitude.values
+#         lats = retv.latitude.values
+
+#         # Filter for populated areas and industries:
+#         toc = time.time()
+#         populated = self.fires_inside_populated_areas_mpl(lons, lats)
+#         logger.debug("Time used checking if fire is in a populated area or near an industry: %f", time.time() - toc)
+
+#         return retv[populated == False]
+
+    # def store(self, detections):
+    #     """Store the filtered AF detections on disk."""
+    #     if len(detections) > 0:
+    #         detections.to_csv(self.output_filename, index=False)
+    #         return self.output_filename
+    #     else:
+    #         logger.debug("No detections to save!")
+    #         return None
+
+    # def store_geojson(self, detections):
+    #     """Store the filtered AF detections on disk."""
+    #     if len(detections) > 0:
+    #         # Convert points to GeoJSON
+    #         features = []
+    #         for idx in range(len(detections)):
+    #             starttime = detections.iloc[idx].starttime
+    #             endtime = detections.iloc[idx].endtime
+    #             mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
+    #                                                              starttime.to_pydatetime()) / 2.
+    #             prop = {'power': detections.iloc[idx].power,
+    #                     'tb': detections.iloc[idx].tb,
+    #                     'observation_time': json_serial(mean_granule_time)
+    #                     }
+    #             if self.platform_name:
+    #                 prop['platform_name'] = self.platform_name
+    #             else:
+    #                 logger.debug("No platform name specified for output")
+
+    #             feat = Feature(
+    #                 geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
+    #                 properties=prop)
+    #             features.append(feat)
+
+    #         feature_collection = FeatureCollection(features)
+    #         path = os.path.dirname(self.output_filename)
+    #         if not os.path.exists(path):
+    #             logger.info("Create directory: %s", path)
+    #             os.makedirs(path)
+
+    #         with open(self.output_filename, 'w') as f:
+    #             dump(feature_collection, f)
+
+    #         return self.output_filename
+    #     else:
+    #         logger.debug("No detections to save!")
+    #         return None
 
 
 class ActiveFiresPostprocessing(Thread):
@@ -348,7 +522,9 @@ class ActiveFiresPostprocessing(Thread):
         return get_metadata_from_filename(self.infile_pattern, filepath)
 
     def read_af_data(self, filepath, file_mda, localtime=True):
-        """Read the Active Fire results from file."""
+        """Read the Active Fire results from file - ascii formatted output from CSPP VIIRS-AF.
+
+        """
         return read_af_data(filepath, file_mda, localtime)
 
     def close(self):
@@ -367,8 +543,12 @@ class ActiveFiresPostprocessing(Thread):
 
 
 def read_af_data(filepath, file_mda, localtime=True):
-    """Read the Active Fire results from file."""
+    """Read the Active Fire results from file.
 
+    The Active Fires result file is the txt version of the output from the
+    CSPP VIIRS AF algorithm.
+
+    """
     df = pd.read_csv(filepath, index_col=None, header=None, comment='#', names=COL_NAMES)
     # Add start and end times:
     if localtime:
