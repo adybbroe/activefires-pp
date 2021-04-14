@@ -87,8 +87,10 @@ class ShapeGeometry(object):
         self.proj4str = self._get_proj()
 
     def load(self):
-        self._load_geometries()
-        self._load_attributes()
+        """Load the geometries and the associated attributes."""
+        self._records = [r for r in shpreader.Reader(self.filepath).records()]
+        self._load_member_from_records('geometries', 'geometry')
+        self._load_member_from_records('attributes', 'attributes')
 
     def _get_proj(self):
         """Get and return the Proj.4 string."""
@@ -97,11 +99,9 @@ class ShapeGeometry(object):
         crs = pycrs.load.from_file(prj_filename)
         return crs.to_proj4()
 
-    def _load_geometries(self):
-        self.geometries = [c.geometry for c in shpreader.Reader(self.filepath).records()]
-
-    def _load_attributes(self):
-        self.attributes = [c.attributes for c in shpreader.Reader(self.filepath).records()]
+    def _load_member_from_records(self, class_member, record_type):
+        """Load a member of the shapely.geometry object and set the corresponding class member."""
+        setattr(self, class_member, [getattr(rec, record_type) for rec in self._records])
 
 
 class ActiveFiresShapefileFiltering(object):
@@ -132,12 +132,37 @@ class ActiveFiresShapefileFiltering(object):
             raise AttributeError("file pattern must be provided in order to be able to read from file!")
 
         self.metadata = self._get_metadata_from_filename(filepattern)
-        self._afdata = read_af_data(self.input_filepath, self.metadata, localtime)
+        self._afdata = _read_data(self.input_filepath)
+        self.add_start_and_end_time_to_active_fires_data(localtime)
+
         return self._afdata
 
     def _get_metadata_from_filename(self, infile_pattern):
         """From the filename retrieve the metadata such as satellite and sensing time."""
         return get_metadata_from_filename(infile_pattern, self.input_filepath)
+
+    def add_start_and_end_time_to_active_fires_data(self, localtime):
+        """Add start and end time to active fires data."""
+
+        # Add start and end times:
+        if localtime:
+            logger.info("Convert to local time zone!")
+            starttime = datetime_from_utc_to_local(self.metadata['start_time'])
+            endtime = datetime_from_utc_to_local(self.metadata['end_time'])
+        else:
+            starttime = self.metadata['start_time']
+            endtime = self.metadata['end_time']
+
+        logger.info('Start and end times: %s %s', str(starttime), str(endtime))
+
+        # Apply timezone offset:
+        starttime_offset = starttime.utcoffset() or timedelta(seconds=0)
+        endtime_offset = endtime.utcoffset() or timedelta(seconds=0)
+
+        self._afdata['starttime'] = np.repeat(starttime + starttime_offset,
+                                              len(self._afdata)).astype(np.datetime64)
+        self._afdata['endtime'] = np.repeat(endtime + endtime_offset,
+                                            len(self._afdata)).astype(np.datetime64)
 
     def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
         """Remove fires outside Sweden and keep only those outside populated areas and away from industries."""
@@ -202,6 +227,34 @@ class ActiveFiresShapefileFiltering(object):
             regional_masks[test_omr]['some_inside_test_area'] = some_inside_test_omr
 
         return regional_masks
+
+
+def _read_data(filepath):
+    """Read the AF data."""
+    with open(filepath, 'r') as fpt:
+        return pd.read_csv(fpt, index_col=None, header=None, comment='#', names=COL_NAMES)
+
+
+def get_metadata_from_filename(infile_pattern, filepath):
+    """From the filename and its pattern get basic metadata of the satellite observations."""
+    p__ = Parser(infile_pattern)
+    fname = os.path.basename(filepath)
+    try:
+        res = p__.parse(fname)
+    except ValueError:
+        # Do something!
+        return None
+
+    # Fix the end time:
+    endtime = datetime(res['start_time'].year, res['start_time'].month,
+                       res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
+                       res['end_hour'].second)
+    if endtime < res['start_time']:
+        endtime = endtime + timedelta(days=1)
+
+    res['end_time'] = endtime
+
+    return res
 
 
 def store(output_filename, detections):
@@ -307,9 +360,10 @@ class ActiveFiresPostprocessing(Thread):
         self.shp_filtermask = shp_mask
         self.regional_filtermask = regional_filtermask
         self.configfile = configfile
-        self.options = None
+        self.options = {}
 
-        self.get_config()
+        config = read_config(self.configfile)
+        self._set_options_from_config(config)
 
         self.input_topic = self.options['subscribe_topics'][0]
         self.output_topic = self.options['publish_topic']
@@ -319,37 +373,39 @@ class ActiveFiresPostprocessing(Thread):
         self.host = socket.gethostname()
         self.output_dir = self.options.get('output_dir', '/tmp')
 
-        logger.debug("Input topic: %s", self.input_topic)
+        #self.listener = None
+        #self.publisher = None
+        #self.loop = False
+        # self._setup_and_start_communication()
 
+    def _setup_and_start_communication(self):
+        """Set up the Posttroll communication and start the publisher."""
+        logger.debug("Input topic: %s", self.input_topic)
         self.listener = ListenerContainer(topics=[self.input_topic])
         self.publisher = NoisyPublisher("active_fires_postprocessing")
         self.publisher.start()
         self.loop = True
         signal.signal(signal.SIGTERM, self.signal_shutdown)
 
-    def get_config(self):
-        """Read and extract config information."""
-        with open(self.configfile, 'r') as fp_:
-            config = yaml.load(fp_, Loader=UnsafeLoader)
+    def _set_options_from_config(self, config):
+        """From the configuration on disk set the option dictionary, holding all metadata for processing."""
+        for item in config:
+            if not isinstance(config[item], dict):
+                self.options[item] = config[item]
 
-            self.options = {}
-            for item in config:
-                if not isinstance(config[item], dict):
-                    self.options[item] = config[item]
+        if isinstance(self.options.get('subscribe_topics'), str):
+            subscribe_topics = self.options.get('subscribe_topics').split(',')
+            for item in subscribe_topics:
+                if len(item) == 0:
+                    subscribe_topics.remove(item)
+            self.options['subscribe_topics'] = subscribe_topics
 
-            if isinstance(self.options.get('subscribe_topics'), str):
-                subscribe_topics = self.options.get('subscribe_topics').split(',')
-                for item in subscribe_topics:
-                    if len(item) == 0:
-                        subscribe_topics.remove(item)
-                self.options['subscribe_topics'] = subscribe_topics
-
-            if isinstance(self.options.get('publish_topics'), str):
-                publish_topics = self.options.get('publish_topics').split(',')
-                for item in publish_topics:
-                    if len(item) == 0:
-                        publish_topics.remove(item)
-                self.options['publish_topics'] = publish_topics
+        if isinstance(self.options.get('publish_topics'), str):
+            publish_topics = self.options.get('publish_topics').split(',')
+            for item in publish_topics:
+                if len(item) == 0:
+                    publish_topics.remove(item)
+            self.options['publish_topics'] = publish_topics
 
     def signal_shutdown(self, *args, **kwargs):
         """Shutdown the Active Fires postprocessing."""
@@ -493,6 +549,14 @@ class ActiveFiresPostprocessing(Thread):
                 logger.exception("Couldn't stop publisher.")
 
 
+def read_config(config_filepath):
+    """Read and extract config information."""
+    with open(config_filepath, 'r') as fp_:
+        config = yaml.load(fp_, Loader=UnsafeLoader)
+
+    return config
+
+
 def prepare_posttroll_message(input_msg, output_topic, region=None):
     """Create the basic posttroll-message fields and return."""
 
@@ -513,51 +577,3 @@ def prepare_posttroll_message(input_msg, output_topic, region=None):
         to_send['region_code'] = region['attributes']['KNKOD']
 
     return to_send, output_topic
-
-
-def read_af_data(filepath, file_mda, localtime=True):
-    """Read the Active Fire results from file.
-
-    The Active Fires result file is the txt version of the output from the
-    CSPP VIIRS AF algorithm.
-
-    """
-    fire_data = pd.read_csv(filepath, index_col=None, header=None, comment='#', names=COL_NAMES)
-    # Add start and end times:
-    if localtime:
-        logger.info("Convert to local time zone!")
-        starttime = datetime_from_utc_to_local(file_mda['start_time'])
-        endtime = datetime_from_utc_to_local(file_mda['end_time'])
-    else:
-        starttime = file_mda['start_time']
-        endtime = file_mda['end_time']
-
-    logger.info('Start and end times: %s %s', str(starttime), str(endtime))
-
-    # Apply timezone offset:
-    fire_data['starttime'] = np.repeat(starttime + starttime.utcoffset(), len(fire_data)).astype(np.datetime64)
-    fire_data['endtime'] = np.repeat(endtime + endtime.utcoffset(), len(fire_data)).astype(np.datetime64)
-
-    return fire_data
-
-
-def get_metadata_from_filename(infile_pattern, filepath):
-    """From the filename and its pattern get basic metadata of the satellite observations."""
-    p__ = Parser(infile_pattern)
-    fname = os.path.basename(filepath)
-    try:
-        res = p__.parse(fname)
-    except ValueError:
-        # Do something!
-        return None
-
-    # Fix the end time:
-    endtime = datetime(res['start_time'].year, res['start_time'].month,
-                       res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
-                       res['end_hour'].second)
-    if endtime < res['start_time']:
-        endtime = endtime + timedelta(days=1)
-
-    res['end_time'] = endtime
-
-    return res
