@@ -437,7 +437,7 @@ class ActiveFiresPostprocessing(Thread):
                 filename = get_filename_from_uri(msg.data.get('uri'))
 
                 file_ok = check_file_okay(msg.data.get('type'))
-                output_msg = self.generate_no_fires_message(msg, 'No fire detections for this granule')
+                output_msg = self._generate_no_fires_message(msg, 'No fire detections for this granule')
                 if not file_ok:
                     logger.debug("Sending message: %s", str(output_msg))
                     self.publisher.send(str(output_msg))
