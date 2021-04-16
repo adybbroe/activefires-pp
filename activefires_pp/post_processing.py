@@ -451,7 +451,7 @@ class ActiveFiresPostprocessing(Thread):
                     self.publisher.send(str(output_msg))
                     continue
 
-                output_msg, afdata = self.fires_filtering(msg)
+                output_msg, afdata = self.fires_filtering(msg, af_shapeff)
 
                 if output_msg:
                     logger.debug("Sending message: %s", str(output_msg))
