@@ -1,5 +1,5 @@
 # Publish/subscribe
-publish_topic: VIIRS/L2/MSB
+publish_topic: VIIRS/L2/MSB/Regional
 subscribe_topics: VIIRS/L2/Fires/PP/Regional
 
 smtp_server: smtp.mydomain.xx
@@ -9,14 +9,14 @@ domain: mydomain.xx
 sender: active-fires@mydomain.xx
 
 recipients:
-  Area1-name:
+  - Area1-name:
       subject: "My subject"
       knkod: '0999'
       name: 'Name of my area 1'
       recipient: active-fires-sms-0999@mydomain.xx
       recipients_attachment: active-fires-0999@mydomain.xx
 
-  Area2-name:
+  - Area2-name:
       subject: "My subject"
       knkod: '0998'
       name: 'Name of my area 2'

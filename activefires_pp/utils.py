@@ -26,6 +26,19 @@
 import pytz
 import cartopy.io.shapereader as shpreader
 from datetime import date, datetime
+import yaml
+from yaml import UnsafeLoader
+
+
+def read_config(config_filepath):
+    """Read and extract config information."""
+    import ipdb
+    ipdb.set_trace()
+
+    with open(config_filepath, 'r') as fp_:
+        config = yaml.load(fp_, Loader=UnsafeLoader)
+
+    return config
 
 
 def datetime_from_utc_to_local(utc_dt):

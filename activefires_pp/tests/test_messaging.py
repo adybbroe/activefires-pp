@@ -50,7 +50,8 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
 
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
-def test_prepare_posttroll_message(get_config, gethostname):
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
     """Test setup the posttroll message."""
 
     get_config.return_value = CONFIG_EXAMPLE
@@ -59,18 +60,36 @@ def test_prepare_posttroll_message(get_config, gethostname):
     myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+    #myregion_filepath = "/my/region/file/path"
+
     afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
 
     input_msg = Message.decode(rawstr=TEST_MSG)
-    res_msg = afpp.generate_output_message(test_filepath, input_msg)
+    res_msg = afpp._generate_output_message(test_filepath, input_msg)
 
     assert res_msg.data['platform_name'] == 'NOAA-20'
     assert res_msg.data['type'] == 'GEOJSON-filtered'
     assert res_msg.data['format'] == 'geojson'
     assert res_msg.data['product'] == 'afimg'
+    assert res_msg.subject == '/VIIRS/L2/Fires/PP/National'
+    assert res_msg.data['uri'] == 'ssh://my.host.name//my/geojson/file/path'
+
+    input_msg = Message.decode(rawstr=TEST_MSG)
+
+    fake_region_mask = {'attributes': {'KNKOD': '9999',
+                                       'Testomr': 'Some area description'}}
+    res_msg = afpp._generate_output_message(test_filepath, input_msg, region=fake_region_mask)
+
+    assert res_msg.subject == '/VIIRS/L2/Fires/PP/Regional/9999'
 
     msg_str = 'No fire detections for this granule'
+    res_msg = afpp._generate_no_fires_message(input_msg, msg_str)
 
-    res_msg = afpp.generate_no_fires_message(input_msg, msg_str)
+    assert res_msg.data['info'] == msg_str
+    assert res_msg.subject == '/VIIRS/L2/Fires/PP'
+    assert 'type' not in res_msg.data
+    assert 'format' not in res_msg.data
+    assert 'product' not in res_msg.data
+    assert 'uri' not in res_msg.data

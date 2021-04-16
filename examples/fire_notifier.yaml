@@ -1,6 +1,6 @@
 # Publish/subscribe
-publish_topic: VIIRS/L2/MSB
-subscribe_topics: VIIRS/L2/Fires/PP
+publish_topic: VIIRS/L2/MSB/National
+subscribe_topics: VIIRS/L2/Fires/PP/National
 
 smtp_server: smtp.mydomain.se
 
@@ -18,4 +18,4 @@ fire_data:
   - power
   - observation_time
 
-unsubscribe: adress-to-send-unsubscribe-message@mydomain.se
+unsubscribe: adress-to-send-unsubscribe-message@mydomain.xx

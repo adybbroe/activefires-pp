@@ -23,23 +23,22 @@
 """
 """
 
-import pytest
-import unittest
-import pandas as pd
 from unittest.mock import patch
 from unittest.mock import mock_open
+from unittest.mock import Mock
+import pandas as pd
+import numpy as np
 import io
-
 from datetime import datetime
 import pycrs
 import cartopy.io.shapereader
 
 from activefires_pp.post_processing import ShapeGeometry
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
+from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
+from activefires_pp.utils import read_config
 
-
-SHP_BOARDERS = "/home/a000680/data/shapes/Sverige/Sverige.shp"
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 
@@ -79,6 +78,13 @@ TEST_ACTIVE_FIRES_FILE_DATA = """
   57.42747116,   -3.47912717,  353.80722046,  0.375,  0.375,    8,   12.13035393
 """
 
+CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
+                  'subscribe_topics': 'VIIRS/L2/AFI',
+                  'af_pattern_ibands':
+                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
+                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
+                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',
+                  'output_dir': '/path/where/the/filtered/results/will/be/stored'}
 
 OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
 
@@ -88,6 +94,30 @@ MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour
 
 TEST_CRS_PROJ = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
                  '+y_0=0.0 +lon_0=15.0 +lat_0=0.0 +units=m +axis=enu +no_defs')
+
+TEST_REGIONAL_MASK = {}
+TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False, False, False, False, False,
+                                                            False, False, False, False,  True, False, False, False, False]),
+                                          'attributes': {'Join_Count': 2, 'TARGET_FID': 142,
+                                                         'KNKOD': '1438', 'KNNAMN': 'Dals-Ed',
+                                                         'LANDAREAKM': 728.0, 'KNBEF96': 5287.0,
+                                                         'OBJECTID': 1080804, 'Datum_Tid': '2016-06-13',
+                                                         'Testomr': 'Bergslagen (RRB)',
+                                                         'Shape_Leng': 2131994.36042, 'Shape_Area': 53512139344.2},
+                                          'all_inside_test_area': False, 'some_inside_test_area': True}
+TEST_REGIONAL_MASK['Västerviks kommun'] = {'mask': np.array([False, False, False, False, False, False, False, False, False,
+                                                             False, False, False, False, False, False, False, False, False]),
+                                           'attributes': {'Join_Count': 30, 'TARGET_FID': 85,
+                                                          'KNKOD': '0883', 'KNNAMN': 'Västervik',
+                                                          'LANDAREAKM': 1870.5, 'KNBEF96': 39579.0,
+                                                          'OBJECTID': 1079223, 'Datum_Tid': '2016-06-13',
+                                                          'Testomr': 'Västerviks kommun',
+                                                          'Shape_Leng': 251653.298274, 'Shape_Area': 2040770168.02},
+                                           'all_inside_test_area': False, 'some_inside_test_area': False}
+
+FAKE_MASK1 = np.array([False, False, False, False, False, False, False, False,  True,
+                       False, False,  True, False,  True, False, False, False, False])
+FAKE_MASK2 = np.array([True, False,  True])
 
 
 class MyMockCrs(object):
@@ -128,7 +158,6 @@ def test_shape_geometry_loading(load_from_file):
 
     load_from_file.return_value = MyMockCrs()
     shpgeom = ShapeGeometry('/my/shape/file/path/myshapefile.sph')
-    #shpgeom = ShapeGeometry(SHP_BOARDERS)
 
     with patch('cartopy.io.shapereader.Reader') as MockShpReader:
         MockShpReader.return_value.records.return_value = fake_get_records()
@@ -171,6 +200,100 @@ def test_add_start_and_end_time_to_active_fires_data(readdata):
     assert 'starttime' in this._afdata
     assert 'endtime' in this._afdata
 
-    # FIXME! How to check that a time zone localisation has been done?
-    assert str(this._afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
-    assert str(this._afdata['endtime'][0]) == '2021-04-14 11:28:08'
+    assert str(this._afdata['starttime'][0]) == '2021-04-14 13:26:43.900000'
+    assert str(this._afdata['endtime'][0]) == '2021-04-14 13:28:08'
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.utils.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_regional_fires_filtering(setup_comm, get_config, gethostname):
+    """Test the regional fires filtering."""
+    # FIXME! This test is to big/broad. Need for refactoring!
+
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+
+    myconfigfile = "/my/config/file/path"
+    myboarders_file = "/my/shape/file/with/country/boarders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+
+    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
+    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+
+    # Add metadata to the pandas dataframe:
+    fake_metadata = {'platform': 'j01',
+                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'orbit': '17637',
+                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+    afdata.attrs = fake_metadata
+
+    af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name='NOAA-20')
+    regional_fmask = TEST_REGIONAL_MASK
+
+    mymsg = "Fake message"
+    with patch('activefires_pp.post_processing.store_geojson') as store_geojson:
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._generate_output_message') as generate_msg:
+            store_geojson.return_value = "/some/output/path"
+            generate_msg.return_value = "my fake output message"
+            result = afpp.regional_fires_filtering_and_publishing(mymsg, regional_fmask, af_shapeff)
+
+    store_geojson.assert_called_once()
+    generate_msg.assert_called_once()
+
+    assert len(result) == 1
+    assert result[0] == "my fake output message"
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.utils.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
+def test_general_national_fires_filtering(get_global_mask, setup_comm, get_config, gethostname):
+    """Test the general/basic national fires filtering."""
+
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+
+    myconfigfile = "/my/config/file/path"
+    myboarders_file = "/my/shape/file/with/country/boarders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+
+    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
+    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+
+    # Add metadata to the pandas dataframe:
+    fake_metadata = {'platform': 'j01',
+                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'orbit': '17637',
+                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+    afdata.attrs = fake_metadata
+
+    af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name='NOAA-20')
+    afdata = af_shapeff.get_af_data(MY_FILE_PATTERN)
+
+    mymsg = "Fake message"
+
+    with patch('activefires_pp.post_processing.store_geojson') as store_geojson:
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_output_message') as get_output_msg:
+            store_geojson.return_value = "/some/output/path"
+            get_output_msg.return_value = "my fake output message"
+            outmsg, result = afpp.fires_filtering(mymsg, af_shapeff)
+
+    store_geojson.assert_called_once()
+    get_output_msg.assert_called_once()
+    get_global_mask.call_count == 2
+
+    assert isinstance(result, pd.core.frame.DataFrame)
+    assert len(result) == 1
+    np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
+    np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
+    assert outmsg == "my fake output message"
