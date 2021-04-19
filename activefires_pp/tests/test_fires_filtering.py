@@ -214,6 +214,39 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
     assert str(this._afdata['starttime'][0]) == '2021-04-14 13:26:43.900000'
     assert str(this._afdata['endtime'][0]) == '2021-04-14 13:28:08'
 
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Iceland')
+    with patch('os.path.exists') as mypatch:
+        mypatch.return_value = True
+        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+
+    assert 'starttime' in this._afdata
+    assert 'endtime' in this._afdata
+
+    assert str(this._afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
+    assert str(this._afdata['endtime'][0]) == '2021-04-14 11:28:08'
+
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Helsinki')
+    with patch('os.path.exists') as mypatch:
+        mypatch.return_value = True
+        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+
+    assert 'starttime' in this._afdata
+    assert 'endtime' in this._afdata
+
+    assert str(this._afdata['starttime'][0]) == '2021-04-14 14:26:43.900000'
+    assert str(this._afdata['endtime'][0]) == '2021-04-14 14:28:08'
+
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Lisbon')
+    with patch('os.path.exists') as mypatch:
+        mypatch.return_value = True
+        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+
+    assert 'starttime' in this._afdata
+    assert 'endtime' in this._afdata
+
+    assert str(this._afdata['starttime'][0]) == '2021-04-14 12:26:43.900000'
+    assert str(this._afdata['endtime'][0]) == '2021-04-14 12:28:08'
+
 
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
