@@ -47,7 +47,6 @@ import cartopy.io.shapereader as shpreader
 import shapely
 import pycrs
 
-from activefires_pp.utils import get_geometry_from_shapefile
 from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
@@ -78,6 +77,7 @@ COL_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res",
 
 LOG_FORMAT = "[%(asctime)s %(levelname)-8s] %(message)s"
 logger = logging.getLogger(__name__)
+logging.getLogger("fiona").setLevel(logging.WARNING)
 
 
 class ShapeGeometry(object):

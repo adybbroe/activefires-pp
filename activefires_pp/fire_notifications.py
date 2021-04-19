@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
+"""Creating and sending notifications for detected forest fires.
 """
 
 import socket
@@ -56,6 +56,29 @@ else:
 LOG = logging.getLogger(__name__)
 
 
+class RecipientDataStruct(object):
+    def __init__(self):
+
+        self.recipients_with_attachment = []
+        self.recipients_without_attachment = []
+        self.recipients_all = []
+        self.region_name = None
+        self.region_code = None
+
+    def _set_recipients(self, recipients, recipients_attachment):
+        """Set the lists of recipients.
+
+        One for those that should have an attachement (geojson file) and those without.
+        """
+        self.recipients_all = list(set().union(recipients, recipients_attachment))
+        self.recipients_all.sort()
+        for recip in self.recipients_all:
+            if recip in recipients_attachment:
+                self.recipients_with_attachment.append(recip)
+            else:
+                self.recipients_without_attachment.append(recip)
+
+
 class EndUserNotifier(Thread):
     """The Notifier class - sending mails or text messages to end users upon incoming messages."""
 
@@ -76,15 +99,18 @@ class EndUserNotifier(Thread):
         self.smtp_server = self.options.get('smtp_server')
         self.domain = self.options.get('domain')
         self.sender = self.options.get('sender')
-        self.recipients = self.options.get('recipients')
-        self.recipients_attachment = self.options.get('recipients_attachment')
+
+        self.recipients = RecipientDataStruct()
+        self._set_recipients()
+
         self.subject = self.options.get('subject')
 
         self.max_number_of_fires_in_sms = self.options.get('max_number_of_fires_in_sms', 2)
         LOG.debug("Max number of fires in SMS: %d", self.max_number_of_fires_in_sms)
 
         self.fire_data = self.options.get('fire_data')
-        self.unsubscribe_address = self.options.get('unsubscribe')
+        self.unsubscribe_address = self.options.get('unsubscribe_address')
+        self.unsubscribe_text = self.options.get('unsubscribe_text')
 
         if not self.domain:
             raise IOError('Missing domain specification in config!')
@@ -99,9 +125,13 @@ class EndUserNotifier(Thread):
         self.loop = False
         self._setup_and_start_communication()
 
+    def _set_recipients(self):
+        """Set the recipients lists."""
+        self.recipients._set_recipients(self.options.get('recipients'), self.options.get('recipients_attachment'))
+
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
-        logger.debug("Input topic: %s", self.input_topic)
+        LOG.debug("Input topic: %s", self.input_topic)
         self.listener = ListenerContainer(topics=[self.input_topic])
         self.publisher = NoisyPublisher("end_user_notifier")
         self.publisher.start()
@@ -128,6 +158,11 @@ class EndUserNotifier(Thread):
                     publish_topics.remove(item)
             self.options['publish_topics'] = publish_topics
 
+        unsubscribe = config.get('unsubscribe')
+        if unsubscribe:
+            for key in unsubscribe:
+                self.options['unsubscribe_' + key] = unsubscribe[key]
+
     def signal_shutdown(self, *args, **kwargs):
         """Shutdown the Notifier process."""
         self.close()
@@ -148,6 +183,7 @@ class EndUserNotifier(Thread):
                 elif msg.type not in ['file', 'collection', 'dataset']:
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
+
                 output_msg = self.notify_end_users(msg)
                 if output_msg:
                     LOG.debug("Sending message: %s", str(output_msg))
@@ -159,72 +195,36 @@ class EndUserNotifier(Thread):
         """Send notifications to configured end users (mail and text messages)."""
         LOG.debug("Start sending notifications to configured end users.")
 
-        host_secrets = self.secrets.authenticators(self.host)
-        if host_secrets is None:
-            LOG.error("Failed getting authentication secrets for host: %s", self.host)
-            LOG.error("Check out the details in the netrc file: %s", self._netrcfile)
-            return
-
-        username, account, password = host_secrets
-
-        server = smtplib.SMTP(self.smtp_server)
-        server.starttls()
-        server.ehlo(self.domain)
-        recipients = list(set().union(self.recipients, self.recipients_attachment))
-        recipients_attachment = []
-        recipients_noattachment = []
-        for recip in recipients:
-            if recip in self.recipients_attachment:
-                recipients_attachment.append(recip)
-            else:
-                recipients_noattachment.append(recip)
-
-        server.rcpt(recipients)
-        server.login(username, password)
-
-        outmsg = None
-        urlstr = msg.data.get('uri')
-        url = urlparse(urlstr)
-
+        url = urlparse(msg.data.get('uri'))
         LOG.info('File path: %s', str(url.path))
-        platform_name = msg.data.get("platform_name")
         filename = url.path
-        if filename.endswith('.geojson') and os.path.exists(filename):
-            # Read the file:
-            with open(filename, "r") as fpt:
-                ffdata = geojson.load(fpt)
-        else:
-            LOG.warning("No filename to read: %s", filename)
+
+        ffdata = read_geojson_data(filename)
+        if not ffdata:
             return None
 
-        # Unsubscribe text:
-        unsubscr = ""
-        if self.unsubscribe_address:
-            unsubscr = "\nSluta få detta meddelande: Mejla %s med subject=STOPP" % self.unsubscribe_address
+        platform_name = msg.data.get("platform_name")
 
         # Create the message(s).
-        # Some recipients should have the full message and an attachment
-        # Other recipients should have several smaller messages and no attachment
+        # Some recipients (typically via e-mail) should have the full message and an attachment
+        # Other recipients (typically via SMS) should have several smaller messages and no attachment
         #
-        full_message, sub_messages = self.create_message_content(ffdata['features'], unsubscr)
+        full_message, sub_messages = self.create_message_content(ffdata['features'], "\n" + self.unsubscribe_text)
 
-        for submsg in sub_messages:
-            notification = MIMEMultipart()
-            notification['From'] = self.sender
-            if platform_name:
-                notification['Subject'] = self.subject + ' Satellit = %s' % platform_name
-            else:
-                notification['Subject'] = self.subject
+        username, password = self._get_mailserver_login_credentials()
+        server = self._start_smtp_server(username, password)
 
-            notification.attach(MIMEText(submsg, 'plain', 'UTF-8'))
+        self._send_notifications_without_attachments(server, self.recipients.recipients_without_attachment,
+                                                     sub_messages, platform_name)
 
-            for recip in recipients_noattachment:
-                notification['To'] = recip
-                LOG.info("Send fire notification to %s", str(recip))
-                LOG.debug("Subject: %s", str(self.subject))
-                txt = notification.as_string()
-                server.sendmail(self.sender, recip, txt)
-                LOG.debug("Text sent: %s", txt)
+        self._send_notifications_with_attachments(server, self.recipients.recipients_with_attachment,
+                                                  full_message, filename, platform_name)
+
+        return _create_output_message(msg, self.output_topic, self.recipients.recipients_all)
+
+    def _send_notifications_with_attachments(self, server, recipients, full_message, filename,
+                                             platform_name):
+        """Send notifications with attachments."""
 
         notification = MIMEMultipart()
         notification['From'] = self.sender
@@ -244,7 +244,7 @@ class EndUserNotifier(Thread):
                         'attachment; filename="{}"'.format(Path(filename).name))
         notification.attach(part)
 
-        for recip in recipients_attachment:
+        for recip in self.recipients.recipients_with_attachment:
             notification['To'] = recip
             LOG.info("Send fire notification to %s", str(recip))
             LOG.debug("Subject: %s", str(self.subject))
@@ -253,22 +253,51 @@ class EndUserNotifier(Thread):
             LOG.debug("Text sent: %s", txt)
 
         server.quit()
-        to_send = msg.data.copy()
-        to_send.pop('file', None)
-        to_send.pop('uri', None)
-        to_send.pop('uid', None)
-        to_send.pop('format', None)
-        to_send.pop('type', None)
-        to_send['info'] = "Notifications sent to the following recipients: %s" % str(recipients)
-        outmsg = Message(self.output_topic, 'info', to_send)
 
-        return outmsg
+    def _send_notifications_without_attachments(self, server, recipients, sub_messages, platform_name):
+        """Send notifications without attachments."""
+
+        for submsg in sub_messages:
+            notification = MIMEMultipart()
+            notification['From'] = self.sender
+            if platform_name:
+                notification['Subject'] = self.subject + ' Satellit = %s' % platform_name
+            else:
+                notification['Subject'] = self.subject
+
+            notification.attach(MIMEText(submsg, 'plain', 'UTF-8'))
+
+            for recip in recipients:
+                notification['To'] = recip
+                LOG.info("Send fire notification to %s", str(recip))
+                LOG.debug("Subject: %s", str(self.subject))
+                txt = notification.as_string()
+                server.sendmail(self.sender, recip, txt)
+                LOG.debug("Text sent: %s", txt)
+
+    def _get_mailserver_login_credentials(self):
+        """Get the login credentials for the mail server."""
+        host_secrets = self.secrets.authenticators(self.host)
+        if host_secrets is None:
+            LOG.error("Failed getting authentication secrets for host: %s", self.host)
+            raise IOError("Check out the details in the netrc file: %s", self._netrcfile)
+
+        username, _, password = host_secrets
+
+        return username, password
+
+    def _start_smtp_server(self, username, password):
+        """Start the smtp server and loging."""
+        server = smtplib.SMTP(self.smtp_server)
+        server.starttls()
+        server.ehlo(self.domain)
+        server.rcpt(self.recipients.recipients_all)
+        server.login(username, password)
+
+        return server
 
     def create_message_content(self, gjson_features, unsubscr):
-        """Create the full message string and the list of sub-messages.
-
-        """
-
+        """Create the full message string and the list of sub-messages."""
         full_msg = ''
         msg_list = []
         outstr = ''
@@ -284,7 +313,8 @@ class EndUserNotifier(Thread):
 
             lonlats = firespot['geometry']['coordinates']
             outstr = outstr + '%f N, %f E\n' % (lonlats[1], lonlats[0])
-            if 'observation_time' in self.fire_data and 'observation_time' in firespot['properties']:
+            if ('observation_time' in self.fire_data and
+                    'observation_time' in firespot['properties']):
                 timestr = firespot['properties']['observation_time']
                 LOG.debug("Time string: %s", str(timestr))
                 try:
@@ -331,3 +361,95 @@ class EndUserNotifier(Thread):
                 self.publisher.stop()
             except Exception:
                 LOG.exception("Couldn't stop publisher.")
+
+
+class EndUserNotifierRegional(EndUserNotifier):
+    """The Notifier class for regional notifications.
+
+    Sending mails or text (SMS) messages to end users upon incoming messages.
+    """
+
+    def __init__(self, configfile, netrcfile=NETRCFILE):
+        """Initialize the EndUserNotifierRegional class."""
+        super(EndUserNotifierRegional, self).__init__(configfile, netrcfile=NETRCFILE)
+
+    def _set_recipients(self):
+        """Set the recipients lists."""
+        self.recipients = self.options.get('recipients')
+
+    def notify_end_users(self, msg):
+        """Send notifications to configured end users (mail and text messages)."""
+        LOG.debug("Start sending notifications to configured end users.")
+
+        url = urlparse(msg.data.get('uri'))
+        LOG.info('File path: %s', str(url.path))
+        filename = url.path
+
+        ffdata = read_geojson_data(filename)
+        if not ffdata:
+            return None
+
+        platform_name = msg.data.get("platform_name")
+
+        # Create the message(s).
+        # Some recipients (typically via e-mail) should have the full message and an attachment
+        # Other recipients (typically via SMS) should have several smaller messages and no attachment
+        #
+        full_message, sub_messages = self.create_message_content(ffdata['features'], "\n" + self.unsubscribe_text)
+
+        region_code = msg.data.get("region_code")
+        recipients = get_recipients_for_region(self.recipients, region_code)
+        if not recipients:
+            LOG.warning("No recipients configured for this area/region!")
+            return
+
+        regional_output_topic = self.output_topic + '/' + recipients.region_code
+
+        username, password = self._get_mailserver_login_credentials()
+        server = self._start_smtp_server(username, password)
+
+        self._send_notifications_without_attachments(server, recipients.recipients_without_attachment,
+                                                     sub_messages, platform_name)
+
+        self._send_notifications_with_attachments(server, self.recipients.recipients_with_attachment,
+                                                  full_message, filename, platform_name)
+
+        return _create_output_message(msg, regional_output_topic, recipients.recipients_all)
+
+
+def _create_output_message(msg, topic, recipients):
+    """Create the output message from the input message."""
+    to_send = msg.data.copy()
+    to_send.pop('file', None)
+    to_send.pop('uri', None)
+    to_send.pop('uid', None)
+    to_send.pop('format', None)
+    to_send.pop('type', None)
+    to_send['info'] = "Notifications sent to the following recipients: %s" % str(recipients)
+
+    return Message(topic, 'info', to_send)
+
+
+def read_geojson_data(filename):
+    """Read Geo json data from file."""
+    if filename.endswith('.geojson') and os.path.exists(filename):
+        # Read the file:
+        with open(filename, "r") as fpt:
+            return geojson.load(fpt)
+    else:
+        LOG.warning("No filename to read: %s", filename)
+
+
+def get_recipients_for_region(recipients, region_code):
+    """Get the recipients lists applicable to the region."""
+    for region_id in recipients:
+        rcode = recipients[region_id]['knkod']
+        if rcode == region_code:
+            recpt = RecipientDataStruct()
+            recpt._set_recipients(recipients[region_id]['recipients'],
+                                  recipients[region_id]['recipients_attachment'])
+            recpt.region_name = recipients[region_id]['name']
+            recpt.region_code = rcode
+            return recpt
+
+    return None

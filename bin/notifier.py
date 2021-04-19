@@ -29,6 +29,7 @@ import argparse
 import sys
 from activefires_pp.logger import setup_logging
 from activefires_pp.fire_notifications import EndUserNotifier
+from activefires_pp.fire_notifications import EndUserNotifierRegional
 
 LOG = logging.getLogger('end_user_notifier_process')
 
@@ -45,6 +46,8 @@ def main():
                         help="YAML config file to use.")
     parser.add_argument("-n", "--netrc",
                         help="Path to .netrc file to use.")
+    parser.add_argument('-r', "--regional", action='store_true',
+                        help="Regional notifier - default=False")
     parser.add_argument("-v", "--verbose", dest="verbosity", action="count", default=0,
                         help="Verbosity (between 1 and 2 occurrences with more leading to more "
                         "verbose logging). WARN=0, INFO=1, "
@@ -57,10 +60,10 @@ def main():
     netrcfile = cmd_args.netrc
     LOG.info("Starting up.")
     try:
-        if netrcfile:
-            ffnotify = EndUserNotifier(configfile, netrcfile=netrcfile)
+        if cmd_args.regional:
+            ffnotify = EndUserNotifierRegional(configfile, netrcfile=netrcfile)
         else:
-            ffnotify = EndUserNotifier(configfile)
+            ffnotify = EndUserNotifier(configfile, netrcfile=netrcfile)
 
     except Exception as err:
         LOG.error('End User Notifier crashed: %s', str(err))

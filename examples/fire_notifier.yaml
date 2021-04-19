@@ -8,8 +8,9 @@ domain: mydomain.se
 
 sender: active-fires@mydomain.se
 
-recipients: ["list-of-mail-adresses@recipients.se"]
-recipients_attachment: ["list-of-mail-adresses@recipients-who-wants-jsonfiles-in-attachments.se"]
+recipients: ["recipient1@recipients.se", "recipient2@recipients.se", "recipient3@recipients.se"]
+recipients_attachment: ["recipient1@recipients.se", "recipient2@recipients.se"]
+
 subject: "My subject"
 
 max_number_of_fires_in_sms: 3
@@ -18,4 +19,6 @@ fire_data:
   - power
   - observation_time
 
-unsubscribe: adress-to-send-unsubscribe-message@mydomain.xx
+unsubscribe:
+  address: adress-to-send-unsubscribe-message@mydomain.xx
+  text: "Sluta få detta meddelande: Mejla adress-to-send-unsubscribe-message@mydomain.x med subject=STOPP"

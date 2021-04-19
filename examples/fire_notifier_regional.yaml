@@ -9,19 +9,19 @@ domain: mydomain.xx
 sender: active-fires@mydomain.xx
 
 recipients:
-  - Area1-name:
-      subject: "My subject"
-      knkod: '0999'
-      name: 'Name of my area 1'
-      recipient: active-fires-sms-0999@mydomain.xx
-      recipients_attachment: active-fires-0999@mydomain.xx
+  Area1-name:
+    subject: "My subject"
+    knkod: '0999'
+    name: 'Name of my area 1'
+    recipient: active-fires-sms-0999@mydomain.xx
+    recipients_attachment: active-fires-0999@mydomain.xx
 
-  - Area2-name:
-      subject: "My subject"
-      knkod: '0998'
-      name: 'Name of my area 2'
-      recipient: active-fires-sms-0998@mydomain.xx      
-      recipients_attachment: active-fires-0998@mydomain.xx
+  Area2-name:
+    subject: "My subject"
+    knkod: '0998'
+    name: 'Name of my area 2'
+    recipient: active-fires-sms-0998@mydomain.xx
+    recipients_attachment: active-fires-0998@mydomain.xx
 
 max_number_of_fires_in_sms: 3
 
@@ -29,4 +29,6 @@ fire_data:
   - power
   - observation_time
 
-unsubscribe: adress-to-send-unsubscribe-message@mydomain.xx
+unsubscribe:
+  address: unsubscribe@mydomain.xx
+  text: 'Stop being bothered: Send a note to unsubscribe@mydomain.xx'
