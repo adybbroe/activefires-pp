@@ -447,7 +447,7 @@ class ActiveFiresPostprocessing(Thread):
                 platform_name = msg.data.get('platform_name')
                 filename = get_filename_from_uri(msg.data.get('uri'))
                 if not os.path.exists(filename):
-                    logger.waring("File does not exist!")
+                    logger.warning("File does not exist!")
                     continue
 
                 file_ok = check_file_type_okay(msg.data.get('type'))
