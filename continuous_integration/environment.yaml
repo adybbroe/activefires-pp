@@ -8,8 +8,6 @@ dependencies:
   - toolz
   - Cython
   - sphinx
-  - cartopy
-  - pillow
   - matplotlib
   - scipy
   - pyyaml
@@ -19,23 +17,18 @@ dependencies:
   - coverage
   - codecov
   - behave
-  - netcdf4
-  - h5py
-  - h5netcdf
-  - imageio
-  - pyhdf
   - mock
-  - libtiff
-  - geoviews
   - zarr
-  - python-eccodes
   - geoviews
+  - geojson
+  - shapely
+  - pycrs
+  - cartopy
   - pytest
   - pytest-cov
   - fsspec
   - pylibtiff
   - appdirs
-  - python-geotiepoints
   - pip
   - pip:
     - trollsift
