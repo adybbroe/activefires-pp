@@ -451,14 +451,14 @@ class ActiveFiresPostprocessing(Thread):
                     continue
 
                 file_ok = check_file_type_okay(msg.data.get('type'))
-                # FIXME! Should check if file exists as well!
                 output_msg = self._generate_no_fires_message(msg, 'No fire detections for this granule')
                 if not file_ok:
                     logger.debug("Sending message: %s", str(output_msg))
                     self.publisher.send(str(output_msg))
                     continue
 
-                af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name)
+                af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name,
+                                                           timezone=self.timezone)
                 afdata = af_shapeff.get_af_data(self.infile_pattern)
 
                 if len(afdata) == 0:
@@ -482,7 +482,8 @@ class ActiveFiresPostprocessing(Thread):
                     continue
 
                 # FIXME! If afdata is empty (len=0) then it seems all data are inside all regions!
-                af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name=platform_name)
+                af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name=platform_name,
+                                                           timezone=self.timezone)
                 regional_fmask = af_shapeff.get_regional_filtermasks(self.regional_filtermask)
                 regional_messages = self.regional_fires_filtering_and_publishing(msg, regional_fmask, af_shapeff)
                 for region_msg in regional_messages:

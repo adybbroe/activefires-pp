@@ -84,7 +84,8 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
                   'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
                   'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',
-                  'output_dir': '/path/where/the/filtered/results/will/be/stored'}
+                  'output_dir': '/path/where/the/filtered/results/will/be/stored',
+                  'timezone': 'Europe/Stockholm'}
 
 OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
 
