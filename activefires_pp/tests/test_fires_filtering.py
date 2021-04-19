@@ -171,7 +171,7 @@ def test_shape_geometry_loading(load_from_file):
 
 
 @patch('activefires_pp.post_processing._read_data')
-def test_add_start_and_end_time_to_active_fires_data(readdata):
+def test_add_start_and_end_time_to_active_fires_data_utc(readdata):
     """Test adding start and end times to the active fires data."""
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH
@@ -180,7 +180,7 @@ def test_add_start_and_end_time_to_active_fires_data(readdata):
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath)
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
         this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
@@ -192,7 +192,18 @@ def test_add_start_and_end_time_to_active_fires_data(readdata):
     assert str(this._afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
     assert str(this._afdata['endtime'][0]) == '2021-04-14 11:28:08'
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath)
+
+@patch('activefires_pp.post_processing._read_data')
+def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
+    """Test adding start and end times to the active fires data."""
+
+    myfilepath = TEST_ACTIVE_FIRES_FILEPATH
+
+    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
+    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    readdata.return_value = afdata
+
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Stockholm')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
         this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
@@ -205,7 +216,7 @@ def test_add_start_and_end_time_to_active_fires_data(readdata):
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.utils.read_config')
+@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     """Test the regional fires filtering."""
@@ -250,7 +261,7 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.utils.read_config')
+@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
 def test_general_national_fires_filtering(get_global_mask, setup_comm, get_config, gethostname):

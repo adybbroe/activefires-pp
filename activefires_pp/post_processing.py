@@ -49,8 +49,10 @@ import pycrs
 
 from activefires_pp.utils import get_geometry_from_shapefile
 from activefires_pp.utils import datetime_from_utc_to_local
+from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
 from activefires_pp.utils import read_config
+
 
 # M-band output:
 # column 1: latitude of fire pixel (degrees)
@@ -113,7 +115,7 @@ class ActiveFiresShapefileFiltering(object):
     Data is stored in geojson format.
     """
 
-    def __init__(self, filepath=None, afdata=None, platform_name=None):
+    def __init__(self, filepath=None, afdata=None, platform_name=None, timezone='GMT'):
         self.input_filepath = filepath
         self._afdata = afdata
         if afdata is None:
@@ -121,6 +123,7 @@ class ActiveFiresShapefileFiltering(object):
         else:
             self.metadata = afdata.attrs
 
+        self.timezone = timezone
         self.platform_name = platform_name
 
     def get_af_data(self, filepattern=None, localtime=True):
@@ -128,9 +131,12 @@ class ActiveFiresShapefileFiltering(object):
 
         """
         if self._afdata is not None:
+            # Make sure the attrs are populated with metadata instance attribute
+            self._afdata.attrs.update(self.metadata)
             return self._afdata
 
         if not self.input_filepath or not os.path.exists(self.input_filepath):
+            # FIXME! Better to raise an exception!?
             return self._afdata
 
         if not filepattern:
@@ -148,30 +154,33 @@ class ActiveFiresShapefileFiltering(object):
 
     def _add_start_and_end_time_to_active_fires_data(self, localtime):
         """Add start and end time to active fires data."""
-
         # Add start and end times:
         if localtime:
             logger.info("Convert to local time zone!")
-            starttime = datetime_from_utc_to_local(self.metadata['start_time'])
-            endtime = datetime_from_utc_to_local(self.metadata['end_time'])
+            starttime = datetime_from_utc_to_local(self.metadata['start_time'], self.timezone)
+            endtime = datetime_from_utc_to_local(self.metadata['end_time'], self.timezone)
+            self._afdata['starttime'] = self._apply_timezone_offset(starttime)
+            self._afdata['endtime'] = self._apply_timezone_offset(endtime)
         else:
             starttime = self.metadata['start_time']
             endtime = self.metadata['end_time']
+            self._afdata['starttime'] = np.repeat(starttime, len(self._afdata)).astype(np.datetime64)
+            self._afdata['endtime'] = np.repeat(endtime, len(self._afdata)).astype(np.datetime64)
 
-        logger.info('Start and end times: %s %s', str(starttime), str(endtime))
-
-        self._afdata['starttime'] = self._apply_timezone_offset(starttime)
-        self._afdata['endtime'] = self._apply_timezone_offset(endtime)
+        logger.info('Start and end times: %s %s',
+                    str(self._afdata['starttime'][0]),
+                    str(self._afdata['endtime'][0]))
 
     def _apply_timezone_offset(self, obstime):
         """Apply the time zone offset to the datetime objects."""
-        obstime_offset = obstime.utcoffset() or timedelta(seconds=0)
+        local_tz = get_local_timezone()
+        obstime_offset = local_tz.utcoffset(None)
 
         return np.repeat(obstime.replace(tzinfo=None) + obstime_offset,
                          len(self._afdata)).astype(np.datetime64)
 
     def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
-        """Remove fires outside Sweden and keep only those outside populated areas and away from industries."""
+        """Remove fires outside Sweden and flter out potential false detections."""
 
         detections = self._afdata
 
@@ -180,17 +189,14 @@ class ActiveFiresShapefileFiltering(object):
 
         toc = time.time()
         insides = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
-
         logger.debug("Time used checking inside polygon - mpl path method: %f", time.time() - toc)
 
-        retv = detections[insides == inside]
+        self._afdata = detections[insides == inside]
 
-        if len(retv) == 0:
+        if len(self._afdata) == 0:
             logger.debug("No fires inside polygon...")
         else:
-            logger.debug("Number of detections inside Polygon: %d", len(retv))
-
-        self._afdata = retv
+            logger.debug("Number of detections inside Polygon: %d", len(self._afdata))
 
     def get_regional_filtermasks(self, shapefile):
         """Get the regional filter masks from the shapefile."""
@@ -375,6 +381,8 @@ class ActiveFiresPostprocessing(Thread):
 
         self.host = socket.gethostname()
 
+        self.timezone = self.options.get('timezone', 'GMT')
+
         self.input_topic = self.options['subscribe_topics'][0]
         self.output_topic = self.options['publish_topic']
         self.infile_pattern = self.options.get('af_pattern_ibands')
@@ -389,7 +397,10 @@ class ActiveFiresPostprocessing(Thread):
 
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
-        logger.debug("Input topic: %s", self.input_topic)
+        logger.debug("Starting up... Input topic: %s", self.input_topic)
+        now = datetime_from_utc_to_local(datetime.now(), self.timezone)
+        logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
+
         self.listener = ListenerContainer(topics=[self.input_topic])
         self.publisher = NoisyPublisher("active_fires_postprocessing")
         self.publisher.start()
@@ -435,8 +446,12 @@ class ActiveFiresPostprocessing(Thread):
 
                 platform_name = msg.data.get('platform_name')
                 filename = get_filename_from_uri(msg.data.get('uri'))
+                if not os.path.exists(filename):
+                    logger.waring("File does not exist!")
+                    continue
 
-                file_ok = check_file_okay(msg.data.get('type'))
+                file_ok = check_file_type_okay(msg.data.get('type'))
+                # FIXME! Should check if file exists as well!
                 output_msg = self._generate_no_fires_message(msg, 'No fire detections for this granule')
                 if not file_ok:
                     logger.debug("Sending message: %s", str(output_msg))
@@ -462,11 +477,16 @@ class ActiveFiresPostprocessing(Thread):
                     logger.info("No regional filtering is attempted.")
                     continue
 
+                if len(afdata) == 0:
+                    logger.debug("No fires - so no regional filtering to be done!")
+                    continue
+
+                # FIXME! If afdata is empty (len=0) then it seems all data are inside all regions!
                 af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name=platform_name)
                 regional_fmask = af_shapeff.get_regional_filtermasks(self.regional_filtermask)
                 regional_messages = self.regional_fires_filtering_and_publishing(msg, regional_fmask, af_shapeff)
                 for region_msg in regional_messages:
-                    logger.debug("Sending message: %s", str(output_msg))
+                    logger.debug("Sending message: %s", str(region_msg))
                     self.publisher.send(str(region_msg))
 
     def regional_fires_filtering_and_publishing(self, msg, regional_fmask, afsff_obj):
@@ -481,22 +501,29 @@ class ActiveFiresPostprocessing(Thread):
         pout = Parser(self.outfile_pattern_regional)
 
         output_messages = []
+        regions_with_detections = 0
         for region_name in regional_fmask:
-            if regional_fmask[region_name]['some_inside_test_area']:
-                fmda['region_name'] = regional_fmask[region_name]['attributes']['KNKOD']
-                out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
-                logger.debug("Output file path = %s", out_filepath)
-                data_in_region = afdata[regional_fmask[region_name]['mask']]
-                filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
-                if not filepath:
-                    logger.warning("Something wrong happended storing regional data to Geojson - area: ",
-                                   str(region_name))
-                    continue
+            if not regional_fmask[region_name]['some_inside_test_area']:
+                continue
 
-                outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
-                output_messages.append(outmsg)
-                logger.info("Geojson file created! Number of fires in region = %d", len(data_in_region))
+            regions_with_detections = regions_with_detections + 1
+            fmda['region_name'] = regional_fmask[region_name]['attributes']['KNKOD']
 
+            out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
+            logger.debug("Output file path = %s", out_filepath)
+            data_in_region = afdata[regional_fmask[region_name]['mask']]
+            filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
+            if not filepath:
+                logger.warning("Something wrong happended storing regional data to Geojson - area: ",
+                               str(region_name))
+                continue
+
+            outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
+            output_messages.append(outmsg)
+            logger.info("Geojson file created! Number of fires in region = %d", len(data_in_region))
+
+        logger.debug("Regional masking done. Number of regions with fire " +
+                     "detections on this granule: {n}".format(n=regions_with_detections))
         return output_messages
 
     def fires_filtering(self, msg, af_shapeff):
@@ -509,6 +536,7 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Read VIIRS AF detections and perform quality control and spatial filtering")
 
         fmda = af_shapeff.metadata
+        # metdata contains time and everything but it is not being transfered to the dataframe.attrs
 
         pout = Parser(self.outfile_pattern_national)
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
@@ -516,6 +544,7 @@ class ActiveFiresPostprocessing(Thread):
 
         # National filtering:
         af_shapeff.fires_filtering(self.shp_boarders)
+        # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
 
         if len(afdata_ff) > 0:
@@ -574,7 +603,7 @@ class ActiveFiresPostprocessing(Thread):
                 logger.exception("Couldn't stop publisher.")
 
 
-def check_file_okay(file_type):
+def check_file_type_okay(file_type):
     """Check if the file is of the correct type."""
     if not file_type in ['txt', 'TXT']:
         logger.info('File type not txt: %s', str(file_type))
@@ -609,6 +638,7 @@ def prepare_posttroll_message(input_msg, region=None):
     to_send.pop('uid', None)
     to_send.pop('format', None)
     to_send.pop('type', None)
+    # FIXME! Check that the region_name is stored as a unicode string!
     if region:
         to_send['region_name'] = region['attributes']['Testomr']
         to_send['region_code'] = region['attributes']['KNKOD']

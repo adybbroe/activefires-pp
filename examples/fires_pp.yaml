@@ -8,3 +8,6 @@ geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.g
 geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
 
 output_dir: /path/where/the/filtered/results/will/be/stored
+
+timezone: Europe/Stockholm
+# pytz.all_timezones
