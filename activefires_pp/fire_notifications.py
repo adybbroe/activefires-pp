@@ -64,6 +64,7 @@ class RecipientDataStruct(object):
         self.recipients_all = []
         self.region_name = None
         self.region_code = None
+        self.subject = None
 
     def _set_recipients(self, recipients, recipients_attachment):
         """Set the lists of recipients.
@@ -99,11 +100,10 @@ class EndUserNotifier(Thread):
         self.smtp_server = self.options.get('smtp_server')
         self.domain = self.options.get('domain')
         self.sender = self.options.get('sender')
+        self.subject = self.options.get('subject')
 
         self.recipients = RecipientDataStruct()
         self._set_recipients()
-
-        self.subject = self.options.get('subject')
 
         self.max_number_of_fires_in_sms = self.options.get('max_number_of_fires_in_sms', 2)
         LOG.debug("Max number of fires in SMS: %d", self.max_number_of_fires_in_sms)
@@ -128,6 +128,7 @@ class EndUserNotifier(Thread):
     def _set_recipients(self):
         """Set the recipients lists."""
         self.recipients._set_recipients(self.options.get('recipients'), self.options.get('recipients_attachment'))
+        self.recipients.subject = self.subject
 
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
@@ -214,24 +215,20 @@ class EndUserNotifier(Thread):
         username, password = self._get_mailserver_login_credentials()
         server = self._start_smtp_server(username, password, self.recipients)
 
-        self._send_notifications_without_attachments(server, self.recipients.recipients_without_attachment,
-                                                     sub_messages, platform_name)
-
-        self._send_notifications_with_attachments(server, self.recipients.recipients_with_attachment,
-                                                  full_message, filename, platform_name)
+        self._send_notifications_without_attachments(server, self.recipients, sub_messages, platform_name)
+        self._send_notifications_with_attachments(server, self.recipients, full_message, filename, platform_name)
 
         return _create_output_message(msg, self.output_topic, self.recipients.recipients_all)
 
-    def _send_notifications_with_attachments(self, server, recipients, full_message, filename,
-                                             platform_name):
+    def _send_notifications_with_attachments(self, server, recipients, full_message, filename, platform_name):
         """Send notifications with attachments."""
 
         notification = MIMEMultipart()
         notification['From'] = self.sender
         if platform_name:
-            notification['Subject'] = self.subject + ' Satellit = %s' % platform_name
+            notification['Subject'] = self.recipients.subject + ' Satellit = %s' % platform_name
         else:
-            notification['Subject'] = self.subject
+            notification['Subject'] = self.recipients.subject
 
         notification.attach(MIMEText(full_message, 'plain', 'UTF-8'))
         LOG.debug("Length of message: %d", len(full_message))
@@ -244,10 +241,10 @@ class EndUserNotifier(Thread):
                         'attachment; filename="{}"'.format(Path(filename).name))
         notification.attach(part)
 
-        for recip in self.recipients.recipients_with_attachment:
+        for recip in recipients.recipients_with_attachment:
             notification['To'] = recip
             LOG.info("Send fire notification to %s", str(recip))
-            LOG.debug("Subject: %s", str(self.subject))
+            LOG.debug("Subject: %s", str(recipients.subject))
             txt = notification.as_string()
             server.sendmail(self.sender, recip, txt)
             LOG.debug("Text sent: %s", txt)
@@ -261,16 +258,16 @@ class EndUserNotifier(Thread):
             notification = MIMEMultipart()
             notification['From'] = self.sender
             if platform_name:
-                notification['Subject'] = self.subject + ' Satellit = %s' % platform_name
+                notification['Subject'] = self.recipients.subject + ' Satellit = %s' % platform_name
             else:
-                notification['Subject'] = self.subject
+                notification['Subject'] = self.recipients.subject
 
             notification.attach(MIMEText(submsg, 'plain', 'UTF-8'))
 
-            for recip in recipients:
+            for recip in recipients.recipients_without_attachment:
                 notification['To'] = recip
                 LOG.info("Send fire notification to %s", str(recip))
-                LOG.debug("Subject: %s", str(self.subject))
+                LOG.debug("Subject: %s", str(recipients.subject))
                 txt = notification.as_string()
                 server.sendmail(self.sender, recip, txt)
                 LOG.debug("Text sent: %s", txt)
@@ -408,11 +405,8 @@ class EndUserNotifierRegional(EndUserNotifier):
         username, password = self._get_mailserver_login_credentials()
         server = self._start_smtp_server(username, password, recipients)
 
-        self._send_notifications_without_attachments(server, recipients.recipients_without_attachment,
-                                                     sub_messages, platform_name)
-
-        self._send_notifications_with_attachments(server, self.recipients.recipients_with_attachment,
-                                                  full_message, filename, platform_name)
+        self._send_notifications_without_attachments(server, recipients, sub_messages, platform_name)
+        self._send_notifications_with_attachments(server, recipients, full_message, filename, platform_name)
 
         return _create_output_message(msg, regional_output_topic, recipients.recipients_all)
 
@@ -450,6 +444,7 @@ def get_recipients_for_region(recipients, region_code):
                                   recipients[region_id]['recipients_attachment'])
             recpt.region_name = recipients[region_id]['name']
             recpt.region_code = rcode
+            recpt.subject = recipients[region_id]['subject'] + ' ' + recpt.region_name
             return recpt
 
     return None
