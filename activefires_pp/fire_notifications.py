@@ -226,9 +226,12 @@ class EndUserNotifier(Thread):
         notification = MIMEMultipart()
         notification['From'] = self.sender
         if platform_name:
-            notification['Subject'] = self.recipients.subject + ' Satellit = %s' % platform_name
+            notification['Subject'] = recipients.subject + ' Satellit = %s' % platform_name
         else:
-            notification['Subject'] = self.recipients.subject
+            notification['Subject'] = recipients.subject
+
+        if recipients.region_name:
+            full_message = recipients.region_name + ":\n" + full_message
 
         notification.attach(MIMEText(full_message, 'plain', 'UTF-8'))
         LOG.debug("Length of message: %d", len(full_message))
@@ -258,9 +261,9 @@ class EndUserNotifier(Thread):
             notification = MIMEMultipart()
             notification['From'] = self.sender
             if platform_name:
-                notification['Subject'] = self.recipients.subject + ' Satellit = %s' % platform_name
+                notification['Subject'] = recipients.subject + ' Satellit = %s' % platform_name
             else:
-                notification['Subject'] = self.recipients.subject
+                notification['Subject'] = recipients.subject
 
             notification.attach(MIMEText(submsg, 'plain', 'UTF-8'))
 
@@ -444,7 +447,7 @@ def get_recipients_for_region(recipients, region_code):
                                   recipients[region_id]['recipients_attachment'])
             recpt.region_name = recipients[region_id]['name']
             recpt.region_code = rcode
-            recpt.subject = recipients[region_id]['subject'] + ' ' + recpt.region_name
+            recpt.subject = recipients[region_id]['subject']
             return recpt
 
     return None
