@@ -400,7 +400,7 @@ class EndUserNotifierRegional(EndUserNotifier):
         region_code = msg.data.get("region_code")
         recipients = get_recipients_for_region(self.recipients, region_code)
         if not recipients:
-            LOG.warning("No recipients configured for this area/region!")
+            LOG.warning("No recipients configured for this region! Region code = ", str(region_code))
             return
 
         regional_output_topic = self.output_topic + '/' + recipients.region_code

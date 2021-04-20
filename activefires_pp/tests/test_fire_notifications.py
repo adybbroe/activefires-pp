@@ -36,6 +36,7 @@ from posttroll.message import Message
 
 from activefires_pp.fire_notifications import EndUserNotifier
 from activefires_pp.fire_notifications import EndUserNotifierRegional
+from activefires_pp.fire_notifications import get_recipients_for_region
 
 TEST_CONFIG_FILE = "/home/a000680/usr/src/forks/activefires-pp/examples/fire_notifier.yaml"
 TEST_CONFIG_FILE_REGIONAL = "/home/a000680/usr/src/forks/activefires-pp/examples/fire_notifier_regional.yaml"
@@ -239,3 +240,28 @@ class TestNotifyEndUsersRegional(unittest.TestCase):
         #                        "properties": {"observation_time": "2021-04-16T14:30:35.900000",
         #                                       "platform_name": "NOAA-20", "power": 5.53501701, "tb": 367.0},
         #                        "type": "Feature"}], "type": "FeatureCollection"}
+
+    @patch('activefires_pp.fire_notifications.netrc')
+    @patch('activefires_pp.fire_notifications.socket.gethostname')
+    @patch('activefires_pp.fire_notifications.read_config')
+    @patch('activefires_pp.fire_notifications.EndUserNotifierRegional._setup_and_start_communication')
+    def test_get_recipients_for_region(self, setup_comm, read_config, gethostname, netrc):
+        """Test getting the recipients for a given region."""
+
+        secrets = MyNetrcMock()
+        netrc.return_value = secrets
+        gethostname.return_value = 'default'
+
+        myconfigfile = "/my/config/file/path"
+        regstream = io.StringIO(REG_CONFIG)
+
+        read_config.return_value = yaml.load(regstream, Loader=yaml.UnsafeLoader)
+
+        this = EndUserNotifierRegional(myconfigfile)
+
+        recipients = this.options.get('recipients')
+        region_code = '0114'
+        result = get_recipients_for_region(recipients, region_code)
+
+        assert result.region_name == 'Name of my area 2'
+        assert result.region_code == '0114'
