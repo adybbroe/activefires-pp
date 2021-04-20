@@ -180,7 +180,11 @@ class ActiveFiresShapefileFiltering(object):
                          len(self._afdata)).astype(np.datetime64)
 
     def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
-        """Remove fires outside Sweden and flter out potential false detections."""
+        """Remove fires outside National boarders or filter out potential false detections.
+
+        If *inside* is True the filtering will keep those detections that are inside the polygon.
+        If *inside* is False the filtering will disregard the detections that are inside the polygon.
+        """
 
         detections = self._afdata
 
@@ -194,9 +198,9 @@ class ActiveFiresShapefileFiltering(object):
         self._afdata = detections[insides == inside]
 
         if len(self._afdata) == 0:
-            logger.debug("No fires inside polygon...")
+            logger.debug("No fires after filtering on Polygon...")
         else:
-            logger.debug("Number of detections inside Polygon: %d", len(self._afdata))
+            logger.debug("Number of detections after filtering on Polygon: %d", len(self._afdata))
 
     def get_regional_filtermasks(self, shapefile):
         """Get the regional filter masks from the shapefile."""
@@ -515,8 +519,8 @@ class ActiveFiresPostprocessing(Thread):
             data_in_region = afdata[regional_fmask[region_name]['mask']]
             filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
             if not filepath:
-                logger.warning("Something wrong happended storing regional data to Geojson - area: ",
-                               str(region_name))
+                logger.warning("Something wrong happended storing regional " +
+                               "data to Geojson - area: {name}".format(str(region_name)))
                 continue
 
             outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
@@ -524,7 +528,7 @@ class ActiveFiresPostprocessing(Thread):
             logger.info("Geojson file created! Number of fires in region = %d", len(data_in_region))
 
         logger.debug("Regional masking done. Number of regions with fire " +
-                     "detections on this granule: {n}".format(n=regions_with_detections))
+                     "detections on this granule: %s", str(regions_with_detections))
         return output_messages
 
     def fires_filtering(self, msg, af_shapeff):
