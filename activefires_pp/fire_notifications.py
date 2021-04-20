@@ -212,7 +212,7 @@ class EndUserNotifier(Thread):
         full_message, sub_messages = self.create_message_content(ffdata['features'], "\n" + self.unsubscribe_text)
 
         username, password = self._get_mailserver_login_credentials()
-        server = self._start_smtp_server(username, password)
+        server = self._start_smtp_server(username, password, self.recipients)
 
         self._send_notifications_without_attachments(server, self.recipients.recipients_without_attachment,
                                                      sub_messages, platform_name)
@@ -286,12 +286,12 @@ class EndUserNotifier(Thread):
 
         return username, password
 
-    def _start_smtp_server(self, username, password):
+    def _start_smtp_server(self, username, password, recipients):
         """Start the smtp server and loging."""
         server = smtplib.SMTP(self.smtp_server)
         server.starttls()
         server.ehlo(self.domain)
-        server.rcpt(self.recipients.recipients_all)
+        server.rcpt(recipients.recipients_all)
         server.login(username, password)
 
         return server
@@ -406,7 +406,7 @@ class EndUserNotifierRegional(EndUserNotifier):
         regional_output_topic = self.output_topic + '/' + recipients.region_code
 
         username, password = self._get_mailserver_login_credentials()
-        server = self._start_smtp_server(username, password)
+        server = self._start_smtp_server(username, password, recipients)
 
         self._send_notifications_without_attachments(server, recipients.recipients_without_attachment,
                                                      sub_messages, platform_name)
