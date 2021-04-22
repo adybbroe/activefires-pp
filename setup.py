@@ -39,7 +39,8 @@ with open('./README.md', 'r') as fd:
 
 description = 'Post-processing of and notifications on Satellite active fire detections'
 
-requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs']
+requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
+            'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
 test_requires = ['mock']
 
 setup(name="activefires-pp",

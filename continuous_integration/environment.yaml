@@ -24,6 +24,9 @@ dependencies:
   - shapely
   - pycrs
   - cartopy
+  - fiona
+  - pandas
+  - pytz
   - pytest
   - pytest-cov
   - fsspec
