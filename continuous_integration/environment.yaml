@@ -2,24 +2,18 @@ name: test-environment
 channels:
   - conda-forge
 dependencies:
-  - xarray
-  - dask
   - distributed
   - toolz
-  - Cython
   - sphinx
   - matplotlib
   - scipy
   - pyyaml
   - pyproj
-  - pyresample
   - coveralls
   - coverage
   - codecov
   - behave
   - mock
-  - zarr
-  - geoviews
   - geojson
   - shapely
   - pycrs
@@ -29,11 +23,7 @@ dependencies:
   - pytz
   - pytest
   - pytest-cov
-  - fsspec
-  - pylibtiff
-  - appdirs
   - pip
   - pip:
     - trollsift
-    - trollimage
-    - pyorbital
+    - posttroll

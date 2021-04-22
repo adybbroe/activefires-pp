@@ -41,7 +41,8 @@ description = 'Post-processing of and notifications on Satellite active fire det
 
 requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
             'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
-test_requires = ['mock']
+test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
+                 'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
 
 setup(name="activefires-pp",
       description=description,
