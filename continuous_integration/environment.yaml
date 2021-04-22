@@ -6,7 +6,6 @@ dependencies:
   - toolz
   - sphinx
   - matplotlib
-  - scipy
   - pyyaml
   - pyproj
   - coveralls
@@ -14,6 +13,7 @@ dependencies:
   - codecov
   - behave
   - mock
+  - numpy
   - geojson
   - shapely
   - pycrs
