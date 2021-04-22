@@ -25,16 +25,34 @@
 
 import pytz
 import cartopy.io.shapereader as shpreader
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
+import yaml
+from yaml import UnsafeLoader
 
 
-def datetime_from_utc_to_local(utc_dt):
+def read_config(config_filepath):
+    """Read and extract config information."""
+    with open(config_filepath, 'r') as fp_:
+        config = yaml.load(fp_, Loader=UnsafeLoader)
+
+    return config
+
+
+def datetime_from_utc_to_local(utc_dt, tzone):
     """Convert datetime from UTC to local time."""
 
-    cest = pytz.timezone('Europe/Stockholm')
+    cest = pytz.timezone(tzone)
     loc_dt = utc_dt.astimezone(cest)
 
     return loc_dt
+
+
+def get_local_timezone():
+    """Get the local timezone of this computation environment.
+
+    https://stackoverflow.com/questions/2720319/python-figure-out-local-timezone
+    """
+    return datetime.now(timezone(timedelta(0))).astimezone().tzinfo
 
 
 def get_geometry_from_shapefile(shapefile):

@@ -49,6 +49,9 @@ def main():
     parser.add_argument("-f", "--shp_filtermask",
                         help="Path to shapefile with mask to filter false alarms",
                         required=True)
+    parser.add_argument("-r", "--regional_shapefile",
+                        help="Path to shapefile with mask to filter detection on regional areas",
+                        default=None)
     parser.add_argument("-v", "--verbose", dest="verbosity", action="count", default=0,
                         help="Verbosity (between 1 and 2 occurrences with more leading to more "
                         "verbose logging). WARN=0, INFO=1, "
@@ -60,10 +63,15 @@ def main():
     configfile = cmd_args.config
     national_map = cmd_args.shp_boarders
     filtermask = cmd_args.shp_filtermask
+    regional_filtermask = cmd_args.regional_shapefile
 
     logger.info("Starting up.")
     try:
-        fire_pp = ActiveFiresPostprocessing(configfile, national_map, filtermask)
+        if regional_filtermask:
+            fire_pp = ActiveFiresPostprocessing(configfile, national_map, filtermask,
+                                                regional_filtermask=regional_filtermask)
+        else:
+            fire_pp = ActiveFiresPostprocessing(configfile, national_map, filtermask)
 
     except Exception as err:
         logger.error('Active Fires postprocessing crashed: %s', str(err))

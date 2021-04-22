@@ -39,8 +39,10 @@ with open('./README.md', 'r') as fd:
 
 description = 'Post-processing of and notifications on Satellite active fire detections'
 
-requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm']
-test_requires = ['mock']
+requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
+            'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
+test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
+                 'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
 
 setup(name="activefires-pp",
       description=description,
@@ -57,7 +59,7 @@ setup(name="activefires-pp",
       packages=find_packages(),
       long_description=long_description,
       license='GPLv3',
-      #scripts=['bin/viirs_af_runner.py', ],
+      scripts=['bin/active_fires_postprocessing.py', 'bin/active_fires_notifier.py', ],
       data_files=[],
       zip_safe=False,
       install_requires=requires,

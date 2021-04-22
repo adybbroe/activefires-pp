@@ -5,7 +5,7 @@
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,8 +29,9 @@ import argparse
 import sys
 from activefires_pp.logger import setup_logging
 from activefires_pp.fire_notifications import EndUserNotifier
+from activefires_pp.fire_notifications import EndUserNotifierRegional
 
-logger = logging.getLogger('end_user_notifier_process')
+LOG = logging.getLogger('end_user_notifier_process')
 
 #TEST_MESSAGE = """pytroll://VIIRS/L2/MSB/nrk/utv/polar/direct_readout dataset a000680@c21856.ad.smhi.se 2020-04-23T11:46:04.299244 v1.01 application/json {"start_time": "2020-04-23T11:02:01", "end_time": "2020-04-29T11:03:25", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "format": "EDR", "type": "NETCDF", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 12586, "dataset": [{"uri": "file:///home/a000680/Satsa/Skogsbrander/AFIMG_j01_d20200423_t1102001_e1103246_b12586_c20200423112151310071_cspp_dev.geojson", "uid": "AFIMG_j01_d20200423_t1102001_e1103246_b12586_c20200423112151310071_cspp_dev.geojson"}]}"""
 TEST_MESSAGE = """pytroll://VIIRS/L2/MSB/nrk/utv/polar/direct_readout dataset a000680@c21856.ad.smhi.se 2020-04-23T11:46:04.299244 v1.01 application/json {"start_time": "2020-04-23T11:02:01", "end_time": "2020-04-29T11:03:25", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "format": "EDR", "type": "NETCDF", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 12586, "dataset": [{"uri": "file:///home/a000680/Satsa/Skogsbrander/AFIMG_j01_d20200423_t1102001_e1103246_b12586_c20200423112151310071_cspp_dev.geojson", "uid": "AFIMG_j01_d20200423_t1102001_e1103246_b12586_c20200423112151310071_cspp_dev.geojson"}]}"""
@@ -45,6 +46,8 @@ def main():
                         help="YAML config file to use.")
     parser.add_argument("-n", "--netrc",
                         help="Path to .netrc file to use.")
+    parser.add_argument('-r', "--regional", action='store_true',
+                        help="Regional notifier - default=False")
     parser.add_argument("-v", "--verbose", dest="verbosity", action="count", default=0,
                         help="Verbosity (between 1 and 2 occurrences with more leading to more "
                         "verbose logging). WARN=0, INFO=1, "
@@ -55,21 +58,21 @@ def main():
 
     configfile = cmd_args.config
     netrcfile = cmd_args.netrc
-    logger.info("Starting up.")
+    LOG.info("Starting up.")
     try:
-        if netrcfile:
-            ffnotify = EndUserNotifier(configfile, netrcfile=netrcfile)
+        if cmd_args.regional:
+            ffnotify = EndUserNotifierRegional(configfile, netrcfile=netrcfile)
         else:
-            ffnotify = EndUserNotifier(configfile)
+            ffnotify = EndUserNotifier(configfile, netrcfile=netrcfile)
 
     except Exception as err:
-        logger.error('End User Notifier crashed: %s', str(err))
+        LOG.error('End User Notifier crashed: %s', str(err))
         sys.exit(1)
     try:
         ffnotify.start()
         ffnotify.join()
     except KeyboardInterrupt:
-        logger.debug("Interrupting")
+        LOG.debug("Interrupting")
     finally:
         ffnotify.close()
 
