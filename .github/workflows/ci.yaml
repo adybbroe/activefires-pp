@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -U codecov pytest==6.2 pytest-cov pyyaml "dpath<1.5" trollsift six numpy posttroll
+          pip install -U codecov pytest==6.2 pytest-cov pyyaml "dpath<1.5" trollsift six numpy posttroll pyaml geojson shapely cartopy matplotlib pycrs pytz
 
       - name: Install unstable dependencies
         if: matrix.experimental == true
