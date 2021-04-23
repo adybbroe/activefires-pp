@@ -69,3 +69,4 @@ jobs:
           flags: unittests
           file: ./coverage.xml
           env_vars: OS,PYTHON_VERSION,UNSTABLE
+          fail_ci_if_error: false
