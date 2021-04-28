@@ -80,7 +80,7 @@ sender: active-fires@mydomain.xx
 recipients:
   Area1-name:
     subject: "My subject"
-    knkod: '0999'
+    Kod_omr: '0999'
     name: 'Name of my area 1'
     recipients:
       - active-fires-sms-0999@mydomain.xx
@@ -88,7 +88,7 @@ recipients:
 
   Area2-name:
     subject: "My subject"
-    knkod: '0114'
+    Kod_omr: '0114'
     name: 'Name of my area 2'
     recipients: [active-fires-sms-0998@mydomain.xx, ]
     recipients_attachment: [active-fires-0998@mydomain.xx, ]
@@ -194,10 +194,10 @@ class TestNotifyEndUsersRegional(unittest.TestCase):
                     'smtp_server': 'smtp.mydomain.xx', 'domain': 'mydomain.xx',
                     'sender': 'active-fires@mydomain.xx',
                     'recipients': {
-                        'Area1-name': {'subject': 'My subject', 'knkod': '0999', 'name': 'Name of my area 1',
+                        'Area1-name': {'subject': 'My subject', 'Kod_omr': '0999', 'name': 'Name of my area 1',
                                        'recipients': ['active-fires-sms-0999@mydomain.xx'],
                                        'recipients_attachment': ['active-fires-0999@mydomain.xx']},
-                        'Area2-name': {'subject': 'My subject', 'knkod': '0114', 'name':
+                        'Area2-name': {'subject': 'My subject', 'Kod_omr': '0114', 'name':
                                        'Name of my area 2', 'recipients': ['active-fires-sms-0998@mydomain.xx'],
                                        'recipients_attachment': ['active-fires-0998@mydomain.xx']}},
                     'max_number_of_fires_in_sms': 3, 'fire_data': ['power', 'observation_time'],
