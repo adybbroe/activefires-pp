@@ -43,15 +43,13 @@ from posttroll.publisher import NoisyPublisher
 import pyproj
 from matplotlib.path import Path
 import time
-import cartopy.io.shapereader as shpreader
 import shapely
-import pycrs
 
 from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
 from activefires_pp.utils import read_config
-
+from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
 # M-band output:
 # column 1: latitude of fire pixel (degrees)
@@ -78,33 +76,6 @@ COL_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res",
 LOG_FORMAT = "[%(asctime)s %(levelname)-8s] %(message)s"
 logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.WARNING)
-
-
-class ShapeGeometry(object):
-    """Geometry from a shape file."""
-
-    def __init__(self, shapefilepath):
-        self.filepath = shapefilepath
-        self.geometries = None
-        self.attributes = None
-        self.proj4str = self._get_proj()
-
-    def load(self):
-        """Load the geometries and the associated attributes."""
-        self._records = [r for r in shpreader.Reader(self.filepath).records()]
-        self._load_member_from_records('geometries', 'geometry')
-        self._load_member_from_records('attributes', 'attributes')
-
-    def _get_proj(self):
-        """Get and return the Proj.4 string."""
-
-        prj_filename = self.filepath.strip('.shp') + '.prj'
-        crs = pycrs.load.from_file(prj_filename)
-        return crs.to_proj4()
-
-    def _load_member_from_records(self, class_member, record_type):
-        """Load a member of the shapely.geometry object and set the corresponding class member."""
-        setattr(self, class_member, [getattr(rec, record_type) for rec in self._records])
 
 
 class ActiveFiresShapefileFiltering(object):

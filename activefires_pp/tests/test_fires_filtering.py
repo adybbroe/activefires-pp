@@ -30,10 +30,7 @@ import pandas as pd
 import numpy as np
 import io
 from datetime import datetime
-import pycrs
-import cartopy.io.shapereader
 
-from activefires_pp.post_processing import ShapeGeometry
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
@@ -93,9 +90,6 @@ OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
 MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_" +
                    "b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt")
 
-TEST_CRS_PROJ = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
-                 '+y_0=0.0 +lon_0=15.0 +lat_0=0.0 +units=m +axis=enu +no_defs')
-
 TEST_REGIONAL_MASK = {}
 TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False, False, False, False, False,
                                                             False, False, False, False,  True, False, False, False, False]),
@@ -119,56 +113,6 @@ TEST_REGIONAL_MASK['Västerviks kommun'] = {'mask': np.array([False, False, Fals
 FAKE_MASK1 = np.array([False, False, False, False, False, False, False, False,  True,
                        False, False,  True, False,  True, False, False, False, False])
 FAKE_MASK2 = np.array([True, False,  True])
-
-
-class MyMockCrs(object):
-    def __init__(self):
-        self._crs_proj = TEST_CRS_PROJ
-
-    def to_proj4(self):
-        return self._crs_proj
-
-
-class fake_geometry_records(object):
-    def __init__(self):
-        self.geometry = 'Some geom'
-        self.attributes = {'attr1': 1, 'attr2': 'myname'}
-
-
-def fake_get_records():
-    """Fake retrieving the generator class of the Geometry records in a shapefile."""
-    num = 0
-    while num < 10:
-        yield fake_geometry_records()
-        num = num + 1
-
-
-@patch('pycrs.load.from_file')
-def test_shape_geometry_init(load_from_file):
-    """Test creating the ShapeGeometry object."""
-
-    load_from_file.return_value = MyMockCrs()
-    shpgeom = ShapeGeometry('/my/shape/file/path/myshapefile.sph')
-
-    assert shpgeom.proj4str == TEST_CRS_PROJ
-
-
-@patch('pycrs.load.from_file')
-def test_shape_geometry_loading(load_from_file):
-    """Test loading the geometries and attributes from the shapefile."""
-
-    load_from_file.return_value = MyMockCrs()
-    shpgeom = ShapeGeometry('/my/shape/file/path/myshapefile.sph')
-
-    with patch('cartopy.io.shapereader.Reader') as MockShpReader:
-        MockShpReader.return_value.records.return_value = fake_get_records()
-        shpgeom.load()
-
-    assert shpgeom.geometries is not None
-    assert shpgeom.attributes is not None
-
-    assert len(shpgeom.geometries) == 10
-    assert len(shpgeom.attributes) == 10
 
 
 @patch('activefires_pp.post_processing._read_data')
