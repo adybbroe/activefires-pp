@@ -25,10 +25,6 @@
 
 import os
 from unittest.mock import patch
-from unittest.mock import mock_open
-from unittest.mock import Mock
-import pycrs
-import cartopy.io.shapereader
 
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
@@ -67,7 +63,7 @@ def fake_get_records():
 
 
 @patch('activefires_pp.geometries_from_shapefiles._get_shapefile_paths')
-@patch('pycrs.load.from_file')
+@patch('activefires_pp.geometries_from_shapefiles.pycrs.load.from_file')
 def test_shape_geometry_init_single_shapefile_path(load_from_file, get_shapefile_paths):
     """Test creating the ShapeGeometry object from a path to a single shapefile."""
 
@@ -81,7 +77,7 @@ def test_shape_geometry_init_single_shapefile_path(load_from_file, get_shapefile
 
 
 @patch('activefires_pp.geometries_from_shapefiles._get_shapefile_paths')
-@patch('pycrs.load.from_file')
+@patch('activefires_pp.geometries_from_shapefiles.pycrs.load.from_file')
 def test_shape_geometry_init_dirpath(load_from_file, get_shapefile_paths):
     """Test creating the ShapeGeometry object from a path to a directory with shapefiles."""
 
@@ -95,7 +91,7 @@ def test_shape_geometry_init_dirpath(load_from_file, get_shapefile_paths):
 
 
 @patch('activefires_pp.geometries_from_shapefiles._get_shapefile_paths')
-@patch('pycrs.load.from_file')
+@patch('activefires_pp.geometries_from_shapefiles.pycrs.load.from_file')
 def test_shape_geometry_loading(load_from_file, get_shapefile_paths):
     """Test loading the geometries and attributes from the shapefile."""
 
@@ -105,7 +101,7 @@ def test_shape_geometry_loading(load_from_file, get_shapefile_paths):
     load_from_file.return_value = MyMockCrs()
     shpgeom = ShapeGeometry(mypath)
 
-    with patch('cartopy.io.shapereader.Reader') as MockShpReader:
+    with patch('activefires_pp.geometries_from_shapefiles.shpreader.Reader') as MockShpReader:
         MockShpReader.return_value.records.return_value = fake_get_records()
         shpgeom.load()
 
