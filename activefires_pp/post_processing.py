@@ -24,9 +24,8 @@
 """
 
 import socket
-import yaml
-from yaml import UnsafeLoader
 from trollsift import Parser, globify
+import time
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
@@ -42,7 +41,6 @@ from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
 import pyproj
 from matplotlib.path import Path
-import time
 import shapely
 
 from activefires_pp.utils import datetime_from_utc_to_local
@@ -303,7 +301,6 @@ def get_mask_from_multipolygon(points, geometry):
     mask = pth.contains_points(points)
 
     if sum(mask) == len(points):
-        print("All points inside test area!")
         return mask
 
     for shape in geometry.geoms[1:]:
