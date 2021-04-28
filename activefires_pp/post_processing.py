@@ -26,7 +26,7 @@
 import socket
 import yaml
 from yaml import UnsafeLoader
-from trollsift import Parser
+from trollsift import Parser, globify
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
@@ -173,14 +173,14 @@ class ActiveFiresShapefileFiltering(object):
         else:
             logger.debug("Number of detections after filtering on Polygon: %d", len(self._afdata))
 
-    def get_regional_filtermasks(self, shapefile):
+    def get_regional_filtermasks(self, shapefile, globstr):
         """Get the regional filter masks from the shapefile."""
         detections = self._afdata
 
         lons = detections.longitude.values
         lats = detections.latitude.values
 
-        shape_geom = ShapeGeometry(shapefile)
+        shape_geom = ShapeGeometry(shapefile, globstr)
         shape_geom.load()
 
         p__ = pyproj.Proj(shape_geom.proj4str)
@@ -365,6 +365,9 @@ class ActiveFiresPostprocessing(Thread):
         self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
         self.output_dir = self.options.get('output_dir', '/tmp')
 
+        frmt = self.options['regional_shapefiles_format']
+        self.regional_shapefiles_globstr = globify(frmt)
+
         self.listener = None
         self.publisher = None
         self.loop = False
@@ -459,7 +462,8 @@ class ActiveFiresPostprocessing(Thread):
                 # FIXME! If afdata is empty (len=0) then it seems all data are inside all regions!
                 af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name=platform_name,
                                                            timezone=self.timezone)
-                regional_fmask = af_shapeff.get_regional_filtermasks(self.regional_filtermask)
+                regional_fmask = af_shapeff.get_regional_filtermasks(self.regional_filtermask,
+                                                                     globstr=self.regional_shapefiles_globstr)
                 regional_messages = self.regional_fires_filtering_and_publishing(msg, regional_fmask, af_shapeff)
                 for region_msg in regional_messages:
                     logger.debug("Sending message: %s", str(region_msg))
@@ -483,7 +487,7 @@ class ActiveFiresPostprocessing(Thread):
                 continue
 
             regions_with_detections = regions_with_detections + 1
-            fmda['region_name'] = regional_fmask[region_name]['attributes']['KNKOD']
+            fmda['region_name'] = regional_fmask[region_name]['attributes']['Kod_omr']
 
             out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
             logger.debug("Output file path = %s", out_filepath)
@@ -597,7 +601,7 @@ def get_filename_from_uri(uri):
 def generate_posttroll_topic(output_topic, region=None):
     """Create the topic for the posttroll message to publish."""
     if region:
-        output_topic = output_topic + '/Regional/' + region['attributes']['KNKOD']
+        output_topic = output_topic + '/Regional/' + region['attributes']['Kod_omr']
     else:
         output_topic = output_topic + '/National'
 
@@ -617,6 +621,6 @@ def prepare_posttroll_message(input_msg, region=None):
     # FIXME! Check that the region_name is stored as a unicode string!
     if region:
         to_send['region_name'] = region['attributes']['Testomr']
-        to_send['region_code'] = region['attributes']['KNKOD']
+        to_send['region_code'] = region['attributes']['Kod_omr']
 
     return to_send

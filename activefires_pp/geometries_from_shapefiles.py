@@ -32,8 +32,8 @@ import pycrs
 class ShapeGeometry(object):
     """Geometry from a shape file."""
 
-    def __init__(self, shapefilepath):
-        self.filepaths = _get_shapefile_paths(shapefilepath)
+    def __init__(self, shapefilepath, globstr='*.shp'):
+        self.filepaths = _get_shapefile_paths(shapefilepath, globstr)
 
         self.geometries = None
         self.attributes = None
@@ -70,7 +70,7 @@ class ShapeGeometry(object):
         setattr(self, class_member, [getattr(rec, record_type) for rec in self._records])
 
 
-def _get_shapefile_paths(path):
+def _get_shapefile_paths(path, globstr='*.shp'):
     """Get full filepaths for all shapefiles in directory or simply return the paths as a list.
 
     From a path to a directory with shapefiles or a full file path, 
@@ -78,5 +78,5 @@ def _get_shapefile_paths(path):
     """
     if os.path.isfile(path):
         return [path]
-    else:
-        return glob(os.path.join(path, '*shp'))
+
+    return glob(os.path.join(path, globstr))
