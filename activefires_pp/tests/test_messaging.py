@@ -45,6 +45,7 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
                   'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
                   'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',
+                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
                   'output_dir': '/path/where/the/filtered/results/will/be/stored'}
 
 
@@ -78,7 +79,7 @@ def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
 
     input_msg = Message.decode(rawstr=TEST_MSG)
 
-    fake_region_mask = {'attributes': {'KNKOD': '9999',
+    fake_region_mask = {'attributes': {'Kod_omr': '9999',
                                        'Testomr': 'Some area description'}}
     res_msg = afpp._generate_output_message(test_filepath, input_msg, region=fake_region_mask)
 
