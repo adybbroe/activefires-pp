@@ -61,7 +61,7 @@ jobs:
       - name: Run unit tests
         shell: bash -l {0}
         run: |
-          pytest --cov=activefires_pp activefires_pp/tests --cov-report=xml
+          pytest --cov=activefires_pp activefires_pp/tests --cov-report=
 
       - name: Upload unittest coverage to Codecov
         uses: codecov/codecov-action@v1
