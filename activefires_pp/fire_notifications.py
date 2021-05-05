@@ -440,7 +440,7 @@ def read_geojson_data(filename):
 def get_recipients_for_region(recipients, region_code):
     """Get the recipients lists applicable to the region."""
     for region_id in recipients:
-        rcode = recipients[region_id]['knkod']
+        rcode = recipients[region_id]['Kod_omr']
         if rcode == region_code:
             recpt = RecipientDataStruct()
             recpt._set_recipients(recipients[region_id]['recipients'],

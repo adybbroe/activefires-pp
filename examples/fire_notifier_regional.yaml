@@ -11,14 +11,14 @@ sender: active-fires@mydomain.xx
 recipients:
   Area1-name:
     subject: "My subject"
-    knkod: '0999'
+    Kod_omr: '0999'
     name: 'Name of my area 1'
     recipient: active-fires-sms-0999@mydomain.xx
     recipients_attachment: active-fires-0999@mydomain.xx
 
   Area2-name:
     subject: "My subject"
-    knkod: '0998'
+    Kod_omr: '0998'
     name: 'Name of my area 2'
     recipient: active-fires-sms-0998@mydomain.xx
     recipients_attachment: active-fires-0998@mydomain.xx

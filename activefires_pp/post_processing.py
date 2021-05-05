@@ -24,9 +24,8 @@
 """
 
 import socket
-import yaml
-from yaml import UnsafeLoader
-from trollsift import Parser
+from trollsift import Parser, globify
+import time
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
@@ -42,16 +41,13 @@ from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
 import pyproj
 from matplotlib.path import Path
-import time
-import cartopy.io.shapereader as shpreader
 import shapely
-import pycrs
 
 from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
 from activefires_pp.utils import read_config
-
+from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
 # M-band output:
 # column 1: latitude of fire pixel (degrees)
@@ -78,33 +74,6 @@ COL_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res",
 LOG_FORMAT = "[%(asctime)s %(levelname)-8s] %(message)s"
 logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.WARNING)
-
-
-class ShapeGeometry(object):
-    """Geometry from a shape file."""
-
-    def __init__(self, shapefilepath):
-        self.filepath = shapefilepath
-        self.geometries = None
-        self.attributes = None
-        self.proj4str = self._get_proj()
-
-    def load(self):
-        """Load the geometries and the associated attributes."""
-        self._records = [r for r in shpreader.Reader(self.filepath).records()]
-        self._load_member_from_records('geometries', 'geometry')
-        self._load_member_from_records('attributes', 'attributes')
-
-    def _get_proj(self):
-        """Get and return the Proj.4 string."""
-
-        prj_filename = self.filepath.strip('.shp') + '.prj'
-        crs = pycrs.load.from_file(prj_filename)
-        return crs.to_proj4()
-
-    def _load_member_from_records(self, class_member, record_type):
-        """Load a member of the shapely.geometry object and set the corresponding class member."""
-        setattr(self, class_member, [getattr(rec, record_type) for rec in self._records])
 
 
 class ActiveFiresShapefileFiltering(object):
@@ -202,14 +171,14 @@ class ActiveFiresShapefileFiltering(object):
         else:
             logger.debug("Number of detections after filtering on Polygon: %d", len(self._afdata))
 
-    def get_regional_filtermasks(self, shapefile):
+    def get_regional_filtermasks(self, shapefile, globstr):
         """Get the regional filter masks from the shapefile."""
         detections = self._afdata
 
         lons = detections.longitude.values
         lats = detections.latitude.values
 
-        shape_geom = ShapeGeometry(shapefile)
+        shape_geom = ShapeGeometry(shapefile, globstr)
         shape_geom.load()
 
         p__ = pyproj.Proj(shape_geom.proj4str)
@@ -332,7 +301,6 @@ def get_mask_from_multipolygon(points, geometry):
     mask = pth.contains_points(points)
 
     if sum(mask) == len(points):
-        print("All points inside test area!")
         return mask
 
     for shape in geometry.geoms[1:]:
@@ -393,6 +361,9 @@ class ActiveFiresPostprocessing(Thread):
         self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
         self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
         self.output_dir = self.options.get('output_dir', '/tmp')
+
+        frmt = self.options['regional_shapefiles_format']
+        self.regional_shapefiles_globstr = globify(frmt)
 
         self.listener = None
         self.publisher = None
@@ -488,7 +459,8 @@ class ActiveFiresPostprocessing(Thread):
                 # FIXME! If afdata is empty (len=0) then it seems all data are inside all regions!
                 af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name=platform_name,
                                                            timezone=self.timezone)
-                regional_fmask = af_shapeff.get_regional_filtermasks(self.regional_filtermask)
+                regional_fmask = af_shapeff.get_regional_filtermasks(self.regional_filtermask,
+                                                                     globstr=self.regional_shapefiles_globstr)
                 regional_messages = self.regional_fires_filtering_and_publishing(msg, regional_fmask, af_shapeff)
                 for region_msg in regional_messages:
                     logger.debug("Sending message: %s", str(region_msg))
@@ -512,7 +484,7 @@ class ActiveFiresPostprocessing(Thread):
                 continue
 
             regions_with_detections = regions_with_detections + 1
-            fmda['region_name'] = regional_fmask[region_name]['attributes']['KNKOD']
+            fmda['region_name'] = regional_fmask[region_name]['attributes']['Kod_omr']
 
             out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
             logger.debug("Output file path = %s", out_filepath)
@@ -626,7 +598,7 @@ def get_filename_from_uri(uri):
 def generate_posttroll_topic(output_topic, region=None):
     """Create the topic for the posttroll message to publish."""
     if region:
-        output_topic = output_topic + '/Regional/' + region['attributes']['KNKOD']
+        output_topic = output_topic + '/Regional/' + region['attributes']['Kod_omr']
     else:
         output_topic = output_topic + '/National'
 
@@ -646,6 +618,6 @@ def prepare_posttroll_message(input_msg, region=None):
     # FIXME! Check that the region_name is stored as a unicode string!
     if region:
         to_send['region_name'] = region['attributes']['Testomr']
-        to_send['region_code'] = region['attributes']['KNKOD']
+        to_send['region_code'] = region['attributes']['Kod_omr']
 
     return to_send
