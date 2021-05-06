@@ -1,6 +1,7 @@
 [run]
 branch = True
 source = activefires-pp
+relative_files = True
 
 [report]
 exclude_lines =
