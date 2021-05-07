@@ -426,10 +426,11 @@ class ActiveFiresPostprocessing(Thread):
                     continue
 
                 file_ok = check_file_type_okay(msg.data.get('type'))
-                output_msg = self._generate_no_fires_message(msg, 'No fire detections for this granule')
+                output_messages = self._generate_no_fires_messages(msg, 'No fire detections for this granule')
                 if not file_ok:
-                    logger.debug("Sending message: %s", str(output_msg))
-                    self.publisher.send(str(output_msg))
+                    for outout_msg in output_messages:
+                        logger.debug("Sending message: %s", str(output_msg))
+                        self.publisher.send(str(output_msg))
                     continue
 
                 af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name,
@@ -441,11 +442,12 @@ class ActiveFiresPostprocessing(Thread):
                     self.publisher.send(str(output_msg))
                     continue
 
-                output_msg, afdata = self.fires_filtering(msg, af_shapeff)
+                output_messages, afdata = self.fires_filtering(msg, af_shapeff)
 
-                if output_msg:
-                    logger.debug("Sending message: %s", str(output_msg))
-                    self.publisher.send(str(output_msg))
+                for output_msg in output_messages:
+                    if output_msg:
+                        logger.debug("Sending message: %s", str(output_msg))
+                        self.publisher.send(str(output_msg))
 
                 # Do the regional filtering now:
                 if not self.regional_filtermask:
@@ -529,20 +531,19 @@ class ActiveFiresPostprocessing(Thread):
             afdata_ff = af_shapeff.get_af_data()
 
         filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
-        outmsg = self.get_output_message(filepath, msg, len(afdata_ff))
+        out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
 
-        return outmsg, afdata_ff
+        return out_messages, afdata_ff
 
-    def get_output_message(self, filepath, msg, number_of_data):
-        """Generate the adequate output message depending on if an output file was created or not."""
+    def get_output_messages(self, filepath, msg, number_of_data):
+        """Generate the adequate output message(s) depending on if an output file was created or not."""
         if filepath:
-            outmsg = self._generate_output_message(filepath, msg)
             logger.info("geojson file created! Number of fires after filtering = %d", number_of_data)
+            return [self._generate_output_message(filepath, msg)]
         else:
             logger.info("No geojson file created, number of fires after filtering = %d", number_of_data)
-            outmsg = self._generate_no_fires_message(msg, 'No true fire detections inside National boarders')
-
-        return outmsg
+            return self._generate_no_fires_messages(msg,
+                                                    'No true fire detections inside National boarders')
 
     def _generate_output_message(self, filepath, input_msg, region=None):
         """Create the output message to publish."""
@@ -557,13 +558,17 @@ class ActiveFiresPostprocessing(Thread):
         pubmsg = Message(output_topic, 'file', to_send)
         return pubmsg
 
-    def _generate_no_fires_message(self, input_msg, msg_string):
-        """Create the output message to publish."""
+    def _generate_no_fires_messages(self, input_msg, msg_string)
+    """Create the output messages to publish."""
 
-        to_send = prepare_posttroll_message(input_msg)
-        to_send['info'] = msg_string
-        pubmsg = Message(self.output_topic, 'info', to_send)
-        return pubmsg
+    to_send = prepare_posttroll_message(input_msg)
+     to_send['info'] = msg_string
+      publish_messages = []
+       for ext in ['National', 'Regional']:
+            topic = self.output_topic + '/' + ext
+            publish_messages.append(Message(topic, 'info', to_send))
+
+        return publish_messages
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""
