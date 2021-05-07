@@ -274,9 +274,9 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
     mymsg = "Fake message"
 
     with patch('activefires_pp.post_processing.store_geojson') as store_geojson:
-        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_output_message') as get_output_msg:
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_output_messages') as get_output_msg:
             store_geojson.return_value = "/some/output/path"
-            get_output_msg.return_value = "my fake output message"
+            get_output_msg.return_value = ["my fake output message"]
             outmsg, result = afpp.fires_filtering(mymsg, af_shapeff)
 
     store_geojson.assert_called_once()
@@ -287,4 +287,4 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
     assert len(result) == 1
     np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
     np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
-    assert outmsg == "my fake output message"
+    assert outmsg == ["my fake output message"]

@@ -558,13 +558,13 @@ class ActiveFiresPostprocessing(Thread):
         pubmsg = Message(output_topic, 'file', to_send)
         return pubmsg
 
-    def _generate_no_fires_messages(self, input_msg, msg_string)
-    """Create the output messages to publish."""
+    def _generate_no_fires_messages(self, input_msg, msg_string):
+        """Create the output messages to publish."""
 
-    to_send = prepare_posttroll_message(input_msg)
-     to_send['info'] = msg_string
-      publish_messages = []
-       for ext in ['National', 'Regional']:
+        to_send = prepare_posttroll_message(input_msg)
+        to_send['info'] = msg_string
+        publish_messages = []
+        for ext in ['National', 'Regional']:
             topic = self.output_topic + '/' + ext
             publish_messages.append(Message(topic, 'info', to_send))
 
