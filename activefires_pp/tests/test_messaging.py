@@ -61,7 +61,6 @@ def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
     myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
-    #myregion_filepath = "/my/region/file/path"
 
     afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
 
@@ -86,11 +85,13 @@ def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
     assert res_msg.subject == '/VIIRS/L2/Fires/PP/Regional/9999'
 
     msg_str = 'No fire detections for this granule'
-    res_msg = afpp._generate_no_fires_message(input_msg, msg_str)
 
-    assert res_msg.data['info'] == msg_str
-    assert res_msg.subject == '/VIIRS/L2/Fires/PP'
-    assert 'type' not in res_msg.data
-    assert 'format' not in res_msg.data
-    assert 'product' not in res_msg.data
-    assert 'uri' not in res_msg.data
+    result_messages = afpp._generate_no_fires_messages(input_msg, msg_str)
+
+    for (nat_or_reg, res_msg) in zip(['National', 'Regional'], result_messages):
+        assert res_msg.data['info'] == msg_str
+        assert res_msg.subject == '/VIIRS/L2/Fires/PP/' + nat_or_reg
+        assert 'type' not in res_msg.data
+        assert 'format' not in res_msg.data
+        assert 'product' not in res_msg.data
+        assert 'uri' not in res_msg.data
