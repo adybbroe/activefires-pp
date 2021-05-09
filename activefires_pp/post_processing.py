@@ -426,9 +426,10 @@ class ActiveFiresPostprocessing(Thread):
                     continue
 
                 file_ok = check_file_type_okay(msg.data.get('type'))
-                output_messages = self._generate_no_fires_messages(msg, 'No fire detections for this granule')
+                no_fires_text = 'No fire detections for this granule'
+                output_messages = self._generate_no_fires_messages(msg, no_fires_text)
                 if not file_ok:
-                    for outout_msg in output_messages:
+                    for output_msg in output_messages:
                         logger.debug("Sending message: %s", str(output_msg))
                         self.publisher.send(str(output_msg))
                     continue
