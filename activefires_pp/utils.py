@@ -38,6 +38,13 @@ def read_config(config_filepath):
     return config
 
 
+def datetime_utc2local(utc_dtime, tzone_str, is_dst=True):
+    """Convert a UTC datetime to local time, using DST on default."""
+    tz_aware = pytz.utc.localize(utc_dtime, is_dst=is_dst)
+    tz = pytz.timezone(tzone_str)
+    return tz_aware.astimezone(tz)
+
+
 def datetime_from_utc_to_local(utc_dt, tzone):
     """Convert datetime from UTC to local time."""
 
@@ -47,7 +54,7 @@ def datetime_from_utc_to_local(utc_dt, tzone):
     return loc_dt
 
 
-def get_local_timezone():
+def get_local_timezone(now=None):
     """Get the local timezone of this computation environment.
 
     https://stackoverflow.com/questions/2720319/python-figure-out-local-timezone

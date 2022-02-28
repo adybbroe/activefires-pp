@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -43,7 +43,8 @@ import pyproj
 from matplotlib.path import Path
 import shapely
 
-from activefires_pp.utils import datetime_from_utc_to_local
+#from activefires_pp.utils import datetime_from_utc_to_local
+from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
 from activefires_pp.utils import read_config
@@ -71,7 +72,6 @@ from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 COL_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res", "conf", "power"]
 
 
-LOG_FORMAT = "[%(asctime)s %(levelname)-8s] %(message)s"
 logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.WARNING)
 
@@ -123,13 +123,14 @@ class ActiveFiresShapefileFiltering(object):
 
     def _add_start_and_end_time_to_active_fires_data(self, localtime):
         """Add start and end time to active fires data."""
-        # Add start and end times:
         if localtime:
             logger.info("Convert to local time zone!")
-            starttime = datetime_from_utc_to_local(self.metadata['start_time'], self.timezone)
-            endtime = datetime_from_utc_to_local(self.metadata['end_time'], self.timezone)
-            self._afdata['starttime'] = self._apply_timezone_offset(starttime)
-            self._afdata['endtime'] = self._apply_timezone_offset(endtime)
+            self._afdata['starttime'] = datetime_utc2local(self.metadata['start_time'], self.timezone)
+            self._afdata['endtime'] = datetime_utc2local(self.metadata['end_time'], self.timezone)
+            #starttime = datetime_from_utc_to_local(self.metadata['start_time'], self.timezone)
+            #endtime = datetime_from_utc_to_local(self.metadata['end_time'], self.timezone)
+            #self._afdata['starttime'] = self._apply_timezone_offset(starttime)
+            #self._afdata['endtime'] = self._apply_timezone_offset(endtime)
         else:
             starttime = self.metadata['start_time']
             endtime = self.metadata['end_time']
@@ -267,8 +268,10 @@ def store_geojson(output_filename, detections, platform_name=None):
         endtime = detections.iloc[idx].endtime
         mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
                                                          starttime.to_pydatetime()) / 2.
+
         prop = {'power': detections.iloc[idx].power,
                 'tb': detections.iloc[idx].tb,
+                'confidence': int(detections.iloc[idx].conf),
                 'observation_time': json_serial(mean_granule_time)
                 }
         if platform_name:
@@ -287,8 +290,8 @@ def store_geojson(output_filename, detections, platform_name=None):
         logger.info("Create directory: %s", path)
         os.makedirs(path)
 
-    with open(output_filename, 'w') as f:
-        dump(feature_collection, f)
+    with open(output_filename, 'w') as fpt:
+        dump(feature_collection, fpt)
 
     return output_filename
 
@@ -373,7 +376,7 @@ class ActiveFiresPostprocessing(Thread):
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
         logger.debug("Starting up... Input topic: %s", self.input_topic)
-        now = datetime_from_utc_to_local(datetime.now(), self.timezone)
+        now = datetime_utc2local(datetime.now(), self.timezone)
         logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
 
         self.listener = ListenerContainer(topics=[self.input_topic])
