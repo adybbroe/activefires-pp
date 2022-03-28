@@ -43,7 +43,6 @@ import pyproj
 from matplotlib.path import Path
 import shapely
 
-#from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
@@ -127,10 +126,6 @@ class ActiveFiresShapefileFiltering(object):
             logger.info("Convert to local time zone!")
             self._afdata['starttime'] = datetime_utc2local(self.metadata['start_time'], self.timezone)
             self._afdata['endtime'] = datetime_utc2local(self.metadata['end_time'], self.timezone)
-            #starttime = datetime_from_utc_to_local(self.metadata['start_time'], self.timezone)
-            #endtime = datetime_from_utc_to_local(self.metadata['end_time'], self.timezone)
-            #self._afdata['starttime'] = self._apply_timezone_offset(starttime)
-            #self._afdata['endtime'] = self._apply_timezone_offset(endtime)
         else:
             starttime = self.metadata['start_time']
             endtime = self.metadata['end_time']

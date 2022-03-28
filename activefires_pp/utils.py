@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -41,17 +41,8 @@ def read_config(config_filepath):
 def datetime_utc2local(utc_dtime, tzone_str, is_dst=True):
     """Convert a UTC datetime to local time, using DST on default."""
     tz_aware = pytz.utc.localize(utc_dtime, is_dst=is_dst)
-    tz = pytz.timezone(tzone_str)
-    return tz_aware.astimezone(tz)
-
-
-def datetime_from_utc_to_local(utc_dt, tzone):
-    """Convert datetime from UTC to local time."""
-
-    cest = pytz.timezone(tzone)
-    loc_dt = utc_dt.astimezone(cest)
-
-    return loc_dt
+    tz_ = pytz.timezone(tzone_str)
+    return tz_aware.astimezone(tz_)
 
 
 def get_local_timezone(now=None):

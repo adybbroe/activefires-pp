@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -42,7 +42,8 @@ description = 'Post-processing of and notifications on Satellite active fire det
 requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
             'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'matplotlib']
 test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
-                 'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
+                 'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona',
+                 'freezegun']
 
 setup(name="activefires-pp",
       description=description,
