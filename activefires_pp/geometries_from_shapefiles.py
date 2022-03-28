@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -59,6 +59,8 @@ class ShapeGeometry(object):
             if crs.name == 'SWEREF99_TM' and crs.proj.name.proj4 == 'utm':
                 utm_zone_proj4 = ' +zone=33'
                 proj4str = crs.to_proj4() + utm_zone_proj4
+            else:
+                proj4str = crs.to_proj4()
             self.proj4str.append(proj4str)
 
         first_proj4_str = self.proj4str[0]

@@ -28,8 +28,7 @@ import unittest
 from datetime import datetime, timedelta
 
 from activefires_pp.utils import get_geometry_from_shapefile
-from activefires_pp.utils import datetime_from_utc_to_local
-from activefires_pp.utils import datetime_utc2local, get_local_timezone
+from activefires_pp.utils import datetime_utc2local, get_local_timezone_offset
 from activefires_pp.utils import json_serial
 from freezegun import freeze_time
 

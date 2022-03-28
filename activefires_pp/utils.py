@@ -23,9 +23,9 @@
 """
 """
 
-import pytz
 import cartopy.io.shapereader as shpreader
 from datetime import date, datetime, timezone, timedelta
+import zoneinfo
 import yaml
 from yaml import UnsafeLoader
 
@@ -40,17 +40,17 @@ def read_config(config_filepath):
 
 def datetime_utc2local(utc_dtime, tzone_str, is_dst=True):
     """Convert a UTC datetime to local time, using DST on default."""
-    tz_aware = pytz.utc.localize(utc_dtime, is_dst=is_dst)
-    tz_ = pytz.timezone(tzone_str)
-    return tz_aware.astimezone(tz_)
+    tzone = zoneinfo.ZoneInfo(tzone_str)
+    utc_dtime = utc_dtime.replace(tzinfo=timezone.utc)
+    return utc_dtime.astimezone(tzone)
 
 
-def get_local_timezone(now=None):
-    """Get the local timezone of this computation environment.
-
-    https://stackoverflow.com/questions/2720319/python-figure-out-local-timezone
-    """
-    return datetime.now(timezone(timedelta(0))).astimezone().tzinfo
+def get_local_timezone_offset(timezone_str):
+    """Get the local time zone offset as a timedelta object."""
+    utcnow = datetime.utcnow()
+    utcnow = utcnow.replace(tzinfo=timezone.utc)
+    tzone = zoneinfo.ZoneInfo(timezone_str)
+    return utcnow.astimezone(tzone).replace(tzinfo=timezone.utc) - utcnow
 
 
 def get_geometry_from_shapefile(shapefile):

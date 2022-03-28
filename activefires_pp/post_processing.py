@@ -44,7 +44,7 @@ from matplotlib.path import Path
 import shapely
 
 from activefires_pp.utils import datetime_utc2local
-from activefires_pp.utils import get_local_timezone
+from activefires_pp.utils import get_local_timezone_offset
 from activefires_pp.utils import json_serial
 from activefires_pp.utils import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
@@ -124,13 +124,17 @@ class ActiveFiresShapefileFiltering(object):
         """Add start and end time to active fires data."""
         if localtime:
             logger.info("Convert to local time zone!")
-            self._afdata['starttime'] = datetime_utc2local(self.metadata['start_time'], self.timezone)
-            self._afdata['endtime'] = datetime_utc2local(self.metadata['end_time'], self.timezone)
+            starttime = datetime_utc2local(self.metadata['start_time'], self.timezone)
+            endtime = datetime_utc2local(self.metadata['end_time'], self.timezone)
         else:
-            starttime = self.metadata['start_time']
-            endtime = self.metadata['end_time']
-            self._afdata['starttime'] = np.repeat(starttime, len(self._afdata)).astype(np.datetime64)
-            self._afdata['endtime'] = np.repeat(endtime, len(self._afdata)).astype(np.datetime64)
+            starttime = datetime_utc2local(self.metadata['start_time'], 'GMT')
+            endtime = datetime_utc2local(self.metadata['end_time'], 'GMT')
+
+        starttime = starttime.replace(tzinfo=None)
+        endtime = endtime.replace(tzinfo=None)
+
+        self._afdata['starttime'] = np.repeat(starttime, len(self._afdata)).astype(np.datetime64)
+        self._afdata['endtime'] = np.repeat(endtime, len(self._afdata)).astype(np.datetime64)
 
         logger.info('Start and end times: %s %s',
                     str(self._afdata['starttime'][0]),
@@ -138,9 +142,7 @@ class ActiveFiresShapefileFiltering(object):
 
     def _apply_timezone_offset(self, obstime):
         """Apply the time zone offset to the datetime objects."""
-        local_tz = get_local_timezone()
-        obstime_offset = local_tz.utcoffset(None)
-
+        obstime_offset = get_local_timezone_offset(self.timezone)
         return np.repeat(obstime.replace(tzinfo=None) + obstime_offset,
                          len(self._afdata)).astype(np.datetime64)
 
