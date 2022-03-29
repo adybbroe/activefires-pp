@@ -148,20 +148,20 @@ class ActiveFiresShapefileFiltering(object):
         return np.repeat(obstime.replace(tzinfo=None) + obstime_offset,
                          len(self._afdata)).astype(np.datetime64)
 
-    def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
+    def discard_fires_with_shape(self, shape_geom, start_geometries_index=1, inside=True):
         """Remove fires outside National boarders or filter out potential false detections.
 
         If *inside* is True the filtering will keep those detections that are inside the polygon.
         If *inside* is False the filtering will disregard the detections that are inside the polygon.
         """
-
         detections = self._afdata
 
         lons = detections.longitude.values
         lats = detections.latitude.values
 
         toc = time.time()
-        insides = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
+        #insides = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
+        insides = get_global_mask_from_shapefile(shape_geom, (lons, lats), start_geometries_index)
         logger.debug("Time used checking inside polygon - mpl path method: %f", time.time() - toc)
 
         self._afdata = detections[insides == inside]
@@ -312,11 +312,12 @@ def get_mask_from_multipolygon(points, geometry):
     return mask
 
 
-def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
+# def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
+def get_global_mask_from_shapefile(shape_geom, lonlats, start_geom_index=0):
     """Given geographical (lon,lat) points get a mask to apply when filtering."""
     lons, lats = lonlats
-    shape_geom = ShapeGeometry(shapefile)
-    shape_geom.load()
+    # shape_geom = ShapeGeometry(shapefile)
+    # shape_geom.load()
 
     p__ = pyproj.Proj(shape_geom.proj4str)
 
@@ -342,8 +343,13 @@ class ActiveFiresPostprocessing(Thread):
     def __init__(self, configfile, shp_boarders, shp_mask, regional_filtermask=None):
         """Initialize the active fires post processor class."""
         super().__init__()
-        self.shp_boarders = shp_boarders
-        self.shp_filtermask = shp_mask
+        #self.shp_boarders = shp_boarders
+        #self.shp_filtermask = shp_mask
+        self.shp_boarders = None
+        self.shp_filtermask = None
+        for varname, filename in zip(['shp_boarders', 'shp_filtermask'], [shp_boarders, shp_mask]):
+            self._load_shape_geometry(varname, filename)
+
         self.regional_filtermask = regional_filtermask
         self.configfile = configfile
         self.options = {}
@@ -369,6 +375,11 @@ class ActiveFiresPostprocessing(Thread):
         self.publisher = None
         self.loop = False
         self._setup_and_start_communication()
+
+    def _load_shape_geometry(self, varname, filename):
+        """Load the Shape Geometry from shapefile filename."""
+        setattr(self, varname, ShapeGeometry(filename))
+        getattr(self, varname).load()
 
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
@@ -523,12 +534,12 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Output file path = %s", out_filepath)
 
         # National filtering:
-        af_shapeff.fires_filtering(self.shp_boarders)
+        af_shapeff.discard_fires_with_shape(self.shp_boarders)
         # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
 
         if len(afdata_ff) > 0:
-            af_shapeff.fires_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
+            af_shapeff.discard_fires_with_shape(self.shp_filtermask, start_geometries_index=0, inside=False)
             afdata_ff = af_shapeff.get_af_data()
 
         filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)

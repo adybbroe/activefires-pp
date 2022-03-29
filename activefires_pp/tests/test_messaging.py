@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -52,11 +52,13 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._load_shape_geometry')
+def test_prepare_posttroll_message(load_geometry, setup_comm, get_config, gethostname):
     """Test setup the posttroll message."""
 
     get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
+    load_geometry.return_value = None
 
     myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"

@@ -26,16 +26,20 @@
 from unittest.mock import patch
 from unittest.mock import mock_open
 from unittest.mock import Mock
+import unittest
+import pathlib
 import pandas as pd
 import numpy as np
 import io
 from datetime import datetime
+from numpy.testing import assert_equal
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
 from activefires_pp.utils import read_config
-
+from activefires_pp.geometries_from_shapefiles import ShapeGeometry
+from activefires_pp.post_processing import get_global_mask_from_shapefile
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 
@@ -115,6 +119,9 @@ TEST_REGIONAL_MASK['Västerviks kommun'] = {'mask': np.array([False, False, Fals
 FAKE_MASK1 = np.array([False, False, False, False, False, False, False, False,  True,
                        False, False,  True, False,  True, False, False, False, False])
 FAKE_MASK2 = np.array([True, False,  True])
+
+#TESTSHAPE_FILENAME = pathlib.Path(__file__).parent.resolve() / 'data' / 'omr_03_HILL_Buffer.shp'
+TESTSHAPE_FILENAME = pathlib.Path(__file__).parent.resolve() / 'data' / 'Sverige.shp'
 
 
 @patch('activefires_pp.post_processing._read_data')
@@ -198,7 +205,8 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_regional_fires_filtering(setup_comm, get_config, gethostname):
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._load_shape_geometry')
+def test_regional_fires_filtering(load_geometry, setup_comm, get_config, gethostname):
     """Test the regional fires filtering."""
     # FIXME! This test is to big/broad. Need for refactoring!
 
@@ -244,7 +252,8 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
-def test_general_national_fires_filtering(get_global_mask, setup_comm, get_config, gethostname):
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._load_shape_geometry')
+def test_general_national_fires_filtering(load_geometry, get_global_mask, setup_comm, get_config, gethostname):
     """Test the general/basic national fires filtering."""
 
     get_config.return_value = CONFIG_EXAMPLE
@@ -288,3 +297,37 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
     np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
     np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
     assert outmsg == ["my fake output message"]
+
+
+class TestShapeFileHandling(unittest.TestCase):
+
+    def setUp(self):
+
+        self.test_shape_geom = ShapeGeometry(str(TESTSHAPE_FILENAME))
+        self.test_shape_geom.load()
+
+    def test_get_global_mask_from_shapefile(self):
+        """Test masking points using a shapefile."""
+
+        #lonlat_inside_03_hill_region = (13.114, 56.634)
+        #lonlat_outside_03_hill_region = np.array([(13.87, 56.83)])
+        #lons = np.array([lonlat_inside_03_hill_region[0], ])
+        #lats = np.array([lonlat_inside_03_hill_region[1], ])
+
+        lons_inside = np.array([13.114, 13.87])
+        lats_inside = np.array([56.634, 56.83])
+        mask_inside = get_global_mask_from_shapefile(self.test_shape_geom, (lons_inside, lats_inside))
+
+        assert_equal(mask_inside, np.array([True, True]))
+
+        # Outside:
+        # (56.54, 12.00), (55.396, 14.648)
+        lons_outside = np.array([12.00, 14.648])
+        lats_outside = np.array([56.54, 55.396])
+        mask_outside = get_global_mask_from_shapefile(self.test_shape_geom, (lons_outside, lats_outside))
+
+        assert_equal(mask_outside, np.array([False, False]))
+
+    def tearDown(self):
+        """Here we could/should? close the file..."""
+        pass
