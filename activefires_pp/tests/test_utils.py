@@ -24,11 +24,8 @@
 """
 
 import pytest
-import unittest
 from datetime import datetime, timedelta
-
-from activefires_pp.utils import get_geometry_from_shapefile
-from activefires_pp.utils import datetime_utc2local, get_local_timezone_offset
+from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import json_serial
 from freezegun import freeze_time
 
