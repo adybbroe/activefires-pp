@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -28,7 +28,6 @@ from netrc import netrc
 from datetime import datetime
 import os
 from six.moves.urllib.parse import urlparse
-import geojson
 
 import logging
 import signal
@@ -45,6 +44,7 @@ from email.mime.text import MIMEText
 from email import encoders
 
 from activefires_pp.utils import read_config
+from activefires_pp.geojson_utils import read_geojson_data
 
 
 HOME = os.environ.get('HOME')
@@ -425,16 +425,6 @@ def _create_output_message(msg, topic, recipients):
     to_send['info'] = "Notifications sent to the following recipients: %s" % str(recipients)
 
     return Message(topic, 'info', to_send)
-
-
-def read_geojson_data(filename):
-    """Read Geo json data from file."""
-    if filename.endswith('.geojson') and os.path.exists(filename):
-        # Read the file:
-        with open(filename, "r") as fpt:
-            return geojson.load(fpt)
-    else:
-        LOG.warning("No filename to read: %s", filename)
 
 
 def get_recipients_for_region(recipients, region_code):
