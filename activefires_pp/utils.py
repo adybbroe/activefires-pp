@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021-2022 Adam Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,16 +26,11 @@
 import pytz
 import cartopy.io.shapereader as shpreader
 from datetime import date, datetime, timezone, timedelta
-import yaml
-from yaml import UnsafeLoader
+from urllib.parse import urlparse
+import pathlib
+import logging
 
-
-def read_config(config_filepath):
-    """Read and extract config information."""
-    with open(config_filepath, 'r') as fp_:
-        config = yaml.load(fp_, Loader=UnsafeLoader)
-
-    return config
+LOG = logging.getLogger(__name__)
 
 
 def datetime_from_utc_to_local(utc_dt, tzone):
@@ -68,3 +63,11 @@ def json_serial(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
+
+
+def get_filename_from_posttroll_message(pytroll_message):
+    """Get the filename from the Posttroll message."""
+    url = urlparse(pytroll_message.data.get('uri'))
+    filepath = pathlib.Path(url.path)
+    LOG.info('File path: %s', str(filepath))
+    return filepath

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -59,7 +59,9 @@ setup(name="activefires-pp",
       packages=find_packages(),
       long_description=long_description,
       license='GPLv3',
-      scripts=['bin/active_fires_postprocessing.py', 'bin/active_fires_notifier.py', ],
+      scripts=['bin/active_fires_postprocessing.py',
+               'bin/active_fires_notifier.py',
+               'bin/active_fires_spatiotemporal_alarm_filtering.py', ],
       data_files=[],
       zip_safe=False,
       install_requires=requires,

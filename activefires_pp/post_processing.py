@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -46,7 +46,7 @@ import shapely
 from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import get_local_timezone
 from activefires_pp.utils import json_serial
-from activefires_pp.utils import read_config
+from activefires_pp.config import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
 # M-band output:

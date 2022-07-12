@@ -5,7 +5,7 @@
 
 # Author(s):
 
-#   Adam Dybbroe <Firstname.Lastname@smhi.se>
+#   Adam Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,21 +20,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Geojson utilities.
+"""Handling the yaml configurations.
 """
 
-import os
-import geojson
-import logging
-
-LOG = logging.getLogger(__name__)
+import yaml
+from yaml import UnsafeLoader
 
 
-def read_geojson_data(filename):
-    """Read Geo json data from file."""
-    if str(filename).endswith('.geojson') and filename.exists:
-        # Read the file:
-        with open(filename, "r") as fpt:
-            return geojson.load(fpt)
-    else:
-        LOG.warning("No filename to read: %s", str(filename))
+def read_config(config_filepath):
+    """Read and extract config information."""
+    with open(config_filepath, 'r') as fp_:
+        config = yaml.load(fp_, Loader=UnsafeLoader)
+
+    return config

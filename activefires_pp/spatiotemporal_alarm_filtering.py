@@ -49,7 +49,8 @@ from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
 from pathlib import Path
 
-from activefires_pp.utils import read_config
+from activefires_pp.utils import get_filename_from_posttroll_message
+from activefires_pp.config import read_config
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.api_posting import post_alarm
 
@@ -146,10 +147,7 @@ class AlarmFilterRunner(Thread):
         """
         LOG.debug("Start the spatio-temporal alarm filtering.")
 
-        url = urlparse(msg.data.get('uri'))
-        LOG.info('File path: %s', str(url.path))
-        filename = url.path
-
+        filename = get_filename_from_posttroll_message(msg)
         ffdata = read_geojson_data(filename)
         if not ffdata:
             return None

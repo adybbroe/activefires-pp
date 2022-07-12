@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -27,9 +27,14 @@ import pytest
 import unittest
 from datetime import datetime
 
+from posttroll.message import Message
+
+from activefires_pp.utils import get_filename_from_posttroll_message
 from activefires_pp.utils import get_geometry_from_shapefile
 from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import json_serial
+
+NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""
 
 
 def test_json_serial():
@@ -47,3 +52,12 @@ def test_json_serial():
     exception_raised = exec_info.value
 
     assert str(exception_raised) == "Type <class 'str'> not serializable"
+
+
+def test_get_filename_from_posttroll_message():
+    """Test get the filename from the pytroll message data."""
+    input_msg = Message.decode(rawstr=NATIONAL_TEST_MESSAGE)
+    filename = get_filename_from_posttroll_message(input_msg)
+
+    assert filename.name == 'AFIMG_j01_d20210416_t122953.geojson'
+    assert str(filename.parent) == '//san1/polar_out/direct_readout/viirs_active_fires/filtered'

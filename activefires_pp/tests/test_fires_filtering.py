@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -34,7 +34,7 @@ from datetime import datetime
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
-from activefires_pp.utils import read_config
+from activefires_pp.config import read_config
 
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
