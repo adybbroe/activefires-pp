@@ -49,7 +49,6 @@ jobs:
           scipy; \
           python -m pip install \
           --no-deps --upgrade \
-          freezegun \
           git+https://github.com/pytroll/posttroll \
           git+https://github.com/pytroll/trollsift;
 
