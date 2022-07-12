@@ -20,6 +20,8 @@ dependencies:
   - cartopy
   - fiona
   - pandas
+  - freezegun
+  - openssl
   - pytz
   - pytest
   - pytest-cov

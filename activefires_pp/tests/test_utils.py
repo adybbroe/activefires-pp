@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -24,12 +24,10 @@
 """
 
 import pytest
-import unittest
-from datetime import datetime
-
-from activefires_pp.utils import get_geometry_from_shapefile
-from activefires_pp.utils import datetime_from_utc_to_local
+from datetime import datetime, timedelta
+from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import json_serial
+from freezegun import freeze_time
 
 
 def test_json_serial():
@@ -47,3 +45,25 @@ def test_json_serial():
     exception_raised = exec_info.value
 
     assert str(exception_raised) == "Type <class 'str'> not serializable"
+
+
+@freeze_time('2022-03-26 18:12:05')
+def test_utc2localtime_conversion():
+    """Test converting utc time to local time."""
+
+    atime1 = datetime.utcnow()
+    dtobj = datetime_utc2local(atime1, 'Europe/Stockholm')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220326-1912'
+
+    atime2 = atime1 + timedelta(days=1)
+    dtobj = datetime_utc2local(atime2, 'Europe/Stockholm')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220327-2012'
+
+    dtobj = datetime_utc2local(atime1, 'Australia/Sydney')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220327-0512'
+
+    dtobj2 = datetime_utc2local(atime1, 'Etc/GMT-11')
+    assert dtobj2.strftime('%Y%m%d-%H%M') == '20220327-0512'
+
+    dtobj = datetime_utc2local(atime1 + timedelta(days=30), 'Australia/Sydney')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220426-0412'

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -40,9 +40,10 @@ with open('./README.md', 'r') as fd:
 description = 'Post-processing of and notifications on Satellite active fire detections'
 
 requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
-            'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'matplotlib']
+            'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'matplotlib']
 test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
-                 'pytz', 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona']
+                 'shapely', 'cartopy', 'pandas', 'geojson', 'fiona',
+                 'freezegun']
 
 setup(name="activefires-pp",
       description=description,
@@ -64,6 +65,6 @@ setup(name="activefires-pp",
       zip_safe=False,
       install_requires=requires,
       tests_require=test_requires,
-      python_requires='>=3.8',
+      python_requires='>=3.9',
       use_scm_version=True
       )
