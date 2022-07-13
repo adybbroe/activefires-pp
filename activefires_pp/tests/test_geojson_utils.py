@@ -24,6 +24,8 @@
 """
 
 from activefires_pp.geojson_utils import read_geojson_data
+from activefires_pp.geojson_utils import get_recent_geojson_files
+from datetime import datetime
 import pytest
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]}, "properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]}, "properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]}, "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
@@ -37,6 +39,25 @@ def fake_geojson_file(tmp_path):
         fpt.write(TEST_GEOJSON_FILE_CONTENT)
 
     yield file_path
+
+
+@pytest.fixture
+def fake_past_detections_dir(tmp_path):
+    """Create fake directory with past detections."""
+    past_detections_dir = tmp_path / 'past_detections'
+    past_detections_dir.mkdir()
+    file_path = past_detections_dir / 'sos_20210619_005803_0.geojson'
+    file_path.touch()
+    file_path = past_detections_dir / 'sos_20210619_000651_0.geojson'
+    file_path.touch()
+    file_path = past_detections_dir / 'sos_20210619_000651_1.geojson'
+    file_path.touch()
+    file_path = past_detections_dir / 'sos_20210618_124819_0.geojson'
+    file_path.touch()
+    file_path = past_detections_dir / 'sos_20210618_110719_0.geojson'
+    file_path.touch()
+
+    yield file_path.parent
 
 
 def test_read_and_get_geojson_data_from_file(fake_geojson_file):
@@ -54,3 +75,25 @@ def test_read_and_get_geojson_data_from_file(fake_geojson_file):
     assert feature1['geometry'] == {"coordinates": [23.562864, 67.341919], "type": "Point"}
     assert feature1['properties'] == {"confidence": 8, "observation_time": "2022-06-29T14:01:08.850000",
                                       "platform_name": "NOAA-20", "power": 1.62920368, "tb": 325.2354126}
+
+
+def test_get_recent_geojson_files(fake_past_detections_dir):
+    """Test getting the list of recent geojson files."""
+    starttime = datetime(2021, 6, 18, 12, 0)
+    endtime = datetime(2021, 6, 19, 0, 30)
+    # geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
+    pattern = "sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson"
+
+    recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
+    assert recent == ['sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson', 'sos_20210619_000651_0.geojson']
+
+    starttime = datetime(2021, 6, 18, 12, 0)
+    endtime = datetime(2021, 6, 19, 12, 0)
+    recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
+    assert recent == ['sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson',
+                      'sos_20210619_000651_0.geojson', 'sos_20210619_005803_0.geojson']
+
+    starttime = datetime(2022, 6, 18, 12, 0)
+    endtime = datetime(2022, 6, 19, 12, 0)
+    recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
+    assert len(recent) == 0

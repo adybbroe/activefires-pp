@@ -2,10 +2,10 @@
 subscribe_topics: /VIIRS/L2/Fires/PP
 publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
 
-geojson_file_pattern_alarms: sos_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
 
-output_dir: /path/where/the/filtered/alarms/will/be/stored
+fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
 
-geojson_fires_dir: /path/to/where/the/filtered/detections/are/stored
+#geojson_fires_dir: /path/to/where/the/filtered/detections/are/stored
 
-smhi_restapi_url: "https://xxx.smhi.se:xxxx"
+restapi_url: "https://xxx.smhi.se:xxxx"

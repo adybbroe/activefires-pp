@@ -26,6 +26,10 @@
 import os
 import geojson
 import logging
+from trollsift import Parser, globify
+import pytz
+from datetime import datetime, timedelta
+import numpy as np
 
 LOG = logging.getLogger(__name__)
 
@@ -38,3 +42,45 @@ def read_geojson_data(filename):
             return geojson.load(fpt)
     else:
         LOG.warning("No filename to read: %s", str(filename))
+
+
+def get_recent_geojson_files(path, pattern, time_interval):
+    """Get all geojson files with filtered active fire detections (=triggered alarms) since *dtime*."""
+    dtime_start = time_interval[0]
+    dtime_end = time_interval[1]
+    if not dtime_end:
+        dtime_end = datetime.utcnow()
+
+    p__ = Parser(pattern)
+    files = path.glob(globify(pattern))
+    dtimes = []
+    fnames = []
+    for gjson_file in files:
+        fname = gjson_file.name
+        res = p__.parse(fname)
+        if res['start_time'] > dtime_start and res['start_time'] < dtime_end:
+            #print("File: %s" % fname)
+            dtimes.append(res['start_time'])
+            fnames.append(fname)
+
+    dtimes = np.array(dtimes)
+    fnames = np.array(fnames)
+
+    idx = dtimes.argsort()
+    files = np.take(fnames, idx)
+    return files.tolist()
+
+
+def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
+    """Store the fire alarm to a geojson file."""
+    utc = pytz.timezone('utc')
+    start_time = datetime.fromisoformat(alarm["features"]["properties"]["observation_time"])
+    platform_name = alarm["features"]["properties"]["platform_name"]
+    start_time = start_time.astimezone(utc).replace(tzinfo=None)
+    fname = file_parser.compose({'start_time': start_time, 'id': idx,
+                                 'platform_name': platform_name})
+    output_filename = fires_alarms_dir / fname
+    with open(output_filename, 'w') as fpt:
+        dump(alarm, fpt)
+
+    return output_filename

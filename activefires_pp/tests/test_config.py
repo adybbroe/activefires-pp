@@ -30,7 +30,7 @@ TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
 subscribe_topics: /VIIRS/L2/Fires/PP
 publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
 
-geojson_file_pattern_alarms: sos_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
 
 output_dir: /path/where/the/filtered/alarms/will/be/stored
 
@@ -55,7 +55,7 @@ def test_get_yaml_configuration(fake_yamlconfig_file):
     config = read_config(fake_yamlconfig_file)
     assert config['subscribe_topics'] == '/VIIRS/L2/Fires/PP'
     assert config['publish_topic'] == '/VIIRS/L2/Fires/PP/SOSAlarm'
-    assert config['geojson_file_pattern_alarms'] == 'sos_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson'
+    assert config['geojson_file_pattern_alarms'] == 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
     assert config['output_dir'] == '/path/where/the/filtered/alarms/will/be/stored'
     assert config['geojson_fires_dir'] == '/path/to/where/the/filtered/detections/are/stored'
     assert config['smhi_restapi_url'] == 'https://xxx.smhi.se:xxxx'
