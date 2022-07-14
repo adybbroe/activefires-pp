@@ -40,7 +40,7 @@ with open('./README.md', 'r') as fd:
 description = 'Post-processing of and notifications on Satellite active fire detections'
 
 requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
-            'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'matplotlib']
+            'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'geopy', 'matplotlib']
 test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
                  'shapely', 'cartopy', 'pandas', 'geojson', 'fiona',
                  'freezegun']

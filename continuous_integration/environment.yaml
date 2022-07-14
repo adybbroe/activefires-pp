@@ -19,6 +19,7 @@ dependencies:
   - pycrs
   - cartopy
   - fiona
+  - geopy
   - pandas
   - freezegun
   - openssl
