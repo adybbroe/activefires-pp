@@ -29,8 +29,6 @@ from datetime import datetime, timedelta
 from posttroll.message import Message
 
 from activefires_pp.utils import get_filename_from_posttroll_message
-from activefires_pp.utils import get_geometry_from_shapefile
-from activefires_pp.utils import datetime_from_utc_to_local
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import json_serial
 
