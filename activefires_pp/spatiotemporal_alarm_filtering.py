@@ -139,18 +139,14 @@ class AlarmFilterRunner(Thread):
             else:
                 if msg.type in ['info', ]:
                     # No fires detected - no notification to send:
-                    LOG.info("Message type info: No fires detected - no notification to send.")
+                    LOG.info("Message type info: No fires detected - no alarm to generate.")
                     continue
                 elif msg.type not in ['file', 'collection', 'dataset']:
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
 
-                output_msg = self.spatio_temporal_alarm_filtering(msg)
-                if output_msg:
-                    LOG.debug("Sending message: %s", str(output_msg))
-                    self.publisher.send(str(output_msg))
-                else:
-                    LOG.debug("No message to send")
+                generated_alarms = self.spatio_temporal_alarm_filtering(msg)
+                LOG.deb("Number of generated alarms: %d", len(generated_alarms))
 
     def spatio_temporal_alarm_filtering(self, msg):
         """Spatial and temporal filtering of the fire detections and create and post the alarm.
@@ -251,7 +247,7 @@ def find_neighbours(feature, other_features, thr_dist=0.8):
         geom = feat['geometry']
         lon, lat = geom['coordinates']
         km_dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
-        #print("Id: %d Distance: %f" % (key, km_dist))
+        # print("Id: %d Distance: %f" % (key, km_dist))
         if km_dist < thr_dist:
             idx.append(key)
 
