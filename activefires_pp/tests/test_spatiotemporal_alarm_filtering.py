@@ -26,8 +26,7 @@
 import pytest
 import unittest
 from unittest.mock import patch
-
-from pathlib import Path
+import pathlib
 from geojson import dump
 import json
 from activefires_pp.geojson_utils import read_geojson_data
@@ -222,7 +221,7 @@ def test_create_single_point_alarms_from_collections():
     assert alarms[1]['features']['geometry']['coordinates'] == [16.245516, 57.1651]
     assert alarms[1]['features']['properties']['power'] == 2.94999027
 
-    # tmpdir = Path('/tmp')
+    # tmpdir = pathlib.Path('/tmp')
     # for idx, feature_collection in enumerate(alarms):
     #     fname = 'sos_alarm_past_{index}.geojson'.format(index=idx)
     #     output_filename = tmpdir / fname
@@ -325,7 +324,8 @@ def test_alarm_filter_runner_init(setup_comm, get_config):
     alarm_runner = AlarmFilterRunner(myconfigfile)
 
     assert alarm_runner.configfile == myconfigfile
-    assert alarm_runner.fire_alarms_dir == "/path/where/the/filtered/alarms/will/be/stored"
+    assert type(alarm_runner.fire_alarms_dir) is pathlib.PosixPath
+    assert str(alarm_runner.fire_alarms_dir) == "/path/where/the/filtered/alarms/will/be/stored"
     assert alarm_runner.input_topic == '/VIIRS/L2/Fires/PP/National'
     assert alarm_runner.output_topic == '/VIIRS/L2/Fires/PP/SOSAlarm'
     assert alarm_runner.listener is None

@@ -88,7 +88,7 @@ class AlarmFilterRunner(Thread):
 
         self.sos_alarms_file_pattern = self.options['geojson_file_pattern_alarms']
         self.restapi_url = self.options['restapi_url']
-        self.fire_alarms_dir = self.options['fire_alarms_dir']
+        self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
 
         self.listener = None
         self.publisher = None
@@ -389,7 +389,8 @@ def get_single_point_fires_as_collections(fires, threshold):
     return create_single_point_alarms_from_collections(features)
 
 
-def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_file_pattern, hour_thr=16, km_threshold=0.8):
+def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_file_pattern,
+                                       hour_thr=16, km_threshold=0.8):
     """Check if fire point should trigger an alarm.
 
     The fire point is a GeoJSON object. A search back in time X hours (X=16) is
