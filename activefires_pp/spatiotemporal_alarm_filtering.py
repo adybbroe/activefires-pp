@@ -448,6 +448,6 @@ def _create_output_message(msg, topic, geojson, filename):
     to_send['platform_name'] = geojson['features']['properties']['platform_name']
     to_send['coordinates'] = geojson['features']['geometry']['coordinates']
     to_send['file'] = filename.name
-    to_send['uri'] = filename
+    to_send['uri'] = str(filename)
 
     return Message(topic, 'info', to_send)
