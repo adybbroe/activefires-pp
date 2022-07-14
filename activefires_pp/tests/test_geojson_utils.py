@@ -25,6 +25,9 @@
 
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.geojson_utils import get_recent_geojson_files
+from activefires_pp.geojson_utils import store_geojson_alarm
+from trollsift import Parser
+
 from datetime import datetime
 import pytest
 
@@ -97,3 +100,31 @@ def test_get_recent_geojson_files(fake_past_detections_dir):
     endtime = datetime(2022, 6, 19, 12, 0)
     recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
     assert len(recent) == 0
+
+
+def test_store_geojson_alarm(fake_past_detections_dir):
+    """Test storing the geojson alarm object."""
+    sos_alarms_file_pattern = 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
+    file_parser = Parser(sos_alarms_file_pattern)
+    idx = 0
+    alarm = {"features": {"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
+                          "properties": {"confidence": 8, "observation_time": "2021-06-19T02:58:45.700000+02:00",
+                                         "platform_name": "NOAA-20",
+                                         "power": 2.23312426,
+                                         "related_detection": False,
+                                         "tb": 310.37322998}, "type": "Feature"},
+             "type": "FeatureCollection"}
+
+    result_filename = store_geojson_alarm(fake_past_detections_dir, file_parser, idx, alarm)
+    assert result_filename.exists() is True
+    assert result_filename.name == 'sos_20210619_005845_0.geojson'
+
+    json_test_data = read_geojson_data(result_filename)
+
+    assert json_test_data['features']['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert json_test_data['features']['properties']['confidence'] == 8
+    assert json_test_data['features']['properties']['observation_time'] == "2021-06-19T02:58:45.700000+02:00"
+    assert json_test_data['features']['properties']['platform_name'] == "NOAA-20"
+    assert json_test_data['features']['properties']['power'] == 2.23312426
+    assert json_test_data['features']['properties']['related_detection'] is False
+    assert json_test_data['features']['properties']['tb'] == 310.37322998

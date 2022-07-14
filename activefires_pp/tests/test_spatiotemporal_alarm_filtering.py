@@ -24,6 +24,8 @@
 """
 
 import pytest
+import unittest
+from unittest.mock import patch
 
 from pathlib import Path
 from geojson import dump
@@ -31,11 +33,11 @@ import json
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.spatiotemporal_alarm_filtering import create_alarms_from_fire_detections
 from activefires_pp.spatiotemporal_alarm_filtering import join_fire_detections
-#from activefires_pp.spatiotemporal_alarm_filtering import dump_collection
 from activefires_pp.spatiotemporal_alarm_filtering import split_large_fire_clusters
 from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_from_collection
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
 from activefires_pp.spatiotemporal_alarm_filtering import get_single_point_fires_as_collections
+from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]}, "properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]}, "properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]}, "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
@@ -74,6 +76,13 @@ PAST_ALARMS_MONSTERAS1 = """{"type": "FeatureCollection", "features": {"type": "
 PAST_ALARMS_MONSTERAS2 = """{"type": "FeatureCollection", "features": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245516, 57.1651]}, "properties": {"power": 2.94999027, "tb": 324.5098877, "confidence": 8, "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}}"""
 
 PAST_ALARMS_MONSTERAS3 = """{"features": {"geometry": {"coordinates": [16.252192, 57.15242], "type": "Point"}, "properties": {"confidence": 8, "observation_time": "2021-06-18T14:49:01.750000+02:00", "platform_name": "NOAA-20", "related_detection": false, "power": 2.87395763, "tb": 330.10293579}, "type": "Feature"}, "type": "FeatureCollection"}"""
+
+
+CONFIG_EXAMPLE = {'subscribe_topics': '/VIIRS/L2/Fires/PP/National',
+                  'publish_topic': '/VIIRS/L2/Fires/PP/SOSAlarm',
+                  'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
+                  'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
+                  'restapi_url': 'https://xxx.smhi.se:xxxx'}
 
 
 @pytest.fixture
@@ -303,3 +312,29 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[0]['features']['properties']['platform_name'] == 'NOAA-20'
     assert alarms[0]['features']['properties']['tb'] == 310.37322998
     assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+def test_alarm_filter_runner_init(setup_comm, get_config):
+    """Test initialize the AlarmFilterRunner class."""
+    get_config.return_value = CONFIG_EXAMPLE
+
+    myconfigfile = "/my/config/file/path"
+
+    alarm_runner = AlarmFilterRunner(myconfigfile)
+
+    assert alarm_runner.configfile == myconfigfile
+    assert alarm_runner.fire_alarms_dir == "/path/where/the/filtered/alarms/will/be/stored"
+    assert alarm_runner.input_topic == '/VIIRS/L2/Fires/PP/National'
+    assert alarm_runner.output_topic == '/VIIRS/L2/Fires/PP/SOSAlarm'
+    assert alarm_runner.listener is None
+    assert alarm_runner.publisher is None
+    assert alarm_runner.loop is False
+    assert alarm_runner.sos_alarms_file_pattern == 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
+    assert alarm_runner.restapi_url == 'https://xxx.smhi.se:xxxx'
+    assert alarm_runner.options == {'subscribe_topics': ['/VIIRS/L2/Fires/PP/National'],
+                                    'publish_topic': '/VIIRS/L2/Fires/PP/SOSAlarm',
+                                    'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
+                                    'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
+                                    'restapi_url': 'https://xxx.smhi.se:xxxx'}

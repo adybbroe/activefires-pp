@@ -81,6 +81,6 @@ def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
                                  'platform_name': platform_name})
     output_filename = fires_alarms_dir / fname
     with open(output_filename, 'w') as fpt:
-        dump(alarm, fpt)
+        geojson.dump(alarm, fpt)
 
     return output_filename

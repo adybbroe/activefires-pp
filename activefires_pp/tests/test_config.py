@@ -27,16 +27,14 @@ import pytest
 from activefires_pp.config import read_config
 
 TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
-subscribe_topics: /VIIRS/L2/Fires/PP
+subscribe_topics: /VIIRS/L2/Fires/PP/National
 publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
 
 geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
 
-output_dir: /path/where/the/filtered/alarms/will/be/stored
+fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
 
-geojson_fires_dir: /path/to/where/the/filtered/detections/are/stored
-
-smhi_restapi_url: "https://xxx.smhi.se:xxxx"
+restapi_url: "https://xxx.smhi.se:xxxx"
 """
 
 
@@ -53,9 +51,8 @@ def fake_yamlconfig_file(tmp_path):
 def test_get_yaml_configuration(fake_yamlconfig_file):
     """Test read and get the yaml configuration from file."""
     config = read_config(fake_yamlconfig_file)
-    assert config['subscribe_topics'] == '/VIIRS/L2/Fires/PP'
+    assert config['subscribe_topics'] == '/VIIRS/L2/Fires/PP/National'
     assert config['publish_topic'] == '/VIIRS/L2/Fires/PP/SOSAlarm'
     assert config['geojson_file_pattern_alarms'] == 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
-    assert config['output_dir'] == '/path/where/the/filtered/alarms/will/be/stored'
-    assert config['geojson_fires_dir'] == '/path/to/where/the/filtered/detections/are/stored'
-    assert config['smhi_restapi_url'] == 'https://xxx.smhi.se:xxxx'
+    assert config['fire_alarms_dir'] == '/path/where/the/filtered/alarms/will/be/stored'
+    assert config['restapi_url'] == 'https://xxx.smhi.se:xxxx'

@@ -164,7 +164,7 @@ class AlarmFilterRunner(Thread):
             return None
 
         geojson_alarms = create_alarms_from_fire_detections(ffdata,
-                                                            self.fires_alarms_dir, self.sos_alarms_file_pattern)
+                                                            self.fire_alarms_dir, self.sos_alarms_file_pattern)
 
         if len(geojson_alarms) == 0:
             LOG.info("No alarms to be triggered!")
@@ -177,14 +177,17 @@ class AlarmFilterRunner(Thread):
         """Send the alarms: Create geojson file with alarm data, post it and publish message."""
         p__ = Parser(self.sos_alarms_file_pattern)
         for idx, alarm in enumerate(geojson_alarms):
-            # Write alarm to a geojson file in the fires_alarms_dir destination:
+            # Write alarm to a geojson file in the fire_alarms_dir destination:
             # 1) Create the filename
             # 2) Wite to a file
-            output_filename = store_geojson_alarm(self.fires_alarms_dir, p__, idx, alarm)
+            output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
             post_alarm(alarm, self.restapi_url)
-            self._create_output_message(msg, self.output_topic, alarm, output_filename)
-
-        return
+            output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
+            if output_message:
+                LOG.debug("Sending message: %s", str(output_message))
+                self.publisher.send(str(output_message))
+            else:
+                LOG.debug("No message to send")
 
     def close(self):
         """Shutdown the AlarmFilterRunner process."""
@@ -431,7 +434,7 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
 
 
 def _create_output_message(msg, topic, geojson, filename):
-    """Create the output message from the input message."""
+    """Create the output message from the input message and the geojson payload."""
     to_send = msg.data.copy()
     to_send.pop('file', None)
     to_send.pop('uri', None)
