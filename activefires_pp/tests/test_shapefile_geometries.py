@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -30,6 +30,8 @@ from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
 TEST_CRS_PROJ = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
                  '+y_0=0.0 +lon_0=15.0 +lat_0=0.0 +units=m +axis=enu +no_defs')
+TEST_CRS_PROJ_ZONE33 = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
+                        '+y_0=0.0 +lon_0=15.0 +lat_0=0.0 +units=m +axis=enu +no_defs +zone=33')
 
 
 def fake_shapefiles_glob(dirname):
@@ -40,9 +42,21 @@ def fake_shapefiles_glob(dirname):
     return list_of_files
 
 
-class MyMockCrs(object):
+class MyMockProjName(object):
     def __init__(self):
+        self.proj4 = 'utm'
+
+
+class MyMockProj(object):
+    def __init__(self):
+        self.name = MyMockProjName()
+
+
+class MyMockCrs(object):
+    def __init__(self, crs_name='myname'):
         self._crs_proj = TEST_CRS_PROJ
+        self.name = crs_name
+        self.proj = MyMockProj()
 
     def to_proj4(self):
         return self._crs_proj
@@ -70,10 +84,10 @@ def test_shape_geometry_init_single_shapefile_path(load_from_file, get_shapefile
     mypath = '/my/shape/file/path/myshapefile.sph'
 
     get_shapefile_paths.return_value = [mypath]
-    load_from_file.return_value = MyMockCrs()
+    load_from_file.return_value = MyMockCrs('SWEREF99_TM')
     shpgeom = ShapeGeometry(mypath)
 
-    assert shpgeom.proj4str == TEST_CRS_PROJ
+    assert shpgeom.proj4str == TEST_CRS_PROJ_ZONE33
 
 
 @patch('activefires_pp.geometries_from_shapefiles._get_shapefile_paths')

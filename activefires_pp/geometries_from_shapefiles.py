@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam.Dybbroe
+# Copyright (c) 2021, 2022 Adam.Dybbroe
 
 # Author(s):
 
@@ -56,7 +56,12 @@ class ShapeGeometry(object):
         for filepath in self.filepaths:
             prj_filename = filepath.strip('.shp') + '.prj'
             crs = pycrs.load.from_file(prj_filename)
-            self.proj4str.append(crs.to_proj4())
+            if crs.name == 'SWEREF99_TM' and crs.proj.name.proj4 == 'utm':
+                utm_zone_proj4 = ' +zone=33'
+                proj4str = crs.to_proj4() + utm_zone_proj4
+            else:
+                proj4str = crs.to_proj4()
+            self.proj4str.append(proj4str)
 
         first_proj4_str = self.proj4str[0]
         for proj4_str in self.proj4str[1:]:
@@ -73,7 +78,7 @@ class ShapeGeometry(object):
 def _get_shapefile_paths(path, globstr='*.shp'):
     """Get full filepaths for all shapefiles in directory or simply return the paths as a list.
 
-    From a path to a directory with shapefiles or a full file path, 
+    From a path to a directory with shapefiles or a full file path,
     return list of file paths for all shapefiles.
     """
     if os.path.isfile(path):

@@ -23,31 +23,31 @@
 """
 """
 
-import pytz
 import cartopy.io.shapereader as shpreader
 from datetime import date, datetime, timezone, timedelta
 from urllib.parse import urlparse
 import pathlib
 import logging
+import zoneinfo
+import yaml
+from yaml import UnsafeLoader
 
 LOG = logging.getLogger(__name__)
 
 
-def datetime_from_utc_to_local(utc_dt, tzone):
-    """Convert datetime from UTC to local time."""
-
-    cest = pytz.timezone(tzone)
-    loc_dt = utc_dt.astimezone(cest)
-
-    return loc_dt
+def datetime_utc2local(utc_dtime, tzone_str, is_dst=True):
+    """Convert a UTC datetime to local time, using DST on default."""
+    tzone = zoneinfo.ZoneInfo(tzone_str)
+    utc_dtime = utc_dtime.replace(tzinfo=timezone.utc)
+    return utc_dtime.astimezone(tzone)
 
 
-def get_local_timezone():
-    """Get the local timezone of this computation environment.
-
-    https://stackoverflow.com/questions/2720319/python-figure-out-local-timezone
-    """
-    return datetime.now(timezone(timedelta(0))).astimezone().tzinfo
+def get_local_timezone_offset(timezone_str):
+    """Get the local time zone offset as a timedelta object."""
+    utcnow = datetime.utcnow()
+    utcnow = utcnow.replace(tzinfo=timezone.utc)
+    tzone = zoneinfo.ZoneInfo(timezone_str)
+    return utcnow.astimezone(tzone).replace(tzinfo=timezone.utc) - utcnow
 
 
 def get_geometry_from_shapefile(shapefile):

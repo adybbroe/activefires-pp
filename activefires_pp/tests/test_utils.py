@@ -24,14 +24,14 @@
 """
 
 import pytest
-import unittest
-from datetime import datetime
-
+from freezegun import freeze_time
+from datetime import datetime, timedelta
 from posttroll.message import Message
 
 from activefires_pp.utils import get_filename_from_posttroll_message
 from activefires_pp.utils import get_geometry_from_shapefile
 from activefires_pp.utils import datetime_from_utc_to_local
+from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import json_serial
 
 NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""
@@ -61,3 +61,25 @@ def test_get_filename_from_posttroll_message():
 
     assert filename.name == 'AFIMG_j01_d20210416_t122953.geojson'
     assert str(filename.parent) == '//san1/polar_out/direct_readout/viirs_active_fires/filtered'
+
+
+@freeze_time('2022-03-26 18:12:05')
+def test_utc2localtime_conversion():
+    """Test converting utc time to local time."""
+
+    atime1 = datetime.utcnow()
+    dtobj = datetime_utc2local(atime1, 'Europe/Stockholm')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220326-1912'
+
+    atime2 = atime1 + timedelta(days=1)
+    dtobj = datetime_utc2local(atime2, 'Europe/Stockholm')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220327-2012'
+
+    dtobj = datetime_utc2local(atime1, 'Australia/Sydney')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220327-0512'
+
+    dtobj2 = datetime_utc2local(atime1, 'Etc/GMT-11')
+    assert dtobj2.strftime('%Y%m%d-%H%M') == '20220327-0512'
+
+    dtobj = datetime_utc2local(atime1 + timedelta(days=30), 'Australia/Sydney')
+    assert dtobj.strftime('%Y%m%d-%H%M') == '20220426-0412'
