@@ -23,18 +23,11 @@
 """Unit testing the message handling part of the post-processing
 """
 
-import pytest
-import pandas as pd
 from unittest.mock import patch
-import io
-
 from datetime import datetime
-import pycrs
-import cartopy.io.shapereader
 
 from posttroll.message import Message
 from activefires_pp.post_processing import ActiveFiresPostprocessing
-
 from activefires_pp.spatiotemporal_alarm_filtering import _create_output_message
 
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam.Dybbroe
+# Copyright (c) 2022 Adam Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam Dybbroe <Firstname.Lastname@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 """
 
 import pytest
-import unittest
 from unittest.mock import patch
 import pathlib
 from geojson import dump
@@ -35,7 +34,6 @@ from activefires_pp.spatiotemporal_alarm_filtering import join_fire_detections
 from activefires_pp.spatiotemporal_alarm_filtering import split_large_fire_clusters
 from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_from_collection
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
-from activefires_pp.spatiotemporal_alarm_filtering import get_single_point_fires_as_collections
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 
 
@@ -154,9 +152,6 @@ def test_join_fire_detections_large_fire(fake_geojson_file_many_detections):
         assert joined_detections[collection_id][idx]['geometry']['coordinates'] == json_test_data['features'][idx]['geometry']['coordinates']
         assert joined_detections[collection_id][idx]['properties'] == json_test_data['features'][idx]['properties']
 
-        # for idx, key in enumerate(joined_detections):
-    #    dump_collection(idx, joined_detections[key])
-
 
 def test_split_large_fire_clusters():
     """Test the splitting of large fire clusters."""
@@ -220,13 +215,6 @@ def test_create_single_point_alarms_from_collections():
     assert alarms[0]['features']['properties']['power'] == 1.83814871
     assert alarms[1]['features']['geometry']['coordinates'] == [16.245516, 57.1651]
     assert alarms[1]['features']['properties']['power'] == 2.94999027
-
-    # tmpdir = pathlib.Path('/tmp')
-    # for idx, feature_collection in enumerate(alarms):
-    #     fname = 'sos_alarm_past_{index}.geojson'.format(index=idx)
-    #     output_filename = tmpdir / fname
-    #     with open(output_filename, 'w') as fpt:
-    #         dump(feature_collection, fpt)
 
 
 def test_create_alarms_from_fire_detections(fake_past_detections_dir):

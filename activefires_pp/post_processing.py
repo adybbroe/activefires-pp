@@ -588,7 +588,7 @@ class ActiveFiresPostprocessing(Thread):
 
 def check_file_type_okay(file_type):
     """Check if the file is of the correct type."""
-    if not file_type in ['txt', 'TXT']:
+    if file_type not in ['txt', 'TXT']:
         logger.info('File type not txt: %s', str(file_type))
         return False
     return True

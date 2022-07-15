@@ -23,13 +23,12 @@
 """Geojson utilities.
 """
 
-import os
 import geojson
 import json
 import logging
 from trollsift import Parser, globify
 import pytz
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 
 LOG = logging.getLogger(__name__)
@@ -63,7 +62,6 @@ def get_recent_geojson_files(path, pattern, time_interval):
         fname = gjson_file.name
         res = p__.parse(fname)
         if res['start_time'] > dtime_start and res['start_time'] < dtime_end:
-            #print("File: %s" % fname)
             dtimes.append(res['start_time'])
             fnames.append(fname)
 

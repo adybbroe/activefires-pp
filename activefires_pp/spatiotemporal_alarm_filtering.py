@@ -36,10 +36,6 @@ are:
 
 """
 
-import socket
-from datetime import datetime
-from urllib.parse import urlparse
-
 import logging
 import signal
 from queue import Empty
@@ -52,7 +48,7 @@ import pytz
 from datetime import datetime, timedelta
 
 from geopy import distance
-from geojson import Feature, Point, FeatureCollection, dump
+from geojson import FeatureCollection, dump
 from itertools import combinations
 from pathlib import Path
 

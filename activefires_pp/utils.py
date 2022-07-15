@@ -24,13 +24,11 @@
 """
 
 import cartopy.io.shapereader as shpreader
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timezone
 from urllib.parse import urlparse
 import pathlib
 import logging
 import zoneinfo
-import yaml
-from yaml import UnsafeLoader
 
 LOG = logging.getLogger(__name__)
 

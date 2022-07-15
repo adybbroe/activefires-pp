@@ -27,8 +27,6 @@ import socket
 from netrc import netrc
 from datetime import datetime
 import os
-from six.moves.urllib.parse import urlparse
-
 import logging
 import signal
 from queue import Empty
