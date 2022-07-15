@@ -1,0 +1,11 @@
+# Publish/subscribe
+subscribe_topics: /VIIRS/L2/Fires/PP
+publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
+
+geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
+
+fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
+
+#geojson_fires_dir: /path/to/where/the/filtered/detections/are/stored
+
+restapi_url: "https://xxx.smhi.se:xxxx"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2022 Adam.Dybbroe
+# Copyright (c) 2021 - 2022 Adam.Dybbro
 
 # Author(s):
 
@@ -46,7 +46,7 @@ import shapely
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import get_local_timezone_offset
 from activefires_pp.utils import json_serial
-from activefires_pp.utils import read_config
+from activefires_pp.config import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
 # M-band output:
@@ -588,7 +588,7 @@ class ActiveFiresPostprocessing(Thread):
 
 def check_file_type_okay(file_type):
     """Check if the file is of the correct type."""
-    if not file_type in ['txt', 'TXT']:
+    if file_type not in ['txt', 'TXT']:
         logger.info('File type not txt: %s', str(file_type))
         return False
     return True

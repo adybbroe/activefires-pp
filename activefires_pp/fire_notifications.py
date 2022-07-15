@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -27,9 +27,6 @@ import socket
 from netrc import netrc
 from datetime import datetime
 import os
-from six.moves.urllib.parse import urlparse
-import geojson
-
 import logging
 import signal
 from queue import Empty
@@ -44,7 +41,9 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
 
-from activefires_pp.utils import read_config
+from activefires_pp.config import read_config
+from activefires_pp.utils import get_filename_from_posttroll_message
+from activefires_pp.geojson_utils import read_geojson_data
 
 
 HOME = os.environ.get('HOME')
@@ -196,10 +195,7 @@ class EndUserNotifier(Thread):
         """Send notifications to configured end users (mail and text messages)."""
         LOG.debug("Start sending notifications to configured end users.")
 
-        url = urlparse(msg.data.get('uri'))
-        LOG.info('File path: %s', str(url.path))
-        filename = url.path
-
+        filename = get_filename_from_posttroll_message(msg)
         ffdata = read_geojson_data(filename)
         if not ffdata:
             return None
@@ -381,10 +377,7 @@ class EndUserNotifierRegional(EndUserNotifier):
         """Send notifications to configured end users (mail and text messages)."""
         LOG.debug("Start sending notifications to configured end users.")
 
-        url = urlparse(msg.data.get('uri'))
-        LOG.info('File path: %s', str(url.path))
-        filename = url.path
-
+        filename = get_filename_from_posttroll_message(msg)
         ffdata = read_geojson_data(filename)
         if not ffdata:
             return None
@@ -425,16 +418,6 @@ def _create_output_message(msg, topic, recipients):
     to_send['info'] = "Notifications sent to the following recipients: %s" % str(recipients)
 
     return Message(topic, 'info', to_send)
-
-
-def read_geojson_data(filename):
-    """Read Geo json data from file."""
-    if filename.endswith('.geojson') and os.path.exists(filename):
-        # Read the file:
-        with open(filename, "r") as fpt:
-            return geojson.load(fpt)
-    else:
-        LOG.warning("No filename to read: %s", filename)
 
 
 def get_recipients_for_region(recipients, region_code):

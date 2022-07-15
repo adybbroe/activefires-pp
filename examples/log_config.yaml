@@ -1,0 +1,25 @@
+version: 1
+disable_existing_loggers: false
+formatters:
+  pytroll:
+    format: '[%(asctime)s %(levelname)-8s %(name)s] %(message)s'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: pytroll
+    stream: ext://sys.stdout
+  monitor:
+    (): pytroll_monitor.op5_logger.AsyncOP5Handler
+    auth: [{{ monitor_user }}, {{ monitor_password}}]
+    service: check_{{ chain_name }}
+    server: {{op5_server}}/api/command/PROCESS_SERVICE_CHECK_RESULT
+    host: {{ inventory_hostname }}
+loggers:
+  posttroll:
+    level: ERROR
+    propagate: false
+    handlers: [console, monitor]
+root:
+  level: DEBUG
+  handlers: [console, monitor]

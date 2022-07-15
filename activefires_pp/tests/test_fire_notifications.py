@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 Adam Dybbroe
+# Copyright (c) 2021, 2022 Adam Dybbroe
 
 # Author(s):
 
@@ -25,13 +25,8 @@
 
 import unittest
 from unittest.mock import patch
-from unittest.mock import mock_open
-from unittest.mock import Mock
-
 import yaml
-import numpy as np
 import io
-from datetime import datetime
 from posttroll.message import Message
 
 from activefires_pp.fire_notifications import EndUserNotifier

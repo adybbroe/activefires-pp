@@ -24,8 +24,6 @@
 """
 
 from unittest.mock import patch
-from unittest.mock import mock_open
-from unittest.mock import Mock
 import pandas as pd
 import numpy as np
 import io
@@ -34,7 +32,6 @@ from datetime import datetime
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
-from activefires_pp.utils import read_config
 
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
