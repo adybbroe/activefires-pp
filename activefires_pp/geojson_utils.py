@@ -25,6 +25,7 @@
 
 import os
 import geojson
+import json
 import logging
 from trollsift import Parser, globify
 import pytz
@@ -36,12 +37,15 @@ LOG = logging.getLogger(__name__)
 
 def read_geojson_data(filename):
     """Read Geo json data from file."""
-    if str(filename).endswith('.geojson') and filename.exists:
+    if str(filename).endswith('.geojson') and filename.exists():
         # Read the file:
-        with open(filename, "r") as fpt:
-            return geojson.load(fpt)
+        try:
+            with open(filename, "r") as fpt:
+                return geojson.load(fpt)
+        except json.decoder.JSONDecodeError:
+            LOG.exception("Geojson file invalid and cannot be read: %s", str(filename))
     else:
-        LOG.warning("No filename to read: %s", str(filename))
+        LOG.error("No valid filename to read: %s", str(filename))
 
 
 def get_recent_geojson_files(path, pattern, time_interval):

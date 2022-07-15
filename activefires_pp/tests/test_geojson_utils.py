@@ -30,17 +30,33 @@ from trollsift import Parser
 
 from datetime import datetime
 import pytest
+import logging
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]}, "properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]}, "properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]}, "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
 
 
 @pytest.fixture
 def fake_geojson_file(tmp_path):
-    """Write fake yaml config file."""
+    """Write fake geojson file."""
     file_path = tmp_path / 'test_afimg_20220629_120026.geojson'
     with open(file_path, 'w') as fpt:
         fpt.write(TEST_GEOJSON_FILE_CONTENT)
 
+    yield file_path
+
+
+@pytest.fixture
+def fake_empty_geojson_file(tmp_path):
+    """Write fake empty geojson file."""
+    file_path = tmp_path / 'test_afimg_20220629_110913.geojson'
+    file_path.touch()
+    yield file_path
+
+
+@pytest.fixture
+def fake_nonexisting_geojson_file(tmp_path):
+    """Write non existing (geojson) file."""
+    file_path = tmp_path / 'test_afimg_20220629_110913.geojson'
     yield file_path
 
 
@@ -78,6 +94,26 @@ def test_read_and_get_geojson_data_from_file(fake_geojson_file):
     assert feature1['geometry'] == {"coordinates": [23.562864, 67.341919], "type": "Point"}
     assert feature1['properties'] == {"confidence": 8, "observation_time": "2022-06-29T14:01:08.850000",
                                       "platform_name": "NOAA-20", "power": 1.62920368, "tb": 325.2354126}
+
+
+def test_read_and_get_geojson_data_from_nonexisting_file(caplog, fake_nonexisting_geojson_file):
+    """Test reading a geojson file when file is not there."""
+    with caplog.at_level(logging.ERROR):
+        ffdata = read_geojson_data(fake_nonexisting_geojson_file)
+
+    assert ffdata is None
+    log_output = "No valid filename to read: {filename}".format(filename=fake_nonexisting_geojson_file)
+    assert log_output in caplog.text
+
+
+def test_read_and_get_geojson_data_from_empty_file(caplog, fake_empty_geojson_file):
+    """Test reading an empty geojson file and return the content."""
+    with caplog.at_level(logging.WARNING):
+        ffdata = read_geojson_data(fake_empty_geojson_file)
+
+    assert ffdata is None
+    log_output = "Geojson file invalid and cannot be read: {filename}".format(filename=fake_empty_geojson_file)
+    assert log_output in caplog.text
 
 
 def test_get_recent_geojson_files(fake_past_detections_dir):

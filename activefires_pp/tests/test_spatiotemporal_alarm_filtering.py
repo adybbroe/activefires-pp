@@ -338,3 +338,77 @@ def test_alarm_filter_runner_init(setup_comm, get_config):
                                     'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
                                     'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
                                     'restapi_url': 'https://xxx.smhi.se:xxxx'}
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.create_alarms_from_fire_detections')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner.send_alarms')
+def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(send_alarms, create_alarms, read_geojson,
+                                                                             get_filename_from_pmsg, setup_comm, get_config):
+    """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class."""
+    get_config.return_value = CONFIG_EXAMPLE
+    json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
+    read_geojson.return_value = json_test_data
+
+    alarm = {"features": {"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
+                          "properties": {"confidence": 8, "observation_time": "2021-06-19T02:58:45.700000+02:00",
+                                         "platform_name": "NOAA-20",
+                                         "power": 2.23312426,
+                                         "related_detection": False,
+                                         "tb": 310.37322998}, "type": "Feature"},
+             "type": "FeatureCollection"}
+    create_alarms.return_value = [alarm]
+
+    myconfigfile = "/my/config/file/path"
+
+    alarm_runner = AlarmFilterRunner(myconfigfile)
+
+    dummy_msg = None
+    result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
+    assert len(result) == 1
+    assert result[0] == alarm
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
+def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_firedata(read_geojson,
+                                                                              get_filename_from_pmsg, setup_comm, get_config):
+    """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class - no fires."""
+    get_config.return_value = CONFIG_EXAMPLE
+    read_geojson.return_value = None
+
+    myconfigfile = "/my/config/file/path"
+
+    alarm_runner = AlarmFilterRunner(myconfigfile)
+
+    dummy_msg = None
+    result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
+    assert result is None
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.create_alarms_from_fire_detections')
+def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_alarms(create_alarms, read_geojson,
+                                                                            get_filename_from_pmsg, setup_comm, get_config):
+    """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class - no alarms."""
+    get_config.return_value = CONFIG_EXAMPLE
+    json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
+    read_geojson.return_value = json_test_data
+
+    create_alarms.return_value = []
+
+    myconfigfile = "/my/config/file/path"
+
+    alarm_runner = AlarmFilterRunner(myconfigfile)
+
+    dummy_msg = None
+    result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
+    assert result is None

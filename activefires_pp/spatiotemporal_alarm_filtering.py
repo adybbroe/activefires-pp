@@ -146,7 +146,10 @@ class AlarmFilterRunner(Thread):
                     continue
 
                 generated_alarms = self.spatio_temporal_alarm_filtering(msg)
-                LOG.debug("Number of generated alarms: %d", len(generated_alarms))
+                if generated_alarms:
+                    LOG.debug("Number of generated alarms: %d", len(generated_alarms))
+                else:
+                    LOG.debug("No alarms generated!")
 
     def spatio_temporal_alarm_filtering(self, msg):
         """Spatial and temporal filtering of the fire detections and create and post the alarm.
