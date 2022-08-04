@@ -182,11 +182,8 @@ class AlarmFilterRunner(Thread):
             output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
             post_alarm(alarm, self.restapi_url)
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
-            if output_message:
-                LOG.debug("Sending message: %s", str(output_message))
-                self.publisher.send(str(output_message))
-            else:
-                LOG.debug("No message to send")
+            LOG.debug("Sending message: %s", str(output_message))
+            self.publisher.send(str(output_message))
 
     def close(self):
         """Shutdown the AlarmFilterRunner process."""
@@ -449,4 +446,4 @@ def _create_output_message(msg, topic, geojson, filename):
     to_send['file'] = filename.name
     to_send['uri'] = str(filename)
 
-    return Message(topic, 'info', to_send)
+    return Message(topic, 'file', to_send)
