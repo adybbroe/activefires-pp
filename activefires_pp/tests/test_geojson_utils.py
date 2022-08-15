@@ -124,13 +124,18 @@ def test_get_recent_geojson_files(fake_past_detections_dir):
     pattern = "sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson"
 
     recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
-    assert recent == ['sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson', 'sos_20210619_000651_0.geojson']
+    assert len(recent) == 3
+    assert recent[0] == 'sos_20210618_124819_0.geojson'
+    assert set(recent[1:3]) == set(['sos_20210619_000651_1.geojson', 'sos_20210619_000651_0.geojson'])
 
     starttime = datetime(2021, 6, 18, 12, 0)
     endtime = datetime(2021, 6, 19, 12, 0)
     recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
-    assert recent == ['sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson',
-                      'sos_20210619_000651_0.geojson', 'sos_20210619_005803_0.geojson']
+
+    assert len(recent) == 4
+    assert recent[0] == 'sos_20210618_124819_0.geojson'
+    assert recent[-1] == 'sos_20210619_005803_0.geojson'
+    assert set(recent[1:3]) == set(['sos_20210619_000651_1.geojson', 'sos_20210619_000651_0.geojson'])
 
     starttime = datetime(2022, 6, 18, 12, 0)
     endtime = datetime(2022, 6, 19, 12, 0)
