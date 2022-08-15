@@ -440,6 +440,7 @@ def _create_output_message(msg, topic, geojson, filename):
     to_send['platform_name'] = geojson['features']['properties']['platform_name']
     to_send['coordinates'] = geojson['features']['geometry']['coordinates']
     to_send['file'] = filename.name
+    to_send['format'] = 'geojson'
     to_send['uri'] = str(filename)
     to_send.pop('uid', None)
 
