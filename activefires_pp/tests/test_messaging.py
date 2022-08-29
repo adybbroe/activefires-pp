@@ -113,6 +113,7 @@ def test_create_output_message(tmp_path):
                                'platform_name': 'NOAA-20',
                                'sensor': 'viirs',
                                'data_processing_level': '2',
+                               'format': 'geojson',
                                'variant': 'DR',
                                'orig_orbit_number': 17530,
                                'origin': '172.29.4.164:9099',

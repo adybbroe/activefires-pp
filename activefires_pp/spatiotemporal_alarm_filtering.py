@@ -192,11 +192,8 @@ class AlarmFilterRunner(Thread):
                 LOG.error('Failed sending alarm!')
 
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
-            if output_message:
-                LOG.debug("Sending message: %s", str(output_message))
-                self.publisher.send(str(output_message))
-            else:
-                LOG.debug("No message to send")
+            LOG.debug("Sending message: %s", str(output_message))
+            self.publisher.send(str(output_message))
 
     def close(self):
         """Shutdown the AlarmFilterRunner process."""
@@ -451,10 +448,6 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
 def _create_output_message(msg, topic, geojson, filename):
     """Create the output message from the input message and the geojson payload."""
     to_send = msg.data.copy()
-    to_send.pop('file', None)
-    to_send.pop('uri', None)
-    to_send.pop('uid', None)
-    to_send.pop('format', None)
     to_send.pop('type', None)
     to_send['related_detection'] = geojson['features']['properties']['related_detection']
     to_send['power'] = geojson['features']['properties']['power']
@@ -462,6 +455,8 @@ def _create_output_message(msg, topic, geojson, filename):
     to_send['platform_name'] = geojson['features']['properties']['platform_name']
     to_send['coordinates'] = geojson['features']['geometry']['coordinates']
     to_send['file'] = filename.name
+    to_send['format'] = 'geojson'
     to_send['uri'] = str(filename)
+    to_send.pop('uid', None)
 
-    return Message(topic, 'info', to_send)
+    return Message(topic, 'file', to_send)
