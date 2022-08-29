@@ -285,7 +285,7 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, 1.2, 16.0)
 
-    assert len(alarms) == 0
+    assert len(alarms) == 1
     assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
     assert alarms[0]['features']['properties']['power'] == 2.23312426
     assert alarms[0]['features']['properties']['related_detection'] is False
@@ -351,6 +351,7 @@ def test_alarm_filter_runner_init_no_env(setup_comm, get_config, get_xauth):
     assert str(exec_info.value) == expected
 
 
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauth_environment_variable')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
@@ -358,8 +359,10 @@ def test_alarm_filter_runner_init_no_env(setup_comm, get_config, get_xauth):
 @patch('activefires_pp.spatiotemporal_alarm_filtering.create_alarms_from_fire_detections')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner.send_alarms')
 def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(send_alarms, create_alarms, read_geojson,
-                                                                             get_filename_from_pmsg, setup_comm, get_config):
+                                                                             get_filename_from_pmsg, setup_comm,
+                                                                             get_config, get_xauth):
     """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class."""
+    get_xauth.return_value = 'some-token'
     get_config.return_value = CONFIG_EXAMPLE
     json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
     read_geojson.return_value = json_test_data
@@ -383,13 +386,16 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(sen
     assert result[0] == alarm
 
 
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauth_environment_variable')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
 def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_firedata(read_geojson,
-                                                                              get_filename_from_pmsg, setup_comm, get_config):
+                                                                              get_filename_from_pmsg, setup_comm,
+                                                                              get_config, get_xauth):
     """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class - no fires."""
+    get_xauth.return_value = 'some-token'
     get_config.return_value = CONFIG_EXAMPLE
     read_geojson.return_value = None
 
@@ -402,14 +408,17 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_firedata(re
     assert result is None
 
 
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauth_environment_variable')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.create_alarms_from_fire_detections')
 def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_alarms(create_alarms, read_geojson,
-                                                                            get_filename_from_pmsg, setup_comm, get_config):
+                                                                            get_filename_from_pmsg, setup_comm,
+                                                                            get_config, get_xauth):
     """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class - no alarms."""
+    get_xauth.return_value = 'some-token'
     get_config.return_value = CONFIG_EXAMPLE
     json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
     read_geojson.return_value = json_test_data
