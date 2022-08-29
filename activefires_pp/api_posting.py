@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Post geojson formatted Alarms to a ReST-API
-"""
+"""Post geojson formatted Alarms to a ReST-API."""
 
 import logging
 import requests
@@ -37,12 +36,11 @@ LOG = logging.getLogger(__name__)
 
 def post_alarm(geojson_data, api_url, xauth=None):
     """Post an Alarm to a rest-api stored as a geojson file."""
-
     if xauth is None:
         headers = {"Content-Type": "application/json; charset=utf-8"}
     else:
         headers = {"Content-Type": "application/json; charset=utf-8",
-                   "X-Auth-Token": xauth}
+                   "x-auth-satellite-alarm": xauth}
 
     response = requests.post(api_url,
                              headers=headers,
