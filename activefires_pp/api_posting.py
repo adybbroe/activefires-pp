@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam.Dybbroe
+# Copyright (c) 2022 Adam Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam Dybbroe <Firstname.Lastname@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,31 @@
 """Post geojson formatted Alarms to a ReST-API
 """
 
+import logging
+import requests
 
-def post_alarm(geojson_data, url):
+# Exempel på post:
+# {"type": "Feature", "geometry": {"type": "Point", "coordinates": [15.860621, 61.403141]},
+# "properties": {"power": 3.09576535, "tb": 328.81933594, "confidence": 8,
+#                "observation_time": "2022-08-02T03:27:43.850000",
+#                "platform_name": "NOAA-20",  "related_detection": false}}
+
+LOG = logging.getLogger(__name__)
+
+
+def post_alarm(geojson_data, api_url, xauth=None):
     """Post an Alarm to a rest-api stored as a geojson file."""
-    pass
+
+    if xauth is None:
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+    else:
+        headers = {"Content-Type": "application/json; charset=utf-8",
+                   "X-Auth-Token": xauth}
+
+    response = requests.post(api_url,
+                             headers=headers,
+                             json=geojson_data)
+
+    LOG.info("Alarm posted: Response = %s", str(response))
+    LOG.debug("Status code = %d", response.status_code)
+    return response.ok

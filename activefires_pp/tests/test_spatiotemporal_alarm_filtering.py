@@ -24,8 +24,10 @@
 """
 
 import pytest
+import logging
 from unittest.mock import patch
 import pathlib
+from geojson import FeatureCollection
 from geojson import dump
 import json
 from activefires_pp.geojson_utils import read_geojson_data
@@ -35,6 +37,7 @@ from activefires_pp.spatiotemporal_alarm_filtering import split_large_fire_clust
 from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_from_collection
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
+from activefires_pp.api_posting import post_alarm
 
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]}, "properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]}, "properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]}, "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
@@ -225,7 +228,6 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     # Default distance threshold but disregarding past alarms:
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, 1.2, 0.0)
-
     assert len(alarms) == 3
     assert alarms[0]['features']['geometry']['coordinates'] == [16.247334, 57.172443]
     assert alarms[0]['features']['properties']['power'] == 5.85325146
@@ -282,7 +284,8 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
 
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, 1.2, 16.0)
-    assert len(alarms) == 1
+
+    assert len(alarms) == 0
     assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
     assert alarms[0]['features']['properties']['power'] == 2.23312426
     assert alarms[0]['features']['properties']['related_detection'] is False
@@ -292,6 +295,7 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
 
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, 1.2)
+
     assert len(alarms) == 1
     assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
     assert alarms[0]['features']['properties']['power'] == 2.23312426
@@ -301,11 +305,13 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
 
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauth_environment_variable')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
-def test_alarm_filter_runner_init(setup_comm, get_config):
+def test_alarm_filter_runner_init(setup_comm, get_config, get_xauth):
     """Test initialize the AlarmFilterRunner class."""
     get_config.return_value = CONFIG_EXAMPLE
+    get_xauth.return_value = 'some-token'
 
     myconfigfile = "/my/config/file/path"
 
@@ -326,6 +332,23 @@ def test_alarm_filter_runner_init(setup_comm, get_config):
                                     'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
                                     'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
                                     'restapi_url': 'https://xxx.smhi.se:xxxx'}
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauth_environment_variable')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+def test_alarm_filter_runner_init_no_env(setup_comm, get_config, get_xauth):
+    """Test initialize the AlarmFilterRunner class."""
+    get_config.return_value = CONFIG_EXAMPLE
+    get_xauth.return_value = None
+
+    myconfigfile = "/my/config/file/path"
+
+    with pytest.raises(OSError) as exec_info:
+        _ = AlarmFilterRunner(myconfigfile)
+
+    expected = "Environment variable XAUTH_SMHI_FIREALARMS_REST_API not set!"
+    assert str(exec_info.value) == expected
 
 
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
@@ -400,3 +423,26 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_alarms(crea
     dummy_msg = None
     result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
     assert result is None
+
+
+def test_send_alarm_post_ok(fake_past_detections_dir):
+    """Test send alarm."""
+
+    alarm = json.loads(PAST_ALARMS_MONSTERAS3)
+    restapi_url = "https://httpbin.org/post"
+
+    retv = post_alarm(alarm, restapi_url)
+    assert retv is True
+
+
+def test_send_alarm_post_log_messages(caplog, fake_past_detections_dir):
+    """Test send alarm."""
+
+    alarm = json.loads(PAST_ALARMS_MONSTERAS3)
+    restapi_url = "https://httpbin.org/post"
+
+    with caplog.at_level(logging.INFO):
+        retv = post_alarm(alarm, restapi_url)
+
+    log_output = "Alarm posted: Response = <Response [200]>"
+    assert log_output in caplog.text

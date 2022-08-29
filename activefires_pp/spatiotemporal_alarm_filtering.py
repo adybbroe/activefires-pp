@@ -36,6 +36,7 @@ are:
 
 """
 
+import os
 import logging
 import signal
 from queue import Empty
@@ -84,6 +85,10 @@ class AlarmFilterRunner(Thread):
 
         self.sos_alarms_file_pattern = self.options['geojson_file_pattern_alarms']
         self.restapi_url = self.options['restapi_url']
+        self.restapi_xauth = get_xauth_environment_variable()
+        if self.restapi_xauth is None:
+            raise OSError("Environment variable XAUTH_SMHI_FIREALARMS_REST_API not set!")
+
         self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
 
         self.listener = None
@@ -180,7 +185,12 @@ class AlarmFilterRunner(Thread):
             # 1) Create the filename
             # 2) Wite to a file
             output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
-            post_alarm(alarm, self.restapi_url)
+            status = post_alarm(alarm, self.restapi_url, self.restapi_xauth)
+            if status:
+                LOG.info('Alarm sent - status OK')
+            else:
+                LOG.error('Failed sending alarm!')
+
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
             if output_message:
                 LOG.debug("Sending message: %s", str(output_message))
@@ -201,6 +211,11 @@ class AlarmFilterRunner(Thread):
                 self.publisher.stop()
             except Exception:
                 LOG.exception("Couldn't stop publisher.")
+
+
+def get_xauth_environment_variable():
+    """Get the environment variable for the X-Authentication-token needed for posting to the API."""
+    return os.environ.get('XAUTH_SMHI_FIREALARMS_REST_API')
 
 
 def dump_collection(idx, features):
