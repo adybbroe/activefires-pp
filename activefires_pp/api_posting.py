@@ -25,7 +25,7 @@
 import logging
 import requests
 
-# Exempel på post:
+# Data payload to be posted - Example:
 # {"type": "Feature", "geometry": {"type": "Point", "coordinates": [15.860621, 61.403141]},
 # "properties": {"power": 3.09576535, "tb": 328.81933594, "confidence": 8,
 #                "observation_time": "2022-08-02T03:27:43.850000",
@@ -48,4 +48,4 @@ def post_alarm(geojson_data, api_url, xauth=None):
 
     LOG.info("Alarm posted: Response = %s", str(response))
     LOG.debug("Status code = %d", response.status_code)
-    return response.ok
+    response.raise_for_status()

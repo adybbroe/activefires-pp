@@ -41,6 +41,7 @@ import logging
 import signal
 from queue import Empty
 from threading import Thread
+from requests.exceptions import HTTPError
 from posttroll.listener import ListenerContainer
 from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
@@ -86,8 +87,6 @@ class AlarmFilterRunner(Thread):
         self.sos_alarms_file_pattern = self.options['geojson_file_pattern_alarms']
         self.restapi_url = self.options['restapi_url']
         self.restapi_xauth = get_xauth_environment_variable()
-        if self.restapi_xauth is None:
-            raise OSError("Environment variable XAUTH_SMHI_FIREALARMS_REST_API not set!")
 
         self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
 
@@ -184,13 +183,12 @@ class AlarmFilterRunner(Thread):
             # 1) Create the filename
             # 2) Wite to a file
             output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
-            status = post_alarm(alarm['features'],
-                                self.restapi_url, self.restapi_xauth)
-            if status:
+            try:
+                post_alarm(alarm['features'], self.restapi_url, self.restapi_xauth)
                 LOG.info('Alarm sent - status OK')
-            else:
-                LOG.error('Failed sending alarm!')
-                LOG.debug('Data: %s', str(alarm['features']))
+            except HTTPError:
+                LOG.exception('Failed sending alarm!')
+                LOG.error('Data: %s', str(alarm['features']))
 
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
             LOG.debug("Sending message: %s", str(output_message))
@@ -213,7 +211,11 @@ class AlarmFilterRunner(Thread):
 
 def get_xauth_environment_variable():
     """Get the environment variable for the X-Authentication-token needed for posting to the API."""
-    return os.environ.get('XAUTH_SMHI_FIREALARMS_REST_API')
+    restapi_xauth = os.environ.get('XAUTH_FIREALARMS_REST_API')
+    if restapi_xauth is None:
+        raise OSError("Environment variable XAUTH_FIREALARMS_REST_API not set!")
+
+    return restapi_xauth
 
 
 def dump_collection(idx, features):

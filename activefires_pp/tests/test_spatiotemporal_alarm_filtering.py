@@ -25,6 +25,7 @@
 import pytest
 import logging
 from unittest.mock import patch
+import requests
 import pathlib
 import json
 from activefires_pp.geojson_utils import read_geojson_data
@@ -34,6 +35,7 @@ from activefires_pp.spatiotemporal_alarm_filtering import split_large_fire_clust
 from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_from_collection
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
+from activefires_pp.spatiotemporal_alarm_filtering import get_xauth_environment_variable
 from activefires_pp.api_posting import post_alarm
 
 
@@ -480,20 +482,15 @@ def test_alarm_filter_runner_init(setup_comm, get_config, get_xauth):
                                     'restapi_url': 'https://xxx.smhi.se:xxxx'}
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauth_environment_variable')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
-def test_alarm_filter_runner_init_no_env(setup_comm, get_config, get_xauth):
+@patch('activefires_pp.spatiotemporal_alarm_filtering.os.environ.get')
+def test_alarm_filter_runner_init_no_env(os_environ_get):
     """Test initialize the AlarmFilterRunner class."""
-    get_config.return_value = CONFIG_EXAMPLE
-    get_xauth.return_value = None
-
-    myconfigfile = "/my/config/file/path"
+    os_environ_get.return_value = None
 
     with pytest.raises(OSError) as exec_info:
-        _ = AlarmFilterRunner(myconfigfile)
+        _ = get_xauth_environment_variable()
 
-    expected = "Environment variable XAUTH_SMHI_FIREALARMS_REST_API not set!"
+    expected = "Environment variable XAUTH_FIREALARMS_REST_API not set!"
     assert str(exec_info.value) == expected
 
 
@@ -586,8 +583,33 @@ def test_send_alarm_post_ok(fake_past_detections_dir):
     alarm = features['features']
     restapi_url = "https://httpbin.org/post"
 
-    retv = post_alarm(alarm, restapi_url)
-    assert retv is True
+    post_alarm(alarm, restapi_url)
+
+
+def test_send_alarm_post_raise_exception(fake_past_detections_dir):
+    """Test send alarm."""
+    features = json.loads(PAST_ALARMS_MONSTERAS3)
+    alarm = features['features']
+    restapi_url = "https://httpbin.org/status/:500"
+
+    with pytest.raises(Exception) as exec_info:
+        post_alarm(alarm, restapi_url)
+
+    assert exec_info.type == requests.exceptions.HTTPError
+
+    restapi_url = "https://httpbin.org/status/:300"
+
+    with pytest.raises(Exception) as exec_info:
+        post_alarm(alarm, restapi_url)
+
+    assert exec_info.type == requests.exceptions.HTTPError
+
+    restapi_url = "https://httpbin.org/status/:400"
+
+    with pytest.raises(Exception) as exec_info:
+        post_alarm(alarm, restapi_url)
+
+    assert exec_info.type == requests.exceptions.HTTPError
 
 
 def test_send_alarm_post_log_messages(caplog, fake_past_detections_dir):
