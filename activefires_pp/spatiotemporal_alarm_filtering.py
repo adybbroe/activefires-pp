@@ -86,7 +86,8 @@ class AlarmFilterRunner(Thread):
 
         self.sos_alarms_file_pattern = self.options['geojson_file_pattern_alarms']
         self.restapi_url = self.options['restapi_url']
-        self.restapi_xauth = get_xauth_environment_variable()
+        _xauth_filepath = get_xauthentication_filepath_from_environment()
+        self._xauth_token = _get_xauthentication_token(_xauth_filepath)
 
         self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
 
@@ -184,7 +185,7 @@ class AlarmFilterRunner(Thread):
             # 2) Wite to a file
             output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
             try:
-                post_alarm(alarm['features'], self.restapi_url, self.restapi_xauth)
+                post_alarm(alarm['features'], self.restapi_url, self._xauth_token)
                 LOG.info('Alarm sent - status OK')
             except HTTPError:
                 LOG.exception('Failed sending alarm!')
@@ -209,13 +210,21 @@ class AlarmFilterRunner(Thread):
                 LOG.exception("Couldn't stop publisher.")
 
 
-def get_xauth_environment_variable():
-    """Get the environment variable for the X-Authentication-token needed for posting to the API."""
-    restapi_xauth = os.environ.get('XAUTH_FIREALARMS_REST_API')
-    if restapi_xauth is None:
-        raise OSError("Environment variable XAUTH_FIREALARMS_REST_API not set!")
+def get_xauthentication_filepath_from_environment():
+    """Get the filename with the X-Authentication-token from environment."""
+    xauth_filepath = os.environ.get('FIREALARMS_XAUTH_FILEPATH')
+    if xauth_filepath is None:
+        raise OSError("Environment variable FIREALARMS_XAUTH_FILEPATH not set!")
 
-    return restapi_xauth
+    return xauth_filepath
+
+
+def _get_xauthentication_token(xauth_filepath):
+    """Get the X-Authentication-token needed for posting to the API."""
+    with open(xauth_filepath, 'r') as fpt:
+        xauth_token = fpt.readline()
+
+    return xauth_token
 
 
 def dump_collection(idx, features):
