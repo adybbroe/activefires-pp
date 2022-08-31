@@ -56,6 +56,8 @@ from pathlib import Path
 
 from activefires_pp.utils import get_filename_from_posttroll_message
 from activefires_pp.config import read_config
+from activefires_pp.config import get_xauthentication_token
+
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.geojson_utils import get_recent_geojson_files
 from activefires_pp.geojson_utils import store_geojson_alarm
@@ -87,7 +89,7 @@ class AlarmFilterRunner(Thread):
         self.sos_alarms_file_pattern = self.options['geojson_file_pattern_alarms']
         self.restapi_url = self.options['restapi_url']
         _xauth_filepath = get_xauthentication_filepath_from_environment()
-        self._xauth_token = _get_xauthentication_token(_xauth_filepath)
+        self._xauth_token = get_xauthentication_token(_xauth_filepath)
 
         self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
 
@@ -217,14 +219,6 @@ def get_xauthentication_filepath_from_environment():
         raise OSError("Environment variable FIREALARMS_XAUTH_FILEPATH not set!")
 
     return xauth_filepath
-
-
-def _get_xauthentication_token(xauth_filepath):
-    """Get the X-Authentication-token needed for posting to the API."""
-    with open(xauth_filepath, 'r') as fpt:
-        xauth_token = fpt.readline()
-
-    return xauth_token
 
 
 def dump_collection(idx, features):

@@ -20,11 +20,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Test getting the yaml configurations from file.
-"""
+"""Test getting the yaml configurations from file."""
 
 import pytest
 from activefires_pp.config import read_config
+from activefires_pp.config import get_xauthentication_token
+
 
 TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
 subscribe_topics: /VIIRS/L2/Fires/PP/National
@@ -36,6 +37,20 @@ fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
 
 restapi_url: "https://xxx.smhi.se:xxxx"
 """
+
+TEST_YAML_TOKENS = """xauth_tokens:
+  x-auth-satellite-alarm : 'my-token'
+"""
+
+
+@pytest.fixture
+def fake_token_file(tmp_path):
+    """Write fake token file."""
+    file_path = tmp_path / '.sometokenfile.yaml'
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_YAML_TOKENS)
+
+    yield file_path
 
 
 @pytest.fixture
@@ -56,3 +71,9 @@ def test_get_yaml_configuration(fake_yamlconfig_file):
     assert config['geojson_file_pattern_alarms'] == 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
     assert config['fire_alarms_dir'] == '/path/where/the/filtered/alarms/will/be/stored'
     assert config['restapi_url'] == 'https://xxx.smhi.se:xxxx'
+
+
+def test_get_xauthentication_token(fake_token_file):
+    """Test getting the xauthentication token from a file."""
+    fake_token = get_xauthentication_token(fake_token_file)
+    assert fake_token == 'my-token'

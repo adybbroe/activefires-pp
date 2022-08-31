@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Handling the yaml configurations.
-"""
+"""Handling the yaml configurations."""
 
 import yaml
 from yaml import UnsafeLoader
@@ -33,3 +32,11 @@ def read_config(config_filepath):
         config = yaml.load(fp_, Loader=UnsafeLoader)
 
     return config
+
+
+def get_xauthentication_token(xauth_filepath):
+    """Get the X-Authentication-token needed for posting to the API."""
+    with open(xauth_filepath, 'r') as fp_:
+        tokens = yaml.load(fp_, Loader=UnsafeLoader)
+
+    return tokens['xauth_tokens']['x-auth-satellite-alarm']

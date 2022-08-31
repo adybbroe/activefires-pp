@@ -36,7 +36,6 @@ from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_f
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 from activefires_pp.spatiotemporal_alarm_filtering import get_xauthentication_filepath_from_environment
-from activefires_pp.spatiotemporal_alarm_filtering import _get_xauthentication_token
 from activefires_pp.api_posting import post_alarm
 
 
@@ -228,16 +227,6 @@ CONFIG_EXAMPLE = {'subscribe_topics': '/VIIRS/L2/Fires/PP/National',
                   'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
                   'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
                   'restapi_url': 'https://xxx.smhi.se:xxxx'}
-
-
-@pytest.fixture
-def fake_token_file(tmp_path):
-    """Return file path to a file with a dummy token."""
-    file_path = tmp_path / '.sometokenfile'
-    with open(file_path, 'w') as fpt:
-        fpt.writelines(['some_fake_token'])
-
-    yield file_path
 
 
 @pytest.fixture
@@ -476,13 +465,7 @@ def test_alarm_filter_runner_init_no_env(os_environ_get):
     assert str(exec_info.value) == expected
 
 
-def test_get_xauthentication_token(fake_token_file):
-    """Test getting the xauthentication token from a file."""
-    fake_token = _get_xauthentication_token(fake_token_file)
-    assert fake_token == 'some_fake_token'
-
-
-@patch('activefires_pp.spatiotemporal_alarm_filtering._get_xauthentication_token')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
@@ -515,7 +498,7 @@ def test_alarm_filter_runner_init(setup_comm,
                                     'restapi_url': 'https://xxx.smhi.se:xxxx'}
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering._get_xauthentication_token')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
@@ -553,7 +536,7 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(sen
     assert result[0] == alarm
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering._get_xauthentication_token')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
@@ -578,7 +561,7 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_firedata(re
     assert result is None
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering._get_xauthentication_token')
+@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
