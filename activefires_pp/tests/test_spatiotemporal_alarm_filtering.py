@@ -35,6 +35,9 @@ from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_al
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 from activefires_pp.spatiotemporal_alarm_filtering import get_xauthentication_filepath_from_environment
 
+#from activefires_pp.tests.test_config import fake_yamlconfig_file  # noqa
+#from activefires_pp.tests.test_config import fake_token_file  # noqa
+
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]},
@@ -461,23 +464,16 @@ def test_alarm_filter_runner_init_no_env(monkeypatch):
     assert str(exec_info.value) == expected
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 def test_alarm_filter_runner_init(setup_comm,
-                                  get_config, get_xauth_filepath,
-                                  get_xauth_token):
+                                  monkeypatch, fake_yamlconfig_file,
+                                  fake_token_file):
     """Test initialize the AlarmFilterRunner class."""
-    get_xauth_filepath.return_value = 'some_filename'
-    get_xauth_token.return_value = 'some-token'
-    get_config.return_value = CONFIG_EXAMPLE
+    monkeypatch.setenv("FIREALARMS_XAUTH_FILEPATH", str(fake_token_file))
 
-    myconfigfile = "/my/config/file/path"
+    alarm_runner = AlarmFilterRunner(str(fake_yamlconfig_file))
 
-    alarm_runner = AlarmFilterRunner(myconfigfile)
-
-    assert alarm_runner.configfile == myconfigfile
+    assert alarm_runner.configfile == str(fake_yamlconfig_file)
     assert type(alarm_runner.fire_alarms_dir) is pathlib.PosixPath
     assert str(alarm_runner.fire_alarms_dir) == "/path/where/the/filtered/alarms/will/be/stored"
     assert alarm_runner.input_topic == '/VIIRS/L2/Fires/PP/National'
@@ -494,9 +490,6 @@ def test_alarm_filter_runner_init(setup_comm,
                                     'restapi_url': 'https://xxx.smhi.se:xxxx'}
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
@@ -504,12 +497,11 @@ def test_alarm_filter_runner_init(setup_comm,
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner.send_alarms')
 def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(send_alarms, create_alarms, read_geojson,
                                                                              get_filename_from_pmsg, setup_comm,
-                                                                             get_config, get_xauth_filepath,
-                                                                             get_xauth_token):
+                                                                             monkeypatch, fake_yamlconfig_file,
+                                                                             fake_token_file):
     """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class."""
-    get_xauth_filepath.return_value = 'some_filename'
-    get_xauth_token.return_value = 'some-token'
-    get_config.return_value = CONFIG_EXAMPLE
+    monkeypatch.setenv("FIREALARMS_XAUTH_FILEPATH", str(fake_token_file))
+
     json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
     read_geojson.return_value = json_test_data
 
@@ -522,9 +514,7 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(sen
              "type": "FeatureCollection"}
     create_alarms.return_value = [alarm]
 
-    myconfigfile = "/my/config/file/path"
-
-    alarm_runner = AlarmFilterRunner(myconfigfile)
+    alarm_runner = AlarmFilterRunner(str(fake_yamlconfig_file))
 
     dummy_msg = None
     result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
@@ -532,54 +522,40 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(sen
     assert result[0] == alarm
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
 def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_firedata(read_geojson,
                                                                               get_filename_from_pmsg, setup_comm,
-                                                                              get_config, get_xauth_filepath,
-                                                                              get_xauth_token):
+                                                                              monkeypatch, fake_yamlconfig_file,
+                                                                              fake_token_file):
     """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class - no fires."""
-    get_xauth_filepath.return_value = 'some_filename'
-    get_xauth_token.return_value = 'some-token'
-    get_config.return_value = CONFIG_EXAMPLE
+    monkeypatch.setenv("FIREALARMS_XAUTH_FILEPATH", str(fake_token_file))
     read_geojson.return_value = None
 
-    myconfigfile = "/my/config/file/path"
-
-    alarm_runner = AlarmFilterRunner(myconfigfile)
+    alarm_runner = AlarmFilterRunner(str(fake_yamlconfig_file))
 
     dummy_msg = None
     result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
     assert result is None
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_token')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.get_xauthentication_filepath_from_environment')
-@patch('activefires_pp.spatiotemporal_alarm_filtering.read_config')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.create_alarms_from_fire_detections')
 def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_alarms(create_alarms, read_geojson,
                                                                             get_filename_from_pmsg, setup_comm,
-                                                                            get_config, get_xauth_filepath,
-                                                                            get_xauth_token):
+                                                                            monkeypatch, fake_yamlconfig_file,
+                                                                            fake_token_file):
     """Test run the spatio_temporal_alarm_filtering method of the AlarmFilterRunner class - no alarms."""
-    get_xauth_filepath.return_value = 'some_filename'
-    get_xauth_token.return_value = 'some-token'
-    get_config.return_value = CONFIG_EXAMPLE
+    monkeypatch.setenv("FIREALARMS_XAUTH_FILEPATH", str(fake_token_file))
     json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
     read_geojson.return_value = json_test_data
 
     create_alarms.return_value = []
 
-    myconfigfile = "/my/config/file/path"
-
-    alarm_runner = AlarmFilterRunner(myconfigfile)
+    alarm_runner = AlarmFilterRunner(str(fake_yamlconfig_file))
 
     dummy_msg = None
     result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
