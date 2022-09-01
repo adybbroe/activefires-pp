@@ -23,9 +23,7 @@
 """Testing the spatio-temporal alarm filtering."""
 
 import pytest
-import logging
 from unittest.mock import patch
-import requests
 import pathlib
 import json
 from activefires_pp.geojson_utils import read_geojson_data
@@ -36,7 +34,6 @@ from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_f
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 from activefires_pp.spatiotemporal_alarm_filtering import get_xauthentication_filepath_from_environment
-from activefires_pp.api_posting import post_alarm
 
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
@@ -588,51 +585,3 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_alarms(crea
     dummy_msg = None
     result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
     assert result is None
-
-
-def test_send_alarm_post_ok(fake_past_detections_dir):
-    """Test send alarm."""
-    features = json.loads(PAST_ALARMS_MONSTERAS3)
-    alarm = features['features']
-    restapi_url = "https://httpbin.org/post"
-
-    post_alarm(alarm, restapi_url)
-
-
-def test_send_alarm_post_raise_exception(fake_past_detections_dir):
-    """Test send alarm."""
-    features = json.loads(PAST_ALARMS_MONSTERAS3)
-    alarm = features['features']
-    restapi_url = "https://httpbin.org/status/:500"
-
-    with pytest.raises(Exception) as exec_info:
-        post_alarm(alarm, restapi_url)
-
-    assert exec_info.type == requests.exceptions.HTTPError
-
-    restapi_url = "https://httpbin.org/status/:300"
-
-    with pytest.raises(Exception) as exec_info:
-        post_alarm(alarm, restapi_url)
-
-    assert exec_info.type == requests.exceptions.HTTPError
-
-    restapi_url = "https://httpbin.org/status/:400"
-
-    with pytest.raises(Exception) as exec_info:
-        post_alarm(alarm, restapi_url)
-
-    assert exec_info.type == requests.exceptions.HTTPError
-
-
-def test_send_alarm_post_log_messages(caplog, fake_past_detections_dir):
-    """Test send alarm."""
-    features = json.loads(PAST_ALARMS_MONSTERAS3)
-    alarm = features['features']
-    restapi_url = "https://httpbin.org/post"
-
-    with caplog.at_level(logging.INFO):
-        _ = post_alarm(alarm, restapi_url)
-
-    log_output = "Alarm posted: Response = <Response [200]>"
-    assert log_output in caplog.text
