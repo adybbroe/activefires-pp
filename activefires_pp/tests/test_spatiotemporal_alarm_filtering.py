@@ -453,10 +453,9 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
 
-@patch('activefires_pp.spatiotemporal_alarm_filtering.os.environ.get')
-def test_alarm_filter_runner_init_no_env(os_environ_get):
+def test_alarm_filter_runner_init_no_env(monkeypatch):
     """Test initialize the AlarmFilterRunner class."""
-    os_environ_get.return_value = None
+    monkeypatch.delenv("FIREALARMS_XAUTH_FILEPATH", raising=False)
 
     with pytest.raises(OSError) as exec_info:
         _ = get_xauthentication_filepath_from_environment()
