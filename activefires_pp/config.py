@@ -23,7 +23,7 @@
 """Handling the yaml configurations."""
 
 import yaml
-from yaml import UnsafeLoader
+from yaml import UnsafeLoader, Loader
 
 
 def read_config(config_filepath):
@@ -37,6 +37,6 @@ def read_config(config_filepath):
 def get_xauthentication_token(xauth_filepath):
     """Get the X-Authentication-token needed for posting to the API."""
     with open(xauth_filepath, 'r') as fp_:
-        tokens = yaml.load(fp_, Loader=UnsafeLoader)
+        tokens = yaml.load(fp_, Loader=Loader)
 
     return tokens['xauth_tokens']['x-auth-satellite-alarm']
