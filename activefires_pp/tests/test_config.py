@@ -22,45 +22,8 @@
 
 """Test getting the yaml configurations from file."""
 
-import pytest
 from activefires_pp.config import read_config
 from activefires_pp.config import get_xauthentication_token
-
-
-TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
-subscribe_topics: /VIIRS/L2/Fires/PP/National
-publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
-
-geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
-
-fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
-
-restapi_url: "https://xxx.smhi.se:xxxx"
-"""
-
-TEST_YAML_TOKENS = """xauth_tokens:
-  x-auth-satellite-alarm : 'my-token'
-"""
-
-
-@pytest.fixture
-def fake_token_file(tmp_path):
-    """Write fake token file."""
-    file_path = tmp_path / '.sometokenfile.yaml'
-    with open(file_path, 'w') as fpt:
-        fpt.write(TEST_YAML_TOKENS)
-
-    yield file_path
-
-
-@pytest.fixture
-def fake_yamlconfig_file(tmp_path):
-    """Write fake yaml config file."""
-    file_path = tmp_path / 'test_alarm_filtering_config.yaml'
-    with open(file_path, 'w') as fpt:
-        fpt.write(TEST_YAML_CONFIG_CONTENT)
-
-    yield file_path
 
 
 def test_get_yaml_configuration(fake_yamlconfig_file):

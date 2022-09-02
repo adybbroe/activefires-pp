@@ -35,20 +35,8 @@ from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_al
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 from activefires_pp.spatiotemporal_alarm_filtering import get_xauthentication_filepath_from_environment
 
-#from activefires_pp.tests.test_config import fake_yamlconfig_file  # noqa
-#from activefires_pp.tests.test_config import fake_token_file  # noqa
+from activefires_pp.tests.conftest import TEST_GEOJSON_FILE_CONTENT_MONSTERAS
 
-
-TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
-[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]},
-"properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8,
-"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]},
-"properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8,
-"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]},
-"properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8,
-"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
 
 # afimg_20220629_110913.geojson
 TEST_GEOJSON_FILE_CONTENT2 = """{"type": "FeatureCollection", "features":
@@ -80,51 +68,6 @@ TEST_GEOJSON_FILE_CONTENT5 = """{"type": "FeatureCollection", "features":
 "properties": {"power": 9.46942616, "tb": 348.74557495, "confidence": 8,
 "observation_time": "2022-06-29T11:30:20.950000", "platform_name": "Suomi-NPP"}}]}"""
 
-# AFIMG_NOAA-20_20210619_005803_sweden.geojson
-TEST_GEOJSON_FILE_CONTENT_MONSTERAS = """{"type": "FeatureCollection", "features":
-[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.240452, 57.17329]},
-"properties": {"power": 4.19946575, "tb": 336.38024902, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.247334, 57.172443]},
-"properties": {"power": 5.85325146, "tb": 339.84768677, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.242519, 57.17498]},
-"properties": {"power": 3.34151864, "tb": 316.57772827, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.249384, 57.174122]},
-"properties": {"power": 3.34151864, "tb": 310.37808228, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.241102, 57.171574]},
-"properties": {"power": 3.34151864, "tb": 339.86465454, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.247967, 57.170712]},
-"properties": {"power": 3.34151864, "tb": 335.95074463, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.246538, 57.167309]},
-"properties": {"power": 3.10640526, "tb": 337.62503052, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.239674, 57.168167]},
-"properties": {"power": 3.10640526, "tb": 305.36495972, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245104, 57.163902]},
-"properties": {"power": 3.10640526, "tb": 336.21279907, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.251965, 57.16304]},
-"properties": {"power": 2.40693879, "tb": 306.66555786, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.250517, 57.159637]},
-"properties": {"power": 2.23312426, "tb": 325.92211914, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.24366, 57.160496]},
-"properties": {"power": 1.51176202, "tb": 317.16009521, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.242212, 57.157097]},
-"properties": {"power": 1.51176202, "tb": 303.77804565, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.249069, 57.156235]},
-"properties": {"power": 2.23312426, "tb": 310.37322998, "confidence": 8,
-"observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}}]}"""
-
 TEST_MONSTERAS_FIRST_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.240452, 57.17329]},
 "properties": {"power": 4.19946575, "tb": 336.38024902, "confidence": 8,
@@ -150,6 +93,7 @@ TEST_MONSTERAS_FIRST_COLLECTION = """{"type": "FeatureCollection", "features":
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.239674, 57.168167]},
 "properties": {"power": 3.10640526, "tb": 305.36495972, "confidence": 8,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}}]}"""
+
 
 TEST_MONSTERAS_SECOND_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245104, 57.163902]},
@@ -205,68 +149,12 @@ TEST_MONSTERAS_PREVIOUS2_COLLECTION = """{"type": "FeatureCollection", "features
 "properties": {"power": 2.87395763, "tb": 330.10293579, "confidence": 8,
 "observation_time": "2021-06-18T14:49:01.750000+02:00", "platform_name": "NOAA-20"}}]}"""
 
-# Past alarms:
-PAST_ALARMS_MONSTERAS1 = """{"type": "FeatureCollection", "features":
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.246222, 57.175987]},
-"properties": {"power": 1.83814871, "tb": 302.3949585, "confidence": 8,
-"observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}}"""
-
-PAST_ALARMS_MONSTERAS2 = """{"type": "FeatureCollection", "features":
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245516, 57.1651]},
-"properties": {"power": 2.94999027, "tb": 324.5098877, "confidence": 8,
-"observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}}"""
-
-PAST_ALARMS_MONSTERAS3 = """{"features": {"geometry": {"coordinates": [16.252192, 57.15242], "type": "Point"},
-"properties": {"confidence": 8, "observation_time": "2021-06-18T14:49:01.750000+02:00",
-"platform_name": "NOAA-20", "related_detection": false, "power": 2.87395763, "tb": 330.10293579},
-"type": "Feature"}, "type": "FeatureCollection"}"""
-
 
 CONFIG_EXAMPLE = {'subscribe_topics': '/VIIRS/L2/Fires/PP/National',
                   'publish_topic': '/VIIRS/L2/Fires/PP/SOSAlarm',
                   'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
                   'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
                   'restapi_url': 'https://xxx.smhi.se:xxxx'}
-
-
-@pytest.fixture
-def fake_geojson_file_many_detections(tmp_path):
-    """Write fake geojson file with many close detections."""
-    file_path = tmp_path / 'test_afimg_NOAA-20_20210619_005803_sweden.geojson'
-    with open(file_path, 'w') as fpt:
-        fpt.write(TEST_GEOJSON_FILE_CONTENT_MONSTERAS)
-
-    yield file_path
-
-
-@pytest.fixture
-def fake_geojson_file(tmp_path):
-    """Write fake geojson file."""
-    file_path = tmp_path / 'test_afimg_20220629_120026.geojson'
-    with open(file_path, 'w') as fpt:
-        fpt.write(TEST_GEOJSON_FILE_CONTENT)
-
-    yield file_path
-
-
-@pytest.fixture
-def fake_past_detections_dir(tmp_path):
-    """Create fake directory with past detections."""
-    past_detections_dir = tmp_path / 'past_detections'
-    past_detections_dir.mkdir()
-    file_path = past_detections_dir / 'sos_20210619_000651_0.geojson'
-    with open(file_path, 'w') as fpt:
-        fpt.write(PAST_ALARMS_MONSTERAS1)
-
-    file_path = past_detections_dir / 'sos_20210619_000651_1.geojson'
-    with open(file_path, 'w') as fpt:
-        fpt.write(PAST_ALARMS_MONSTERAS2)
-
-    file_path = past_detections_dir / 'sos_20210618_124819_0.geojson'
-    with open(file_path, 'w') as fpt:
-        fpt.write(PAST_ALARMS_MONSTERAS2)
-
-    yield file_path.parent
 
 
 def test_join_fire_detections_large_fire(fake_geojson_file_many_detections):
@@ -464,6 +352,8 @@ def test_alarm_filter_runner_init_no_env(monkeypatch):
     assert str(exec_info.value) == expected
 
 
+# @pytest.mark.usefixtures("fake_yamlconfig_file")
+# @pytest.mark.usefixtures("fake_token_file")
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 def test_alarm_filter_runner_init(setup_comm,
                                   monkeypatch, fake_yamlconfig_file,
@@ -490,6 +380,8 @@ def test_alarm_filter_runner_init(setup_comm,
                                     'restapi_url': 'https://xxx.smhi.se:xxxx'}
 
 
+@pytest.mark.usefixtures("fake_token_file")
+@pytest.mark.usefixtures("fake_yamlconfig_file")
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
@@ -522,6 +414,8 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_has_alarms(sen
     assert result[0] == alarm
 
 
+@pytest.mark.usefixtures("fake_token_file")
+@pytest.mark.usefixtures("fake_yamlconfig_file")
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
@@ -540,6 +434,8 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_firedata(re
     assert result is None
 
 
+@pytest.mark.usefixtures("fake_token_file")
+@pytest.mark.usefixtures("fake_yamlconfig_file")
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.get_filename_from_posttroll_message')
 @patch('activefires_pp.spatiotemporal_alarm_filtering.read_geojson_data')
