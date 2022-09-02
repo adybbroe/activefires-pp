@@ -1,0 +1,2 @@
+xauth_tokens:
+  x-auth-satellite-alarm : 'my-token'
