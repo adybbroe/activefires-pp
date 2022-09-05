@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-"""
+"""Set up the activefires-postprocessing package."""
 
 from setuptools import setup
 from setuptools import find_packages
@@ -40,10 +39,11 @@ with open('./README.md', 'r') as fd:
 description = 'Post-processing of and notifications on Satellite active fire detections'
 
 requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
-            'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'geopy', 'matplotlib']
+            'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'geopy', 'matplotlib',
+            'requests']
 test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
                  'shapely', 'cartopy', 'pandas', 'geojson', 'fiona',
-                 'freezegun']
+                 'freezegun', 'responses']
 
 setup(name="activefires-pp",
       description=description,
