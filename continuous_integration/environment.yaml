@@ -22,6 +22,8 @@ dependencies:
   - geopy
   - pandas
   - freezegun
+  - responses
+  - requests
   - openssl
   - pytz
   - pytest

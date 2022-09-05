@@ -36,10 +36,12 @@ are:
 
 """
 
+import os
 import logging
 import signal
 from queue import Empty
 from threading import Thread
+from requests.exceptions import HTTPError
 from posttroll.listener import ListenerContainer
 from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
@@ -54,6 +56,8 @@ from pathlib import Path
 
 from activefires_pp.utils import get_filename_from_posttroll_message
 from activefires_pp.config import read_config
+from activefires_pp.config import get_xauthentication_token
+
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.geojson_utils import get_recent_geojson_files
 from activefires_pp.geojson_utils import store_geojson_alarm
@@ -84,6 +88,9 @@ class AlarmFilterRunner(Thread):
 
         self.sos_alarms_file_pattern = self.options['geojson_file_pattern_alarms']
         self.restapi_url = self.options['restapi_url']
+        _xauth_filepath = get_xauthentication_filepath_from_environment()
+        self._xauth_token = get_xauthentication_token(_xauth_filepath)
+
         self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
 
         self.listener = None
@@ -102,7 +109,6 @@ class AlarmFilterRunner(Thread):
 
     def _set_options_from_config(self, config):
         """From the configuration on disk set the option dictionary with all metadata for real-time processing."""
-
         for item in config:
             self.options[item] = config[item]
 
@@ -180,7 +186,13 @@ class AlarmFilterRunner(Thread):
             # 1) Create the filename
             # 2) Wite to a file
             output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
-            post_alarm(alarm, self.restapi_url)
+            try:
+                post_alarm(alarm['features'], self.restapi_url, self._xauth_token)
+                LOG.info('Alarm sent - status OK')
+            except HTTPError:
+                LOG.exception('Failed sending alarm!')
+                LOG.error('Data: %s', str(alarm['features']))
+
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
             LOG.debug("Sending message: %s", str(output_message))
             self.publisher.send(str(output_message))
@@ -198,6 +210,15 @@ class AlarmFilterRunner(Thread):
                 self.publisher.stop()
             except Exception:
                 LOG.exception("Couldn't stop publisher.")
+
+
+def get_xauthentication_filepath_from_environment():
+    """Get the filename with the X-Authentication-token from environment."""
+    xauth_filepath = os.environ.get('FIREALARMS_XAUTH_FILEPATH')
+    if xauth_filepath is None:
+        raise OSError("Environment variable FIREALARMS_XAUTH_FILEPATH not set!")
+
+    return xauth_filepath
 
 
 def dump_collection(idx, features):
@@ -219,7 +240,7 @@ def create_alarms_from_fire_detections(fire_data, past_detections_dir, sos_alarm
     # detections in smaller parts, and create potential alarms:
 
     alarms_list = []
-    for idx, key in enumerate(gathered_fires):
+    for key in gathered_fires:
         LOG.debug("Key: %s" % key)
         fire_alarms = get_single_point_fires_as_collections(gathered_fires[key], long_fires_threshold)
 
@@ -255,7 +276,6 @@ def find_neighbours(feature, other_features, thr_dist=0.8):
 
 def gather_neighbours_to_new_collection(start_id, features, feature_collections, thr_dist=None):
     """Go through all features and gather into groups of neighbouring detections."""
-
     first_point = features[start_id]
     features.pop(start_id)
     neighbour_ids = find_neighbours(first_point, features)
@@ -306,7 +326,6 @@ def join_fire_detections(gdata):
 
 def split_large_fire_clusters(features, km_threshold):
     """Take a list of fire detection features and split in smaller clusters/chains."""
-
     num_features = len(features)
     LOG.debug("Split large fire clusters - Number of features: %d" % num_features)
     features = dict(zip(range(num_features), features))
