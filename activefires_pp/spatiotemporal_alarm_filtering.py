@@ -41,7 +41,7 @@ import logging
 import signal
 from queue import Empty
 from threading import Thread
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, ConnectionError
 from posttroll.listener import ListenerContainer
 from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
@@ -189,8 +189,8 @@ class AlarmFilterRunner(Thread):
             try:
                 post_alarm(alarm['features'], self.restapi_url, self._xauth_token)
                 LOG.info('Alarm sent - status OK')
-            except HTTPError:
-                LOG.exception('Failed sending alarm!')
+            except (HTTPError, ConnectionError) as err:
+                LOG.exception('Failed sending alarm! Error: %s', str(err))
                 LOG.error('Data: %s', str(alarm['features']))
 
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
