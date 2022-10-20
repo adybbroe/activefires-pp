@@ -315,9 +315,6 @@ def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     lons, lats = lonlats
 
     logger.debug("Getting the global mask from file: shapefile file path = %s" % str(shapefile))
-    if not os.path.exists(shapefile):
-        raise OSError("Shape file does not exist! Filename = %s", shapefile)
-
     shape_geom = ShapeGeometry(shapefile)
     shape_geom.load()
 
@@ -347,7 +344,6 @@ class ActiveFiresPostprocessing(Thread):
         super().__init__()
         self.shp_boarders = shp_boarders
         self.shp_filtermask = shp_mask
-        # Should check here of the shapefile actually exists on disk: FIXME!
 
         self.regional_filtermask = regional_filtermask
         self.configfile = configfile
@@ -380,6 +376,8 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Starting up... Input topic: %s", self.input_topic)
         now = datetime_utc2local(datetime.now(), self.timezone)
         logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
+
+        self._check_boarders_shapes_exists()
 
         self.listener = ListenerContainer(topics=[self.input_topic])
         self.publisher = NoisyPublisher("active_fires_postprocessing")
@@ -577,6 +575,11 @@ class ActiveFiresPostprocessing(Thread):
             publish_messages.append(Message(topic, 'info', to_send))
 
         return publish_messages
+
+    def _check_boarders_shapes_exists(self):
+        """Check that the national boarders shapefile exists on disk."""
+        if not os.path.exists(self.shp_boarders):
+            raise OSError("Shape file does not exist! Filename = %s" % self.shp_boarders)
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""

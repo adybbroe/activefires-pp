@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Loading shapefile geometries from files.
-"""
+"""Loading shapefile geometries from files."""
 
 from glob import glob
 import os
@@ -33,8 +32,8 @@ class ShapeGeometry(object):
     """Geometry from a shape file."""
 
     def __init__(self, shapefilepath, globstr='*.shp'):
+        """Initialize the ShapeGeometry class."""
         self.filepaths = _get_shapefile_paths(shapefilepath, globstr)
-
         self.geometries = None
         self.attributes = None
         self._get_proj()
@@ -51,7 +50,6 @@ class ShapeGeometry(object):
 
     def _get_proj(self):
         """Get and return the Proj.4 string."""
-
         self.proj4str = []
         for filepath in self.filepaths:
             prj_filename = filepath.strip('.shp') + '.prj'
@@ -84,4 +82,7 @@ def _get_shapefile_paths(path, globstr='*.shp'):
     if os.path.isfile(path):
         return [path]
 
-    return glob(os.path.join(path, globstr))
+    shapefile_paths = glob(os.path.join(path, globstr))
+    if len(shapefile_paths) == 0:
+        raise OSError('No matching shapefiles found on disk. Path = %s, glob-string = %s', path, globstr)
+    return shapefile_paths

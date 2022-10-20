@@ -171,3 +171,13 @@ def fake_past_detections_dir(tmp_path):
         fpt.write(PAST_ALARMS_MONSTERAS2)
 
     yield file_path.parent
+
+
+@pytest.fixture
+def fake_national_boarders_shapefile(tmp_path):
+    """Write fake national boarders shape file."""
+    file_path = tmp_path / 'some_national_boarders_shape.yaml'
+    with open(file_path, 'w') as fpt:
+        fpt.write('')
+
+    yield file_path
