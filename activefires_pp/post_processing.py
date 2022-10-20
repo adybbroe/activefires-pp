@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Post processing on the Active Fire detections.
-"""
+"""Post processing on the Active Fire detections."""
 
 import socket
 from trollsift import Parser, globify
@@ -84,6 +83,7 @@ class ActiveFiresShapefileFiltering(object):
     """
 
     def __init__(self, filepath=None, afdata=None, platform_name=None, timezone='GMT'):
+        """Initialize the ActiveFiresShapefileFiltering class."""
         self.input_filepath = filepath
         self._afdata = afdata
         if afdata is None:
@@ -95,9 +95,7 @@ class ActiveFiresShapefileFiltering(object):
         self.platform_name = platform_name
 
     def get_af_data(self, filepattern=None, localtime=True):
-        """Read the Active Fire results from file - ascii formatted output from CSPP VIIRS-AF.
-
-        """
+        """Read the Active Fire results from file - ascii formatted output from CSPP VIIRS-AF."""
         if self._afdata is not None:
             # Make sure the attrs are populated with metadata instance attribute
             self._afdata.attrs.update(self.metadata)
@@ -152,7 +150,6 @@ class ActiveFiresShapefileFiltering(object):
         If *inside* is True the filtering will keep those detections that are inside the polygon.
         If *inside* is False the filtering will disregard the detections that are inside the polygon.
         """
-
         detections = self._afdata
 
         lons = detections.longitude.values
@@ -176,6 +173,8 @@ class ActiveFiresShapefileFiltering(object):
         lons = detections.longitude.values
         lats = detections.latitude.values
 
+        logger.debug("Before ShapeGeometry instance - shapefile name = %s" % str(shapefile))
+        logger.debug("Shape file glob-string = %s" % str(globstr))
         shape_geom = ShapeGeometry(shapefile, globstr)
         shape_geom.load()
 
@@ -295,7 +294,6 @@ def store_geojson(output_filename, detections, platform_name=None):
 
 def get_mask_from_multipolygon(points, geometry):
     """Get mask for points from a shapely Multipolygon."""
-
     shape = geometry.geoms[0]
     pth = Path(shape.exterior.coords)
     mask = pth.contains_points(points)
@@ -315,6 +313,11 @@ def get_mask_from_multipolygon(points, geometry):
 def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     """Given geographical (lon,lat) points get a mask to apply when filtering."""
     lons, lats = lonlats
+
+    logger.debug("Getting the global mask from file: shapefile file path = %s" % str(shapefile))
+    if not os.path.exists(shapefile):
+        raise OSError("Shape file does not exist! Filename = %s", shapefile)
+
     shape_geom = ShapeGeometry(shapefile)
     shape_geom.load()
 
@@ -344,6 +347,8 @@ class ActiveFiresPostprocessing(Thread):
         super().__init__()
         self.shp_boarders = shp_boarders
         self.shp_filtermask = shp_mask
+        # Should check here of the shapefile actually exists on disk: FIXME!
+
         self.regional_filtermask = regional_filtermask
         self.configfile = configfile
         self.options = {}
@@ -444,6 +449,7 @@ class ActiveFiresPostprocessing(Thread):
                     continue
 
                 output_messages, afdata = self.fires_filtering(msg, af_shapeff)
+                logger.debug("After fires_filtering...: Number of messages = %d", len(output_messages))
 
                 for output_msg in output_messages:
                     if output_msg:
@@ -495,7 +501,7 @@ class ActiveFiresPostprocessing(Thread):
             filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
             if not filepath:
                 logger.warning("Something wrong happended storing regional " +
-                               "data to Geojson - area: {name}".format(str(region_name)))
+                               "data to Geojson - area: {name}".format(name=str(region_name)))
                 continue
 
             outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
@@ -503,7 +509,7 @@ class ActiveFiresPostprocessing(Thread):
             logger.info("Geojson file created! Number of fires in region = %d", len(data_in_region))
 
         logger.debug("Regional masking done. Number of regions with fire " +
-                     "detections on this granule: %s", str(regions_with_detections))
+                     "detections on this granule: %s" % str(regions_with_detections))
         return output_messages
 
     def fires_filtering(self, msg, af_shapeff):
@@ -524,12 +530,15 @@ class ActiveFiresPostprocessing(Thread):
 
         # National filtering:
         af_shapeff.fires_filtering(self.shp_boarders)
+
         # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
 
         if len(afdata_ff) > 0:
+            logger.debug("Doing the fires filtering: shapefile-mask = %s", str(self.shp_filtermask))
             af_shapeff.fires_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
             afdata_ff = af_shapeff.get_af_data()
+            logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
 
         filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
         out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
@@ -548,7 +557,6 @@ class ActiveFiresPostprocessing(Thread):
 
     def _generate_output_message(self, filepath, input_msg, region=None):
         """Create the output message to publish."""
-
         output_topic = generate_posttroll_topic(self.output_topic, region)
         to_send = prepare_posttroll_message(input_msg, region)
         to_send['uri'] = ('ssh://%s/%s' % (self.host, filepath))
@@ -561,7 +569,6 @@ class ActiveFiresPostprocessing(Thread):
 
     def _generate_no_fires_messages(self, input_msg, msg_string):
         """Create the output messages to publish."""
-
         to_send = prepare_posttroll_message(input_msg)
         to_send['info'] = msg_string
         publish_messages = []
@@ -613,7 +620,6 @@ def generate_posttroll_topic(output_topic, region=None):
 
 def prepare_posttroll_message(input_msg, region=None):
     """Create the basic posttroll-message fields and return."""
-
     to_send = input_msg.data.copy()
     to_send.pop('dataset', None)
     to_send.pop('collection', None)
