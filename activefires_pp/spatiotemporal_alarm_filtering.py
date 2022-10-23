@@ -32,7 +32,8 @@ pixel-detection is not associated with the same fire. Currently the thresholds
 are:
 
  * Time threshold: 6 hours
- * Spacial threshold: 800 meters
+ * Spatial threshold: 800 meters
+ * Threshold defining the longest possible fire before it will be split into smaller fires: 1.2 km
 
 """
 
@@ -78,9 +79,9 @@ class AlarmFilterRunner(Thread):
         super().__init__()
         self.configfile = configfile
         self.options = {}
+        self.time_and_space_thresholds = {}
 
-        config = read_config(self.configfile)
-        self._set_options_from_config(config)
+        self._read_and_check_configuration()
 
         self.input_topic = self.options['subscribe_topics'][0]
         LOG.debug("Input topic: %s", self.input_topic)
@@ -106,6 +107,39 @@ class AlarmFilterRunner(Thread):
         self.publisher.start()
         self.loop = True
         signal.signal(signal.SIGTERM, self.signal_shutdown)
+
+    def _read_and_check_configuration(self):
+        """Read and check the configuration parameters."""
+        config = read_config(self.configfile)
+        self._check_and_set_thresholds_from_config(config)
+        self._set_options_from_config(config)
+
+    def _check_and_set_thresholds_from_config(self, config):
+        """Check that adequate thresholds are provided in config file."""
+        if 'time_and_space_thresholds' not in config:
+            raise OSError('Missing time and space thresholds from configuration!')
+
+        self._log_message_per_threshold = {
+            'hour_threshold': ("Threshold defining when a new detection should trigger an " +
+                               "alarm on the same spot (in hours): ",
+                               "Threshold in time is missing!"),
+            'long_fires_threshold_km': ("Threshold defining the maximum extention of a fire before " +
+                                        "dividing it in smaller pieces (in km): %3.1f",
+                                        "Threshold for splitting long fires is missing!"),
+            "spatial_threshold_km": ("Threshold defining the maximum distance between two detections " +
+                                     "beyond which they must trigger more than one alarm (km): %3.1f",
+                                     "A spatial threshold is missing!")
+        }
+        for thr_type in self._log_message_per_threshold:
+            self._check_and_set_threshold(thr_type, config)
+
+    def _check_and_set_threshold(self, thr_type, config):
+        """Check if threshold exists in config and set it accordingly or raise an error."""
+        if thr_type in config['time_and_space_thresholds']:
+            self.time_and_space_thresholds[thr_type] = config['time_and_space_thresholds'][thr_type]
+            LOG.info(self._log_message_per_threshold[thr_type][0], self.time_and_space_thresholds[thr_type])
+        else:
+            raise OSError(self._log_message_per_threshold[thr_type][1])
 
     def _set_options_from_config(self, config):
         """From the configuration on disk set the option dictionary with all metadata for real-time processing."""
@@ -169,7 +203,8 @@ class AlarmFilterRunner(Thread):
             return None
 
         geojson_alarms = create_alarms_from_fire_detections(ffdata,
-                                                            self.fire_alarms_dir, self.sos_alarms_file_pattern)
+                                                            self.fire_alarms_dir, self.sos_alarms_file_pattern,
+                                                            self.time_and_space_thresholds)
 
         if len(geojson_alarms) == 0:
             LOG.info("No alarms to be triggered!")
@@ -232,8 +267,9 @@ def dump_collection(idx, features):
 
 
 def create_alarms_from_fire_detections(fire_data, past_detections_dir, sos_alarms_file_pattern,
-                                       long_fires_threshold=1.2, hour_threshold=6.0):
+                                       time_space_thresholds):
     """Create alarm(s) from a set of detections."""
+    long_fires_threshold = time_space_thresholds.get('long_fires_threshold_km', 1.2)
     gathered_fires = join_fire_detections(fire_data)
 
     # Now go through the gathered fires and split long/large clusters of
@@ -249,7 +285,7 @@ def create_alarms_from_fire_detections(fire_data, past_detections_dir, sos_alarm
             # Check against the most recent alarms:
             alarm_should_be_triggered = check_if_fire_should_trigger_alarm(fire_alarm, past_detections_dir,
                                                                            sos_alarms_file_pattern,
-                                                                           hour_thr=hour_threshold)
+                                                                           time_space_thresholds)
             if alarm_should_be_triggered:
                 lonlat = fire_alarm['features']['geometry']['coordinates']
                 power = fire_alarm['features']['properties']['power']
@@ -267,7 +303,6 @@ def find_neighbours(feature, other_features, thr_dist=0.8):
         geom = feat['geometry']
         lon, lat = geom['coordinates']
         km_dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
-        # print("Id: %d Distance: %f" % (key, km_dist))
         if km_dist < thr_dist:
             idx.append(key)
 
@@ -324,7 +359,7 @@ def join_fire_detections(gdata):
     return feature_collections
 
 
-def split_large_fire_clusters(features, km_threshold):
+def split_large_fire_clusters(features, large_fires_threshold):
     """Take a list of fire detection features and split in smaller clusters/chains."""
     num_features = len(features)
     LOG.debug("Split large fire clusters - Number of features: %d" % num_features)
@@ -344,8 +379,8 @@ def split_large_fire_clusters(features, km_threshold):
             max_distance = km_dist
             max_2comb = tup2
 
-    if max_distance < km_threshold:
-        LOG.debug("Only one cluster - (max_distance, threshold) = (%f, %f)" % (max_distance, km_threshold))
+    if max_distance < large_fires_threshold:
+        LOG.debug("Only one cluster - (max_distance, threshold) = (%f, %f)" % (max_distance, large_fires_threshold))
         return {'only-one-cluster': list(features.values())}
 
     # Now we have located the two detections in the collection that are
@@ -355,7 +390,7 @@ def split_large_fire_clusters(features, km_threshold):
     start_index = max_2comb[0]
     while num_features > 0:
         features = gather_neighbours_to_new_collection(start_index, features, feature_collections,
-                                                       thr_dist=km_threshold)
+                                                       large_fires_threshold)
         if not features:
             break
         start_index = min(features.keys())
@@ -398,27 +433,34 @@ def create_single_point_alarms_from_collections(features):
     return fcollection
 
 
-def get_single_point_fires_as_collections(fires, threshold):
+def get_single_point_fires_as_collections(fires, long_fires_threshold):
     """Split larger fires into smaller parts and make a single fire-detection out of each and return as collection."""
-    features = split_large_fire_clusters(fires, threshold)
+    features = split_large_fire_clusters(fires, long_fires_threshold)
     return create_single_point_alarms_from_collections(features)
 
 
 def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_file_pattern,
-                                       hour_thr=16, km_threshold=0.8):
+                                       time_space_thresholds):
     """Check if fire point should trigger an alarm.
 
-    The fire point is a GeoJSON object. A search back in time X hours (X=16) is
+    The fire point is a GeoJSON object. A search back in time X hours (e.g. X=16) is
     done, and a check for previous fire alarms on that location is done. Only
     if no previous fire alarm at the same position (determined by a distance
-    threshold) is found an alarm should be issued.
+    threshold) is found, an alarm should be issued.
     """
     utc = pytz.timezone('utc')
     end_time = datetime.fromisoformat(gjson_data["properties"]["observation_time"])
     end_time = end_time.astimezone(utc).replace(tzinfo=None)
 
+    hour_thr = time_space_thresholds.get('hour_threshold', 16)
+    km_threshold = time_space_thresholds.get('spatial_threshold_km', 0.8)
+
+    LOG.debug("Check if fire detection should trigger alarm. Thresholds = (%3.1f h, %3.1f km)",
+              hour_thr, km_threshold)
+
     start_time = end_time - timedelta(hours=hour_thr)
-    recent_files = get_recent_geojson_files(past_alarms_dir, sos_alarms_file_pattern, (start_time, end_time))
+    recent_files = get_recent_geojson_files(past_alarms_dir, sos_alarms_file_pattern,
+                                            (start_time, end_time))
 
     # If directory is empty there is no history present and this alarm should be triggered:
     if len(recent_files) == 0:
@@ -426,8 +468,9 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
         return True
 
     lon0, lat0 = gjson_data["geometry"]["coordinates"]
-    # Go though the most recent files and see if an alarm has been triggered for the "same" position.
-    # Go through the files in reverse order, take the most recent file first!
+    # Go though the most recent files and see if an alarm has been triggered
+    # for the "same" position. Go through the files in reverse order, take the
+    # most recent file first!
     shall_trigger_alarm = True
     for filename in recent_files[::-1]:
         gjdata = read_geojson_data((past_alarms_dir / filename))

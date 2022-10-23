@@ -34,6 +34,11 @@ geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
 fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
 
 restapi_url: "https://xxx.smhi.se:xxxx"
+
+time_and_space_thresholds:
+  hour_threshold: 6
+  long_fires_threshold_km: 1.2
+  spatial_threshold_km: 0.8
 """
 
 TEST_YAML_TOKENS = """xauth_tokens:
