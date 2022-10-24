@@ -1,3 +1,16 @@
+## Version <v0.1.7> (2022/10/24)
+
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 13](https://github.com/adybbroe/activefires-pp/pull/13) - Make thresholds configurable
+* [PR 12](https://github.com/adybbroe/activefires-pp/pull/12) - More debugging and error checking
+
+In this release 2 pull requests were closed.
+
+
 ## Version <v0.1.6> (2022/07/15)
 
 ### Pull Requests Merged
