@@ -20,11 +20,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Test the Geojson utillities.
-"""
+"""Test the Geojson utillities."""
 
 from activefires_pp.geojson_utils import read_geojson_data
-from activefires_pp.geojson_utils import get_recent_geojson_files
+from activefires_pp.geojson_utils import get_geojson_files_in_observation_time_order
 from activefires_pp.geojson_utils import store_geojson_alarm
 from trollsift import Parser
 
@@ -32,7 +31,16 @@ from datetime import datetime
 import pytest
 import logging
 
-TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]}, "properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]}, "properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]}, "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8, "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
+TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
+[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]},
+"properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8,
+"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}},
+{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]},
+"properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8,
+"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}},
+{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]},
+"properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8,
+"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
 
 
 @pytest.fixture
@@ -116,27 +124,27 @@ def test_read_and_get_geojson_data_from_empty_file(caplog, fake_empty_geojson_fi
     assert log_output in caplog.text
 
 
-def test_get_recent_geojson_files(fake_past_detections_dir):
-    """Test getting the list of recent geojson files."""
+def test_get_geojson_files_in_observation_time_order(fake_past_detections_dir):
+    """Test getting the list of geojson files ordered by observation time - most recent file first."""
     starttime = datetime(2021, 6, 18, 12, 0)
     endtime = datetime(2021, 6, 19, 0, 30)
     # geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
     pattern = "sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson"
 
-    recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
+    recent = get_geojson_files_in_observation_time_order(fake_past_detections_dir, pattern, (starttime, endtime))
     assert set(recent) == {'sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson',
                            'sos_20210619_000651_0.geojson'}
 
     starttime = datetime(2021, 6, 18, 12, 0)
     endtime = datetime(2021, 6, 19, 12, 0)
-    recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
+    recent = get_geojson_files_in_observation_time_order(fake_past_detections_dir, pattern, (starttime, endtime))
 
     assert set(recent) == {'sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson',
                            'sos_20210619_000651_0.geojson', 'sos_20210619_005803_0.geojson'}
 
     starttime = datetime(2022, 6, 18, 12, 0)
     endtime = datetime(2022, 6, 19, 12, 0)
-    recent = get_recent_geojson_files(fake_past_detections_dir, pattern, (starttime, endtime))
+    recent = get_geojson_files_in_observation_time_order(fake_past_detections_dir, pattern, (starttime, endtime))
     assert len(recent) == 0
 
 

@@ -60,7 +60,7 @@ from activefires_pp.config import read_config
 from activefires_pp.config import get_xauthentication_token
 
 from activefires_pp.geojson_utils import read_geojson_data
-from activefires_pp.geojson_utils import get_recent_geojson_files
+from activefires_pp.geojson_utils import get_geojson_files_in_observation_time_order
 from activefires_pp.geojson_utils import store_geojson_alarm
 from activefires_pp.api_posting import post_alarm
 
@@ -224,8 +224,11 @@ class AlarmFilterRunner(Thread):
             try:
                 post_alarm(alarm['features'], self.restapi_url, self._xauth_token)
                 LOG.info('Alarm sent - status OK')
-            except (HTTPError, ConnectionError) as err:
-                LOG.exception('Failed sending alarm! Error: %s', str(err))
+            # except (HTTPError, ConnectionError) as err:
+            #    LOG.exception('Failed sending alarm! Error: %s', str(err))
+            #    LOG.error('Data: %s', str(alarm['features']))
+            except (HTTPError, ConnectionError):
+                LOG.exception('Failed sending alarm!')
                 LOG.error('Data: %s', str(alarm['features']))
 
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
@@ -459,37 +462,45 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
               hour_thr, km_threshold)
 
     start_time = end_time - timedelta(hours=hour_thr)
-    recent_files = get_recent_geojson_files(past_alarms_dir, sos_alarms_file_pattern,
-                                            (start_time, end_time))
+    files_in_observation_time_order = get_geojson_files_in_observation_time_order(past_alarms_dir,
+                                                                                  sos_alarms_file_pattern,
+                                                                                  (start_time, end_time))
 
     # If directory is empty there is no history present and this alarm should be triggered:
-    if len(recent_files) == 0:
+    if len(files_in_observation_time_order) == 0:
         LOG.info("Directory empty - no history present - alarm should be triggered!")
         return True
 
-    lon0, lat0 = gjson_data["geometry"]["coordinates"]
-    # Go though the most recent files and see if an alarm has been triggered
-    # for the "same" position. Go through the files in reverse order, take the
-    # most recent file first!
+    lonlat_current_position = gjson_data["geometry"]["coordinates"]
     shall_trigger_alarm = True
-    for filename in recent_files[::-1]:
-        gjdata = read_geojson_data((past_alarms_dir / filename))
-        lon, lat = gjdata["geometry"]["coordinates"]
-        # Get distance to this fire point:
-        dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
-
+    for filename in reversed(files_in_observation_time_order):
+        obstime, dist = distance_and_time_from_geojson_position(lonlat_current_position,
+                                                                (past_alarms_dir / filename))
         if dist < km_threshold:
             LOG.debug("Recent alarm file: %s", str(filename))
             shall_trigger_alarm = False
-            obstime = datetime.fromisoformat(gjdata["properties"]["observation_time"])
-            obstime = obstime.astimezone(utc).replace(tzinfo=None)
 
-            time_diff = (end_time - obstime).total_seconds()
+            time_diff_in_minutes = (end_time - obstime).total_seconds()/60.
             LOG.info("There was a recent alarm on this location! No new alarm generated.")
-            LOG.info("Distance = %f, Time distance = %f minutes" % (dist, time_diff/60.))
+            LOG.info("Distance = %f, Time distance = %f minutes" % (dist, time_diff_in_minutes))
             break
 
     return shall_trigger_alarm
+
+
+def distance_and_time_from_geojson_position(position, filepath):
+    """Read the geojson data and get the observation time and the distance to a position given as input."""
+    lon0, lat0 = position
+    gjdata = read_geojson_data(filepath)
+    lon, lat = gjdata["geometry"]["coordinates"]
+    # Get distance to this fire point:
+    dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
+
+    obstime = datetime.fromisoformat(gjdata["properties"]["observation_time"])
+    utc = pytz.timezone('utc')
+    obstime = obstime.astimezone(utc).replace(tzinfo=None)
+
+    return obstime, dist
 
 
 def _create_output_message(msg, topic, geojson, filename):
