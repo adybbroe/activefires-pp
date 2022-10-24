@@ -20,9 +20,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-"""
+"""Test the Fires filtering functionality."""
 
+import pytest
 from unittest.mock import patch
 import pandas as pd
 import numpy as np
@@ -75,11 +75,12 @@ TEST_ACTIVE_FIRES_FILE_DATA = """
 CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'subscribe_topics': 'VIIRS/L2/AFI',
                   'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
+                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
+                  '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
                   'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',
+                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
+                  '{region_name:s}.geojson',
                   'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
-
                   'output_dir': '/path/where/the/filtered/results/will/be/stored',
                   'timezone': 'Europe/Stockholm'}
 
@@ -90,8 +91,10 @@ MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour
                    "b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt")
 
 TEST_REGIONAL_MASK = {}
-TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False, False, False, False, False,
-                                                            False, False, False, False,  True, False, False, False, False]),
+TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False,
+                                                            False, False, False, False,
+                                                            False, False, False, False,  True,
+                                                            False, False, False, False]),
                                           'attributes': {'Join_Count': 2, 'TARGET_FID': 142,
                                                          'Kod_omr': '1438', 'KNNAMN': 'Dals-Ed',
                                                          'LANDAREAKM': 728.0, 'KNBEF96': 5287.0,
@@ -99,14 +102,17 @@ TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False,
                                                          'Testomr': 'Bergslagen (RRB)',
                                                          'Shape_Leng': 2131994.36042, 'Shape_Area': 53512139344.2},
                                           'all_inside_test_area': False, 'some_inside_test_area': True}
-TEST_REGIONAL_MASK['Västerviks kommun'] = {'mask': np.array([False, False, False, False, False, False, False, False, False,
-                                                             False, False, False, False, False, False, False, False, False]),
+TEST_REGIONAL_MASK['Västerviks kommun'] = {'mask': np.array([False, False, False, False, False,
+                                                             False, False, False, False,
+                                                             False, False, False, False, False,
+                                                             False, False, False, False]),
                                            'attributes': {'Join_Count': 30, 'TARGET_FID': 85,
                                                           'Kod_omr': '0883', 'KNNAMN': 'Västervik',
                                                           'LANDAREAKM': 1870.5, 'KNBEF96': 39579.0,
                                                           'OBJECTID': 1079223, 'Datum_Tid': '2016-06-13',
                                                           'Testomr': 'Västerviks kommun',
-                                                          'Shape_Leng': 251653.298274, 'Shape_Area': 2040770168.02},
+                                                          'Shape_Leng': 251653.298274,
+                                                          'Shape_Area': 2040770168.02},
                                            'all_inside_test_area': False, 'some_inside_test_area': False}
 
 FAKE_MASK1 = np.array([False, False, False, False, False, False, False, False,  True,
@@ -117,7 +123,6 @@ FAKE_MASK2 = np.array([True, False,  True])
 @patch('activefires_pp.post_processing._read_data')
 def test_add_start_and_end_time_to_active_fires_data_utc(readdata):
     """Test adding start and end times to the active fires data."""
-
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
@@ -140,7 +145,6 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata):
 @patch('activefires_pp.post_processing._read_data')
 def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
     """Test adding start and end times to the active fires data."""
-
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
@@ -203,10 +207,10 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     gethostname.return_value = "my.host.name"
 
     myconfigfile = "/my/config/file/path"
-    myboarders_file = "/my/shape/file/with/country/boarders"
+    myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -243,15 +247,14 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
 def test_general_national_fires_filtering(get_global_mask, setup_comm, get_config, gethostname):
     """Test the general/basic national fires filtering."""
-
     get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
     myconfigfile = "/my/config/file/path"
-    myboarders_file = "/my/shape/file/with/country/boarders"
+    myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -278,10 +281,49 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
 
     store_geojson.assert_called_once()
     get_output_msg.assert_called_once()
-    get_global_mask.call_count == 2
+    assert get_global_mask.call_count == 2
 
     assert isinstance(result, pd.core.frame.DataFrame)
     assert len(result) == 1
     np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
     np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
     assert outmsg == ["my fake output message"]
+
+
+@pytest.mark.usefixtures("fake_national_borders_shapefile")
+@pytest.mark.usefixtures("fake_yamlconfig_file_post_processing")
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_checking_national_borders_shapefile_file_exists(setup_comm, gethostname,
+                                                         fake_yamlconfig_file_post_processing,
+                                                         fake_national_borders_shapefile):
+    """Test the checking of the national borders shapefile - borders shapefile exists."""
+    gethostname.return_value = "my.host.name"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(str(fake_yamlconfig_file_post_processing),
+                                     fake_national_borders_shapefile, mymask_file)
+    afpp._check_borders_shapes_exists()
+
+    assert afpp.shp_borders.name == 'some_national_borders_shape.yaml'
+    assert afpp.shp_borders.is_file()
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_config, gethostname):
+    """Test the checking of the national borders shapefile - borders shapefile does not exist."""
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+
+    myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    with pytest.raises(OSError) as exec_info:
+        afpp._check_borders_shapes_exists()
+
+    expected = "Shape file does not exist! Filename = /my/shape/file/with/country/borders"
+    assert str(exec_info.value) == expected

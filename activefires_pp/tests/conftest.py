@@ -41,6 +41,22 @@ time_and_space_thresholds:
   spatial_threshold_km: 0.8
 """
 
+TEST_POST_PROCESSING_YAML_CONFIG_CONTENT = """# Publish/subscribe
+publish_topic: /VIIRS/L2/Fires/PP
+subscribe_topics: VIIRS/L2/AFI
+
+af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
+
+geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+
+regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
+
+output_dir: /path/where/the/filtered/results/will/be/stored
+
+timezone: Europe/Stockholm
+"""  # noqa
+
 TEST_YAML_TOKENS = """xauth_tokens:
   x-auth-satellite-alarm : 'my-token'
 """
@@ -139,6 +155,16 @@ def fake_yamlconfig_file(tmp_path):
 
 
 @pytest.fixture
+def fake_yamlconfig_file_post_processing(tmp_path):
+    """Write fake yaml config file."""
+    file_path = tmp_path / 'test_af_post_processing_config.yaml'
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_POST_PROCESSING_YAML_CONFIG_CONTENT)
+
+    yield file_path
+
+
+@pytest.fixture
 def fake_geojson_file_many_detections(tmp_path):
     """Write fake geojson file with many close detections."""
     file_path = tmp_path / 'test_afimg_NOAA-20_20210619_005803_sweden.geojson'
@@ -176,3 +202,13 @@ def fake_past_detections_dir(tmp_path):
         fpt.write(PAST_ALARMS_MONSTERAS2)
 
     yield file_path.parent
+
+
+@pytest.fixture
+def fake_national_borders_shapefile(tmp_path):
+    """Write fake national borders shape file."""
+    file_path = tmp_path / 'some_national_borders_shape.yaml'
+    with open(file_path, 'w') as fpt:
+        fpt.write('')
+
+    yield file_path
