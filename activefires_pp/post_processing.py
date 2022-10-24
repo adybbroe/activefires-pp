@@ -145,7 +145,7 @@ class ActiveFiresShapefileFiltering(object):
                          len(self._afdata)).astype(np.datetime64)
 
     def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
-        """Remove fires outside National boarders or filter out potential false detections.
+        """Remove fires outside National borders or filter out potential false detections.
 
         If *inside* is True the filtering will keep those detections that are inside the polygon.
         If *inside* is False the filtering will disregard the detections that are inside the polygon.
@@ -339,10 +339,10 @@ def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
 class ActiveFiresPostprocessing(Thread):
     """The active fires post processor."""
 
-    def __init__(self, configfile, shp_boarders, shp_mask, regional_filtermask=None):
+    def __init__(self, configfile, shp_borders, shp_mask, regional_filtermask=None):
         """Initialize the active fires post processor class."""
         super().__init__()
-        self.shp_boarders = shp_boarders
+        self.shp_borders = shp_borders
         self.shp_filtermask = shp_mask
 
         self.regional_filtermask = regional_filtermask
@@ -377,7 +377,7 @@ class ActiveFiresPostprocessing(Thread):
         now = datetime_utc2local(datetime.now(), self.timezone)
         logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
 
-        self._check_boarders_shapes_exists()
+        self._check_borders_shapes_exists()
 
         self.listener = ListenerContainer(topics=[self.input_topic])
         self.publisher = NoisyPublisher("active_fires_postprocessing")
@@ -527,7 +527,7 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Output file path = %s", out_filepath)
 
         # National filtering:
-        af_shapeff.fires_filtering(self.shp_boarders)
+        af_shapeff.fires_filtering(self.shp_borders)
 
         # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
@@ -551,7 +551,7 @@ class ActiveFiresPostprocessing(Thread):
         else:
             logger.info("No geojson file created, number of fires after filtering = %d", number_of_data)
             return self._generate_no_fires_messages(msg,
-                                                    'No true fire detections inside National boarders')
+                                                    'No true fire detections inside National borders')
 
     def _generate_output_message(self, filepath, input_msg, region=None):
         """Create the output message to publish."""
@@ -576,10 +576,10 @@ class ActiveFiresPostprocessing(Thread):
 
         return publish_messages
 
-    def _check_boarders_shapes_exists(self):
-        """Check that the national boarders shapefile exists on disk."""
-        if not os.path.exists(self.shp_boarders):
-            raise OSError("Shape file does not exist! Filename = %s" % self.shp_boarders)
+    def _check_borders_shapes_exists(self):
+        """Check that the national borders shapefile exists on disk."""
+        if not os.path.exists(self.shp_borders):
+            raise OSError("Shape file does not exist! Filename = %s" % self.shp_borders)
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""

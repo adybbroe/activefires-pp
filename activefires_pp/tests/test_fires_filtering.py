@@ -207,10 +207,10 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     gethostname.return_value = "my.host.name"
 
     myconfigfile = "/my/config/file/path"
-    myboarders_file = "/my/shape/file/with/country/boarders"
+    myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -251,10 +251,10 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
     gethostname.return_value = "my.host.name"
 
     myconfigfile = "/my/config/file/path"
-    myboarders_file = "/my/shape/file/with/country/boarders"
+    myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -290,41 +290,40 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
     assert outmsg == ["my fake output message"]
 
 
-@pytest.mark.usefixtures("fake_national_boarders_shapefile")
+@pytest.mark.usefixtures("fake_national_borders_shapefile")
+@pytest.mark.usefixtures("fake_yamlconfig_file_post_processing")
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_checking_national_borders_shapefile_file_exists(setup_comm, gethostname,
+                                                         fake_yamlconfig_file_post_processing,
+                                                         fake_national_borders_shapefile):
+    """Test the checking of the national borders shapefile - borders shapefile exists."""
+    gethostname.return_value = "my.host.name"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(str(fake_yamlconfig_file_post_processing),
+                                     fake_national_borders_shapefile, mymask_file)
+    afpp._check_borders_shapes_exists()
+
+    assert afpp.shp_borders.name == 'some_national_borders_shape.yaml'
+    assert afpp.shp_borders.is_file()
+
+
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_checking_national_boarders_shapefile_file_exists(setup_comm, get_config,
-                                                          gethostname, fake_national_boarders_shapefile):
-    """Test the checking of the national boarders shapefile - boarders shapefile exists."""
+def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_config, gethostname):
+    """Test the checking of the national borders shapefile - borders shapefile does not exist."""
     get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
     myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, fake_national_boarders_shapefile, mymask_file)
-    afpp._check_boarders_shapes_exists()
-
-    assert afpp.shp_boarders.name == 'some_national_boarders_shape.yaml'
-    assert afpp.shp_boarders.is_file()
-
-
-@patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_checking_national_boarders_shapefile_file_nonexisting(setup_comm, get_config, gethostname):
-    """Test the checking of the national boarders shapefile - boarders shapefile does not exist."""
-    get_config.return_value = CONFIG_EXAMPLE
-    gethostname.return_value = "my.host.name"
-
-    myconfigfile = "/my/config/file/path"
-    myboarders_file = "/my/shape/file/with/country/boarders"
-    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
-
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
     with pytest.raises(OSError) as exec_info:
-        afpp._check_boarders_shapes_exists()
+        afpp._check_borders_shapes_exists()
 
-    expected = "Shape file does not exist! Filename = /my/shape/file/with/country/boarders"
+    expected = "Shape file does not exist! Filename = /my/shape/file/with/country/borders"
     assert str(exec_info.value) == expected
