@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Geojson utilities.
-"""
+"""Geojson utilities."""
 
 import geojson
 import json
@@ -47,7 +46,7 @@ def read_geojson_data(filename):
         LOG.error("No valid filename to read: %s", str(filename))
 
 
-def get_recent_geojson_files(path, pattern, time_interval):
+def get_geojson_files_in_observation_time_order(path, pattern, time_interval):
     """Get all geojson files with filtered active fire detections (=triggered alarms) since *dtime*."""
     dtime_start = time_interval[0]
     dtime_end = time_interval[1]

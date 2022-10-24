@@ -9,3 +9,9 @@ fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
 #geojson_fires_dir: /path/to/where/the/filtered/detections/are/stored
 
 restapi_url: "https://xxx.smhi.se:xxxx"
+
+# Thresholds in time and space:
+time_and_space_thresholds:
+  hour_threshold: 6
+  long_fires_threshold_km: 1.2
+  spatial_threshold_km: 0.8

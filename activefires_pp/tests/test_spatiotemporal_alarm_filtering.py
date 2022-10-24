@@ -26,6 +26,8 @@ import pytest
 from unittest.mock import patch
 import pathlib
 import json
+import logging
+
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.spatiotemporal_alarm_filtering import create_alarms_from_fire_detections
 from activefires_pp.spatiotemporal_alarm_filtering import join_fire_detections
@@ -262,8 +264,10 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
 
     pattern = "sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson"
     # Default distance threshold but disregarding past alarms:
+    space_time_threshold = {'hour_threshold': 0.0,
+                            'long_fires_threshold_km': 1.2}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
-                                                pattern, 1.2, 0.0)
+                                                pattern, space_time_threshold)
     assert len(alarms) == 3
     assert alarms[0]['features']['geometry']['coordinates'] == [16.247334, 57.172443]
     assert alarms[0]['features']['properties']['power'] == 5.85325146
@@ -286,9 +290,10 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[2]['features']['properties']['tb'] == 310.37322998
     assert alarms[2]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
-    # Default thresholds (distance=1.2km, time-interval=6hours):
+    space_time_threshold = {'hour_threshold': 6.0,
+                            'long_fires_threshold_km': 1.2}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
-                                                pattern)
+                                                pattern, space_time_threshold)
 
     assert len(alarms) == 1
     assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
@@ -298,10 +303,10 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[0]['features']['properties']['tb'] == 310.37322998
     assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
-    # Default time-interval(=6hours) threshold but smaller distance threshold
-    # (the threshold used to split larger fires):
+    space_time_threshold = {'hour_threshold': 6.0,
+                            'long_fires_threshold_km': 0.6}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
-                                                pattern, 0.6)
+                                                pattern, space_time_threshold)
 
     assert len(alarms) == 2
     assert alarms[0]['features']['geometry']['coordinates'] == [16.242212, 57.157097]
@@ -318,8 +323,10 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[1]['features']['properties']['tb'] == 310.37322998
     assert alarms[1]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
+    space_time_threshold = {'hour_threshold': 16.0,
+                            'long_fires_threshold_km': 1.2}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
-                                                pattern, 1.2, 16.0)
+                                                pattern, space_time_threshold)
 
     assert len(alarms) == 1
     assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
@@ -329,8 +336,9 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     assert alarms[0]['features']['properties']['tb'] == 310.37322998
     assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
+    space_time_threshold = {}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
-                                                pattern, 1.2)
+                                                pattern, space_time_threshold)
 
     assert len(alarms) == 1
     assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
@@ -377,7 +385,10 @@ def test_alarm_filter_runner_init(setup_comm,
                                     'publish_topic': '/VIIRS/L2/Fires/PP/SOSAlarm',
                                     'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
                                     'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
-                                    'restapi_url': 'https://xxx.smhi.se:xxxx'}
+                                    'restapi_url': 'https://xxx.smhi.se:xxxx',
+                                    'time_and_space_thresholds': {'hour_threshold': 6,
+                                                                  'long_fires_threshold_km': 1.2,
+                                                                  'spatial_threshold_km': 0.8}}
 
 
 @pytest.mark.usefixtures("fake_token_file")
@@ -456,3 +467,50 @@ def test_alarm_filter_runner_call_spatio_temporal_alarm_filtering_no_alarms(crea
     dummy_msg = None
     result = alarm_runner.spatio_temporal_alarm_filtering(dummy_msg)
     assert result is None
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+def test_check_and_set_threshold_threshold_okay(setup_comm,
+                                                monkeypatch, fake_yamlconfig_file,
+                                                fake_token_file, caplog):
+    """Test checking and setting a spatio-temporal threshold - threshold accepted."""
+    from activefires_pp.config import read_config
+
+    monkeypatch.setenv("FIREALARMS_XAUTH_FILEPATH", str(fake_token_file))
+
+    alarm_runner = AlarmFilterRunner(str(fake_yamlconfig_file))
+    config = read_config(alarm_runner.configfile)
+
+    thr_type = 'hour_threshold'
+    alarm_runner.time_and_space_thresholds[thr_type] = None
+    alarm_runner._log_message_per_threshold = {thr_type:
+                                               ('okay message - hours: %3.1f', 'error message - hours'), }
+
+    with caplog.at_level(logging.INFO):
+        alarm_runner._check_and_set_threshold(thr_type, config)
+
+    log_output = 'okay message - hours: 6.0'
+    assert log_output in caplog.text
+    assert alarm_runner.time_and_space_thresholds[thr_type] == 6.0
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
+def test_check_and_set_threshold_wrong_threshold(setup_comm,
+                                                 monkeypatch, fake_yamlconfig_file,
+                                                 fake_token_file, caplog):
+    """Test checking and setting a spatio-temporal threshold - wrong threshold name."""
+    from activefires_pp.config import read_config
+
+    monkeypatch.setenv("FIREALARMS_XAUTH_FILEPATH", str(fake_token_file))
+
+    alarm_runner = AlarmFilterRunner(str(fake_yamlconfig_file))
+    config = read_config(alarm_runner.configfile)
+
+    thr_type = 'unknown_threshold'
+    alarm_runner._log_message_per_threshold = {thr_type:
+                                               ('okay message - hours: %3.1f', 'error message - hours'), }
+    with pytest.raises(OSError) as exec_info:
+        alarm_runner._check_and_set_threshold(thr_type, config)
+
+    expected = alarm_runner._log_message_per_threshold[thr_type][1]
+    assert str(exec_info.value) == expected
