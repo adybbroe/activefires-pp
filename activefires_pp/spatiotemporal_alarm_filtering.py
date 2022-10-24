@@ -224,9 +224,6 @@ class AlarmFilterRunner(Thread):
             try:
                 post_alarm(alarm['features'], self.restapi_url, self._xauth_token)
                 LOG.info('Alarm sent - status OK')
-            # except (HTTPError, ConnectionError) as err:
-            #    LOG.exception('Failed sending alarm! Error: %s', str(err))
-            #    LOG.error('Data: %s', str(alarm['features']))
             except (HTTPError, ConnectionError):
                 LOG.exception('Failed sending alarm!')
                 LOG.error('Data: %s', str(alarm['features']))
