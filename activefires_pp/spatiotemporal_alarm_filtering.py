@@ -468,7 +468,7 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
         return True
 
     lon0, lat0 = gjson_data["geometry"]["coordinates"]
-    # Go though the most recent files and see if an alarm has been triggered
+    # Go through the most recent files and see if an alarm has been triggered
     # for the "same" position. Go through the files in reverse order, take the
     # most recent file first!
     shall_trigger_alarm = True
