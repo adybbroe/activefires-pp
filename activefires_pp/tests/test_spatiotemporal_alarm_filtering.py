@@ -27,6 +27,7 @@ from unittest.mock import patch
 import pathlib
 import json
 import logging
+
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.spatiotemporal_alarm_filtering import create_alarms_from_fire_detections
 from activefires_pp.spatiotemporal_alarm_filtering import join_fire_detections
