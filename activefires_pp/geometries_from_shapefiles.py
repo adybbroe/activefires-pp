@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022 Adam.Dybbroe
+# Copyright (c) 2021, 2022, 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -52,7 +52,7 @@ class ShapeGeometry(object):
         """Get and return the Proj.4 string."""
         self.proj4str = []
         for filepath in self.filepaths:
-            prj_filename = filepath.strip('.shp') + '.prj'
+            prj_filename = _get_proj_filename_from_shapefile(filepath)
             crs = pycrs.load.from_file(prj_filename)
             if crs.name == 'SWEREF99_TM' and crs.proj.name.proj4 == 'utm':
                 utm_zone_proj4 = ' +zone=33'
@@ -86,3 +86,7 @@ def _get_shapefile_paths(path, globstr='*.shp'):
     if len(shapefile_paths) == 0:
         raise OSError('No matching shapefiles found on disk. Path = %s, glob-string = %s', path, globstr)
     return shapefile_paths
+
+
+def _get_proj_filename_from_shapefile(filepath):
+    return filepath.split('.shp')[0] + '.prj'
