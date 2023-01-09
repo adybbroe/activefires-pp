@@ -25,13 +25,14 @@
 import os
 from unittest.mock import patch
 import pytest
-from shapely import MultiPolygon, Polygon
+from shapely.geometry import MultiPolygon, Polygon
 import numpy as np
 import geopandas as gpd
 import pandas as pd
 import pyproj
 
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
+from activefires_pp.post_processing import get_mask_from_multipolygon
 from activefires_pp.geometries_from_shapefiles import _get_proj_filename_from_shapefile
 
 TEST_CRS_PROJ = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
@@ -195,3 +196,18 @@ def test_get_global_mask_from_shapefile(multipolygon_shapefile, lonlats, expecte
                                                (lonlats[0], lonlats[1]))
 
     np.testing.assert_equal(retv_mask, expected_ll)
+
+
+def test_get_mask_from_multipolygon(multipolygon_shapefile):
+    """Test from a set of geo-points and a shapely geometry get a mask defining which points are inside."""
+    points = np.array([[15.2, 58.3], [15.2, 58.7]])
+    expected = np.array([True, False])
+
+    globstr = os.path.dirname(multipolygon_shapefile) + '/shapes1/shapes1*shp'
+    shape_geom = ShapeGeometry(multipolygon_shapefile, globstr)
+    shape_geom.load()
+
+    geometry = shape_geom.geometries[0]
+    retv_mask = get_mask_from_multipolygon(points, geometry)
+
+    np.testing.assert_equal(retv_mask, expected)
