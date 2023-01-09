@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2022 Adam.Dybbro
+# Copyright (c) 2021 - 2023 Adam.Dybbro
 
 # Author(s):
 
@@ -301,7 +301,8 @@ def get_mask_from_multipolygon(points, geometry):
     if sum(mask) == len(points):
         return mask
 
-    for shape in geometry.geoms[1:]:
+    constituent_part = geometry.geoms[1:]
+    for shape in constituent_part.geoms:
         pth = Path(shape.exterior.coords)
         mask = np.logical_or(mask, pth.contains_points(points))
         if sum(mask) == len(points):
@@ -313,7 +314,6 @@ def get_mask_from_multipolygon(points, geometry):
 def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     """Given geographical (lon,lat) points get a mask to apply when filtering."""
     lons, lats = lonlats
-
     logger.debug("Getting the global mask from file: shapefile file path = %s" % str(shapefile))
     shape_geom = ShapeGeometry(shapefile)
     shape_geom.load()
@@ -329,7 +329,9 @@ def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     shape = geometry.geoms[0]
     pth = Path(shape.exterior.coords)
     mask = pth.contains_points(points)
-    for shape in geometry.geoms[start_geom_index:]:
+
+    constituent_part = geometry.geoms[start_geom_index:]
+    for shape in constituent_part.geoms:
         pth = Path(shape.exterior.coords)
         mask = np.logical_or(mask, pth.contains_points(points))
 
