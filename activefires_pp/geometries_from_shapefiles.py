@@ -34,8 +34,8 @@ class ShapeGeometry(object):
     def __init__(self, shapefilepath, globstr='*.shp'):
         """Initialize the ShapeGeometry class."""
         self.filepaths = _get_shapefile_paths(shapefilepath, globstr)
-        self.geometries = None
-        self.attributes = None
+        self.geometries = []
+        self.attributes = []
         self._get_proj()
 
     def load(self):

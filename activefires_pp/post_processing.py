@@ -156,10 +156,10 @@ class ActiveFiresShapefileFiltering(object):
         lats = detections.latitude.values
 
         toc = time.time()
-        insides = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
+        points_inside = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
         logger.debug("Time used checking inside polygon - mpl path method: %f", time.time() - toc)
 
-        self._afdata = detections[insides == inside]
+        self._afdata = detections[points_inside == inside]
 
         if len(self._afdata) == 0:
             logger.debug("No fires after filtering on Polygon...")
@@ -292,7 +292,7 @@ def store_geojson(output_filename, detections, platform_name=None):
     return output_filename
 
 
-def get_mask_from_multipolygon(points, geometry):
+def get_mask_from_multipolygon(points, geometry, start_idx=1):
     """Get mask for points from a shapely Multipolygon."""
     shape = geometry.geoms[0]
     pth = Path(shape.exterior.coords)
@@ -301,7 +301,7 @@ def get_mask_from_multipolygon(points, geometry):
     if sum(mask) == len(points):
         return mask
 
-    constituent_part = geometry.geoms[1:]
+    constituent_part = geometry.geoms[start_idx:]
     for shape in constituent_part.geoms:
         pth = Path(shape.exterior.coords)
         mask = np.logical_or(mask, pth.contains_points(points))
@@ -314,7 +314,7 @@ def get_mask_from_multipolygon(points, geometry):
 def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     """Given geographical (lon,lat) points get a mask to apply when filtering."""
     lons, lats = lonlats
-    logger.debug("Getting the global mask from file: shapefile file path = %s" % str(shapefile))
+    logger.debug("Getting the global mask from file: shapefile file path = %s", str(shapefile))
     shape_geom = ShapeGeometry(shapefile)
     shape_geom.load()
 
@@ -326,16 +326,7 @@ def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     metersx, metersy = p__(lons, lats)
     points = np.vstack([metersx, metersy]).T
 
-    shape = geometry.geoms[0]
-    pth = Path(shape.exterior.coords)
-    mask = pth.contains_points(points)
-
-    constituent_part = geometry.geoms[start_geom_index:]
-    for shape in constituent_part.geoms:
-        pth = Path(shape.exterior.coords)
-        mask = np.logical_or(mask, pth.contains_points(points))
-
-    return mask
+    return get_mask_from_multipolygon(points, geometry, start_geom_index)
 
 
 class ActiveFiresPostprocessing(Thread):
