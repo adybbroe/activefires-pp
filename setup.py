@@ -40,7 +40,7 @@ description = 'Post-processing of and notifications on Satellite active fire det
 
 requires = ['posttroll', 'netifaces', 'trollsift', 'setuptools_scm', 'pycrs',
             'shapely', 'cartopy', 'pandas', 'geojson', 'fiona', 'geopy', 'matplotlib',
-            'requests']
+            'requests', 'pint']
 test_requires = ['mock', 'posttroll', 'trollsift', 'pycrs',
                  'shapely', 'cartopy', 'pandas', 'geojson', 'fiona',
                  'freezegun', 'responses']

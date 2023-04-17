@@ -251,11 +251,16 @@ def store(output_filename, detections):
         return None
 
 
-def store_geojson(output_filename, detections, platform_name=None):
+def store_geojson(output_filename, detections, platform_name=None, units=None):
     """Store the filtered AF detections in Geojson format on disk."""
     if len(detections) == 0:
         logger.debug("No detections to save!")
         return None
+
+    ureg = None
+    if units is not None and len(units.keys()) > 0:
+        from pint import UnitRegistry
+        ureg = UnitRegistry()
 
     # Convert points to GeoJSON
     features = []
@@ -265,8 +270,11 @@ def store_geojson(output_filename, detections, platform_name=None):
         mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
                                                          starttime.to_pydatetime()) / 2.
 
-        prop = {'power': detections.iloc[idx].power,
-                'tb': detections.iloc[idx].tb,
+        power = _unit_conversion(detections.iloc[idx].power, units, ureg, 'power')
+        tb_ = _unit_conversion(detections.iloc[idx].tb, units, ureg, 'temperature')
+
+        prop = {'power': power,
+                'tb': tb_,
                 'confidence': int(detections.iloc[idx].conf),
                 'observation_time': json_serial(mean_granule_time)
                 }
@@ -290,6 +298,22 @@ def store_geojson(output_filename, detections, platform_name=None):
         dump(feature_collection, fpt)
 
     return output_filename
+
+
+def _unit_conversion(variable, units, unit_registry, varname):
+    """Convert to requested unit."""
+    if unit_registry is None:
+        return variable
+
+    orig_units = {'power': unit_registry.watt * 1e6,
+                  'temperature': unit_registry.kelvin}
+
+    if units.get(varname):
+        variable = variable * orig_units[varname]
+        variable.ito(units.get(varname))
+        return variable.magnitude
+    else:
+        return variable
 
 
 def get_mask_from_multipolygon(points, geometry, start_idx=1):
