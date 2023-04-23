@@ -26,8 +26,8 @@ from activefires_pp.config import read_config
 from activefires_pp.config import get_xauthentication_token
 
 
-def test_get_yaml_configuration(fake_yamlconfig_file):
-    """Test read and get the yaml configuration from file."""
+def test_get_yaml_configuration_for_alarm_filtering(fake_yamlconfig_file):
+    """Test read and get the yaml configuration from file for alarm filtering."""
     config = read_config(fake_yamlconfig_file)
     assert config['subscribe_topics'] == '/VIIRS/L2/Fires/PP/National'
     assert config['publish_topic'] == '/VIIRS/L2/Fires/PP/SOSAlarm'
@@ -40,3 +40,24 @@ def test_get_xauthentication_token(fake_token_file):
     """Test getting the xauthentication token from a file."""
     fake_token = get_xauthentication_token(fake_token_file)
     assert fake_token == 'my-token'
+
+
+def test_read_yaml_configuration_for_postprocessing(fake_yamlconfig_file_post_processing):
+    """Test read in the yaml configuration for fires post processing."""
+    config = read_config(fake_yamlconfig_file_post_processing)
+
+    assert config['subscribe_topics'] == 'VIIRS/L2/AFI'
+    assert config['publish_topic'] == '/VIIRS/L2/Fires/PP'
+    assert config['timezone'] == 'Europe/Stockholm'
+    assert config['af_pattern_ibands'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa
+    assert config['regional_shapefiles_format'] == 'omr_{region_code:s}_Buffer.{ext:s}'
+    assert config['output_dir'] == '/path/where/the/filtered/results/will/be/stored'
+    assert len(config['geojson-national']) == 2
+    assert config['geojson-national'][1] == {'celcius':
+                                             {'file_pattern':
+                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson',  # noqa
+                                              'unit': 'degC'}}
+    assert len(config['geojson-regional']) == 1
+    assert config['geojson-regional'][0] == {'si-units':
+                                             {'file_pattern':
+                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson'}}  # noqa

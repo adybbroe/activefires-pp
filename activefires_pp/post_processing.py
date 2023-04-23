@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2023 Adam.Dybbro
+# Copyright (c) 2021 - 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -376,8 +376,10 @@ class ActiveFiresPostprocessing(Thread):
         self.input_topic = self.options['subscribe_topics'][0]
         self.output_topic = self.options['publish_topic']
         self.infile_pattern = self.options.get('af_pattern_ibands')
-        self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
-        self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
+
+        self.regional_outputs = self.options.get('geojson-regional')
+        self.national_outputs = self.options.get('geojson-national')
+        self.set_output_filename_parsers()
         self.output_dir = self.options.get('output_dir', '/tmp')
 
         frmt = self.options['regional_shapefiles_format']
@@ -387,6 +389,15 @@ class ActiveFiresPostprocessing(Thread):
         self.publisher = None
         self.loop = False
         self._setup_and_start_communication()
+
+    def set_output_filename_parsers(self):
+        """Set the geojson output filename parsers."""
+        for output in self.national_outputs:
+            for prod in output:
+                output[prod].update({'parser': Parser(output[prod]['file_pattern'])})
+        for output in self.regional_outputs:
+            for prod in output:
+                output[prod].update({'parser': Parser(output[prod]['file_pattern'])})
 
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
@@ -499,8 +510,6 @@ class ActiveFiresPostprocessing(Thread):
 
         fmda['platform'] = afsff_obj.platform_name
 
-        pout = Parser(self.outfile_pattern_regional)
-
         output_messages = []
         regions_with_detections = 0
         for region_name in regional_fmask:
@@ -510,18 +519,19 @@ class ActiveFiresPostprocessing(Thread):
             regions_with_detections = regions_with_detections + 1
             fmda['region_name'] = regional_fmask[region_name]['attributes']['Kod_omr']
 
-            out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
-            logger.debug("Output file path = %s", out_filepath)
             data_in_region = afdata[regional_fmask[region_name]['mask']]
-            filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
-            if not filepath:
-                logger.warning("Something wrong happended storing regional " +
-                               "data to Geojson - area: {name}".format(name=str(region_name)))
-                continue
 
-            outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
-            output_messages.append(outmsg)
-            logger.info("Geojson file created! Number of fires in region = %d", len(data_in_region))
+            filepaths = self.create_output(data_in_region, fmda, self.regional_outputs)
+            for filepath in filepaths:
+                if not filepath:
+                    logger.warning("Something wrong happended storing regional " +
+                                   "data to Geojson - area: {name}".format(name=str(region_name)))
+                    continue
+
+                outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
+                output_messages.append(outmsg)
+
+            logger.info("Geojson file(s) created for region! Number of fires in region = %d", len(data_in_region))
 
         logger.debug("Regional masking done. Number of regions with fire " +
                      "detections on this granule: %s" % str(regions_with_detections))
@@ -539,10 +549,6 @@ class ActiveFiresPostprocessing(Thread):
         fmda = af_shapeff.metadata
         # metdata contains time and everything but it is not being transfered to the dataframe.attrs
 
-        pout = Parser(self.outfile_pattern_national)
-        out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
-        logger.debug("Output file path = %s", out_filepath)
-
         # National filtering:
         af_shapeff.fires_filtering(self.shp_borders)
 
@@ -555,10 +561,39 @@ class ActiveFiresPostprocessing(Thread):
             afdata_ff = af_shapeff.get_af_data()
             logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
 
-        filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
-        out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
+        fmda.update({'platform': af_shapeff.platform_name})
+        filepaths = self.create_output(afdata_ff, fmda, self.national_outputs)
+        out_messages = []
+        for filepath in filepaths:
+            logger.debug("Output file path = %s", filepath)
+            out_messages = out_messages + self.get_output_messages(filepath, msg, len(afdata_ff))
 
         return out_messages, afdata_ff
+
+    def create_output(self, data, metadata, outputs):
+        """Create geojson output and return filepaths."""
+        paths_and_units = []
+        for item in outputs:
+            for output in item:
+                filepath = os.path.join(self.output_dir, item[output]['parser'].compose(metadata))
+                if 'unit' in item[output]:
+                    paths_and_units.append({'filepath': filepath, 'unit': item[output]['unit']})
+                else:
+                    paths_and_units.append({'filepath': filepath})
+
+        filepaths = []
+        for item in paths_and_units:
+            out_filepath = item['filepath']
+            logger.debug("Output file path = %s", out_filepath)
+            if 'unit' in item:
+                filepath = store_geojson(out_filepath, data, platform_name=metadata['platform'],
+                                         units={'temperature': item['unit']})
+            else:
+                filepath = store_geojson(out_filepath, data, platform_name=metadata['platform'])
+
+            filepaths.append(filepath)
+
+        return filepaths
 
     def get_output_messages(self, filepath, msg, number_of_data):
         """Generate the adequate output message(s) depending on if an output file was created or not."""

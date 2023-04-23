@@ -72,17 +72,38 @@ TEST_ACTIVE_FIRES_FILE_DATA = """
   57.42747116,   -3.47912717,  353.80722046,  0.375,  0.375,    8,   12.13035393
 """
 
+# CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
+#                   'subscribe_topics': 'VIIRS/L2/AFI',
+#                   'af_pattern_ibands':
+#                   'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
+#                   '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
+#                   'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
+#                   'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
+#                   '{region_name:s}.geojson',
+#                   'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
+#                   'output_dir': '/path/where/the/filtered/results/will/be/stored',
+#                   'timezone': 'Europe/Stockholm'}
+
 CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'subscribe_topics': 'VIIRS/L2/AFI',
                   'af_pattern_ibands':
                   'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
                   '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
-                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
-                  '{region_name:s}.geojson',
                   'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
                   'output_dir': '/path/where/the/filtered/results/will/be/stored',
-                  'timezone': 'Europe/Stockholm'}
+                  'timezone': 'Europe/Stockholm',
+                  'geojson-national': [{'kelvin':
+                                        {'file_pattern':
+                                         'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson'}},
+                                       {'celcius':
+                                        {'file_pattern':
+                                         'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson',
+                                         'unit': 'degC'}}],
+                  'geojson-regional': [{'si-units':
+                                        {'file_pattern':
+                                         'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson'}}
+                                       ]
+                  }
 
 OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
 
@@ -199,10 +220,34 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_activefires_postprocessing_filenames_parsing(setup_comm, get_config, gethostname):
+    """Test check the output file patterns and names parsing."""
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+
+    myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+
+    p__ = afpp.regional_outputs[0]['si-units']['parser']
+    res = p__.compose({'start_time': datetime(2000, 1, 1, 12, 0), 'region_name': 'kurt',
+                       'platform': 'NOAA-20'})
+    assert res == 'AFIMG_NOAA-20_d20000101_t120000_kurt.geojson'
+
+    p__ = afpp.national_outputs[1]['celcius']['parser']
+    res = p__.compose({'start_time': datetime(2000, 1, 1, 12, 0),
+                       'platform': 'NOAA-20'})
+    assert res == 'AFIMG_NOAA-20_d20000101_t120000_celcius.geojson'
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     """Test the regional fires filtering."""
-    # FIXME! This test is to big/broad. Need for refactoring!
-
+    # FIXME! This test is too big/broad. Need for refactoring!
     get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
@@ -236,7 +281,6 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
 
     store_geojson.assert_called_once()
     generate_msg.assert_called_once()
-
     assert len(result) == 1
     assert result[0] == "my fake output message"
 
@@ -279,15 +323,15 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
             get_output_msg.return_value = ["my fake output message"]
             outmsg, result = afpp.fires_filtering(mymsg, af_shapeff)
 
-    store_geojson.assert_called_once()
-    get_output_msg.assert_called_once()
+    assert len(store_geojson.mock_calls) == 2
+    assert len(get_output_msg.mock_calls) == 2
     assert get_global_mask.call_count == 2
 
     assert isinstance(result, pd.core.frame.DataFrame)
     assert len(result) == 1
     np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
     np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
-    assert outmsg == ["my fake output message"]
+    assert outmsg == ['my fake output message', 'my fake output message']
 
 
 @pytest.mark.usefixtures("fake_national_borders_shapefile")
