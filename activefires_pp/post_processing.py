@@ -346,7 +346,6 @@ class ActiveFiresPostprocessing(Thread):
         self._set_options_from_config(config)
 
         self.host = socket.gethostname()
-
         self.timezone = self.options.get('timezone', 'GMT')
 
         self.input_topic = self.options['subscribe_topics'][0]
@@ -530,6 +529,9 @@ class ActiveFiresPostprocessing(Thread):
             af_shapeff.fires_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
             afdata_ff = af_shapeff.get_af_data()
             logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
+
+        # It is here that we should add a uniue day-ID to each of the detections!
+        # afdata_ff = self.add_unique_day_id(afdata_ff)
 
         filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
         out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
