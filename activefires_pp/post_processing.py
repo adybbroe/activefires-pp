@@ -251,8 +251,8 @@ def store(output_filename, detections):
         return None
 
 
-def store_geojson(output_filename, detections, platform_name=None):
-    """Store the filtered AF detections in Geojson format on disk."""
+def geojson_feature_collection_from_detections(detections, platform_name=None):
+    """Create the Geojson feature collection from fire detection data."""
     if len(detections) == 0:
         logger.debug("No detections to save!")
         return None
@@ -280,7 +280,11 @@ def store_geojson(output_filename, detections, platform_name=None):
             properties=prop)
         features.append(feat)
 
-    feature_collection = FeatureCollection(features)
+    return FeatureCollection(features)
+
+
+def store_geojson(output_filename, feature_collection):
+    """Store the Geojson feature collection of fire detections on disk."""
     path = os.path.dirname(output_filename)
     if not os.path.exists(path):
         logger.info("Create directory: %s", path)
@@ -357,6 +361,9 @@ class ActiveFiresPostprocessing(Thread):
 
         frmt = self.options['regional_shapefiles_format']
         self.regional_shapefiles_globstr = globify(frmt)
+        # self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+        self._fire_detection_id = None
+        self._initialize_fire_detection_id()
 
         self.listener = None
         self.publisher = None
@@ -432,14 +439,37 @@ class ActiveFiresPostprocessing(Thread):
                 af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name,
                                                            timezone=self.timezone)
                 afdata = af_shapeff.get_af_data(self.infile_pattern)
-
                 if len(afdata) == 0:
                     logger.debug("Sending message: %s", str(output_msg))
                     self.publisher.send(str(output_msg))
                     continue
 
-                output_messages, afdata = self.fires_filtering(msg, af_shapeff)
-                logger.debug("After fires_filtering...: Number of messages = %d", len(output_messages))
+                afdata = self.fires_filtering(msg, af_shapeff)
+                logger.debug("After fires_filtering...: Number of fire detections = %d", len(afdata))
+                if len(afdata) == 0:
+                    logger.debug("No fires - so no regional filtering to be done!")
+                    continue
+
+                # It is here that we should add a uniue day-ID to each of the detections!
+                # afdata = self.add_unique_day_id(afdata)
+
+                # 1) Create geojson feature collection
+                # 2) Dump geojson data to disk
+                feature_collection = geojson_feature_collection_from_detections(afdata,
+                                                                                platform_name=af_shapeff.platform_name)
+
+                fmda = af_shapeff.metadata
+                pout = Parser(self.outfile_pattern_national)
+                out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
+                logger.debug("Output file path = %s", out_filepath)
+
+                if feature_collection is None:
+                    logger.info("No geojson file created, number of fires after filtering = %d", len(afdata))
+                    output_messages = self._generate_no_fires_messages(msg,
+                                                                       'No true fire detections inside National borders')  # noqa
+                else:
+                    filepath = store_geojson(out_filepath, feature_collection)
+                    output_messages = self.get_output_messages(filepath, msg, len(afdata))
 
                 for output_msg in output_messages:
                     if output_msg:
@@ -449,10 +479,6 @@ class ActiveFiresPostprocessing(Thread):
                 # Do the regional filtering now:
                 if not self.regional_filtermask:
                     logger.info("No regional filtering is attempted.")
-                    continue
-
-                if len(afdata) == 0:
-                    logger.debug("No fires - so no regional filtering to be done!")
                     continue
 
                 # FIXME! If afdata is empty (len=0) then it seems all data are inside all regions!
@@ -488,11 +514,16 @@ class ActiveFiresPostprocessing(Thread):
             out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
             logger.debug("Output file path = %s", out_filepath)
             data_in_region = afdata[regional_fmask[region_name]['mask']]
-            filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
-            if not filepath:
+
+            # filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
+            feature_collection = geojson_feature_collection_from_detections(data_in_region,
+                                                                            platform_name=fmda['platform'])
+            if feature_collection is None:
                 logger.warning("Something wrong happended storing regional " +
                                "data to Geojson - area: {name}".format(name=str(region_name)))
                 continue
+
+            filepath = store_geojson(out_filepath, feature_collection)
 
             outmsg = self._generate_output_message(filepath, msg, regional_fmask[region_name])
             output_messages.append(outmsg)
@@ -530,23 +561,29 @@ class ActiveFiresPostprocessing(Thread):
             afdata_ff = af_shapeff.get_af_data()
             logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
 
-        # It is here that we should add a uniue day-ID to each of the detections!
-        # afdata_ff = self.add_unique_day_id(afdata_ff)
+        return afdata_ff
+        # # It is here that we should add a uniue day-ID to each of the detections!
+        # # afdata_ff = self.add_unique_day_id(afdata_ff)
 
-        filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
-        out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
+        # # 1) Create geojson feature collection
+        # # 2) Dump geojson data to disk
+        # # filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
+        # feature_collection = geojson_feature_collection_from_detections(afdata_ff,
+        #                                                                 platform_name=af_shapeff.platform_name)
+        # if feature_collection is None:
+        #     logger.info("No geojson file created, number of fires after filtering = %d", number_of_data)
+        #     out_messages = self._generate_no_fires_messages(msg,
+        #                                                     'No true fire detections inside National borders')
+        # else:
+        #     filepath = store_geojson(out_filepath, feature_collection)
+        #     out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
 
-        return out_messages, afdata_ff
+        # return out_messages, afdata_ff
 
     def get_output_messages(self, filepath, msg, number_of_data):
         """Generate the adequate output message(s) depending on if an output file was created or not."""
-        if filepath:
-            logger.info("geojson file created! Number of fires after filtering = %d", number_of_data)
-            return [self._generate_output_message(filepath, msg)]
-        else:
-            logger.info("No geojson file created, number of fires after filtering = %d", number_of_data)
-            return self._generate_no_fires_messages(msg,
-                                                    'No true fire detections inside National borders')
+        logger.info("Geojson file created! Number of fires = %d", number_of_data)
+        return [self._generate_output_message(filepath, msg)]
 
     def _generate_output_message(self, filepath, input_msg, region=None):
         """Create the output message to publish."""
@@ -575,6 +612,22 @@ class ActiveFiresPostprocessing(Thread):
         """Check that the national borders shapefile exists on disk."""
         if not os.path.exists(self.shp_borders):
             raise OSError("Shape file does not exist! Filename = %s" % self.shp_borders)
+
+    def _initialize_fire_detection_id(self):
+        """Initialize the fire detection ID."""
+        self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+
+    def update_fire_detection_id(self):
+        """Update the fire detection ID."""
+        pass
+
+    def add_unique_day_id(self, afdata):
+        """Add a unique detection id - date + a running number for the day."""
+        # self.update_fire_detection_id()
+        # Add id's to the detections:
+
+        # return afdata
+        pass
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""

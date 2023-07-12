@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022 Adam Dybbroe
+# Copyright (c) 2021 - 2023 Adam Dybbroe
 
 # Author(s):
 
@@ -32,7 +32,8 @@ from datetime import datetime
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
-
+# from activefires_pp.utils import datetime_utc2local
+# from geojson import Feature, Point, FeatureCollection
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 
@@ -215,6 +216,12 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
 
+    starttime = datetime.fromisoformat('2021-04-14 11:26:43.900')
+    endtime = datetime.fromisoformat('2021-04-14 11:28:08')
+
+    afdata['starttime'] = np.repeat(starttime, len(afdata)).astype(np.datetime64)
+    afdata['endtime'] = np.repeat(endtime, len(afdata)).astype(np.datetime64)
+
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j01',
                      'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
@@ -272,22 +279,14 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm, get_confi
     afdata = af_shapeff.get_af_data(MY_FILE_PATTERN)
 
     mymsg = "Fake message"
+    result = afpp.fires_filtering(mymsg, af_shapeff)
 
-    with patch('activefires_pp.post_processing.store_geojson') as store_geojson:
-        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_output_messages') as get_output_msg:
-            store_geojson.return_value = "/some/output/path"
-            get_output_msg.return_value = ["my fake output message"]
-            outmsg, result = afpp.fires_filtering(mymsg, af_shapeff)
-
-    store_geojson.assert_called_once()
-    get_output_msg.assert_called_once()
     assert get_global_mask.call_count == 2
 
     assert isinstance(result, pd.core.frame.DataFrame)
     assert len(result) == 1
     np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
     np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
-    assert outmsg == ["my fake output message"]
 
 
 @pytest.mark.usefixtures("fake_national_borders_shapefile")
@@ -327,3 +326,16 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_co
 
     expected = "Shape file does not exist! Filename = /my/shape/file/with/country/borders"
     assert str(exec_info.value) == expected
+
+
+# def test_get_feature_collection_from_firedata():
+#     """Test get the Geojson Feature Collection from fire detection."""
+#     myfilepath = TEST_ACTIVE_FIRES_FILEPATH
+
+#     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
+#     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+#     readdata.return_value = afdata
+
+#     breakpoint()
+
+#     x = 1
