@@ -237,7 +237,6 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     mymsg = "Fake message"
     with patch('activefires_pp.post_processing.store_geojson') as store_geojson:
         with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._generate_output_message') as generate_msg:
-            store_geojson.return_value = "/some/output/path"
             generate_msg.return_value = "my fake output message"
             result = afpp.regional_fires_filtering_and_publishing(mymsg, regional_fmask, af_shapeff)
 

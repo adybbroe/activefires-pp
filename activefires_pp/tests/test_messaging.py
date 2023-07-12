@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022 Adam.Dybbroe
+# Copyright (c) 2021, 2022, 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,27 +20,132 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit testing the message handling part of the post-processing
-"""
+"""Unit testing the message handling part of the post-processing."""
 
 from unittest.mock import patch
 from datetime import datetime
 
 from posttroll.message import Message
+from posttroll.testing import patched_publisher
+from posttroll.publisher import create_publisher_from_dict_config
+
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.spatiotemporal_alarm_filtering import _create_output_message
 
 
-TEST_MSG = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2021-04-07T00:41:41.568370 v1.01 application/json {"start_time": "2021-04-07T00:28:17", "end_time": "2021-04-07T00:29:40", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "format": "edr", "type": "netcdf", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17530, "origin": "172.29.4.164:9099", "uri": "ssh://lxserv2313.smhi.se/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc", "uid": "AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc"}"""
+TEST_MSG = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2021-04-07T00:41:41.568370 v1.01 application/json {"start_time": "2021-04-07T00:28:17", "end_time": "2021-04-07T00:29:40", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "format": "edr", "type": "netcdf", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17530, "origin": "172.29.4.164:9099", "uri": "ssh://lxserv2313.smhi.se/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc", "uid": "AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc"}"""  # noqa
+TEST_MSG_TXT = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2023-07-05T10:27:28.821803 v1.01 application/json {"start_time": "2023-07-05T10:07:50", "end_time": "2023-07-05T10:09:15", "orbit_number": 1, "platform_name": "Suomi-NPP", "sensor": "viirs", "format": "edr", "type": "txt", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 60553, "origin": "172.29.4.164:9099", "uri": "/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt", "uid": "AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt"}"""  # noqa
 
 CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'subscribe_topics': 'VIIRS/L2/AFI',
                   'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
+                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',  # noqa
                   'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',
+                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',  # noqa
                   'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
                   'output_dir': '/path/where/the/filtered/results/will/be/stored'}
+
+
+def get_fake_publiser():
+    """Return a fake publisher."""
+    return create_publisher_from_dict_config(dict(port=1979, nameservers=False))
+
+
+@patch('os.path.exists')
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_check_incoming_message_nc_file_exists(setup_comm,
+                                               get_config, gethostname, path_exists):
+    """Test the check of incoming message content and getting the file path from the message.
+
+    Here we test the case when a netCDF file is provided in the message and we
+    test the behaviour when the file also actually exist on the file system.
+    """
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+    path_exists.return_value = True
+
+    myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp.publisher = get_fake_publiser()
+    afpp.publisher.start()
+
+    input_msg = Message.decode(rawstr=TEST_MSG)
+    with patched_publisher() as published_messages:
+        result = afpp.check_incoming_message_and_get_filename(input_msg)
+
+    assert result is None
+    assert len(published_messages) == 2
+    assert 'No fire detections for this granule' in published_messages[0]
+    assert 'No fire detections for this granule' in published_messages[1]
+    assert 'VIIRS/L2/Fires/PP/National' in published_messages[0]
+    assert 'VIIRS/L2/Fires/PP/Regional' in published_messages[1]
+
+
+@patch('os.path.exists')
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_check_incoming_message_txt_file_exists(setup_comm,
+                                                get_config, gethostname, path_exists):
+    """Test the check of incoming message content and getting the file path from the message.
+
+    Here we test the case when a txt file is provided in the message and we
+    test the behaviour when the file also actually exist on the file system.
+    """
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+    path_exists.return_value = True
+
+    myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp.publisher = get_fake_publiser()
+    afpp.publisher.start()
+
+    input_msg = Message.decode(rawstr=TEST_MSG_TXT)
+    with patched_publisher() as published_messages:
+        result = afpp.check_incoming_message_and_get_filename(input_msg)
+
+    assert len(published_messages) == 0
+    assert result == '/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt'  # noqa
+
+
+@patch('os.path.exists')
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_check_incoming_message_txt_file_does_not_exist(setup_comm,
+                                                        get_config, gethostname, path_exists):
+    """Test the check of incoming message content and getting the file path from the message.
+
+    Here we test the case when a txt file is provided in the message and we
+    test the behaviour when the file does not exist on the file system.
+    """
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+    path_exists.return_value = False
+
+    myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp.publisher = get_fake_publiser()
+    afpp.publisher.start()
+
+    input_msg = Message.decode(rawstr=TEST_MSG_TXT)
+    with patched_publisher() as published_messages:
+        result = afpp.check_incoming_message_and_get_filename(input_msg)
+
+    assert len(published_messages) == 0
+    assert result is None
 
 
 @patch('socket.gethostname')
@@ -48,7 +153,6 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
     """Test setup the posttroll message."""
-
     get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
@@ -93,12 +197,12 @@ def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
 
 def test_create_output_message(tmp_path):
     """Test create output message from geojson payload."""
-
     input_msg = Message.decode(rawstr=TEST_MSG)
     filename = tmp_path / 'test_geojson_alarm_file.geojson'
     output_topic = '/VIIRS/L2/Fires/PP/SOSAlarm'
     geojson_alarm = {"features": {"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
-                                  "properties": {"confidence": 8, "observation_time": "2021-06-19T02:58:45.700000+02:00",
+                                  "properties": {"confidence": 8,
+                                                 "observation_time": "2021-06-19T02:58:45.700000+02:00",
                                                  "platform_name": "NOAA-20",
                                                  "power": 2.23312426,
                                                  "related_detection": False,
