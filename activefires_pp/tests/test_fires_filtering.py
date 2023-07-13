@@ -25,6 +25,8 @@
 import pytest
 from unittest.mock import patch
 from unittest import TestCase
+from freezegun import freeze_time
+
 import pandas as pd
 from geojson import FeatureCollection
 import numpy as np
@@ -356,9 +358,25 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_co
     assert str(exec_info.value) == expected
 
 
+@freeze_time('2023-06-16 11:24:00')
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.read_config')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_feature_collection_from_firedata(readdata):
+def test_get_feature_collection_from_firedata(readdata, setup_comm,
+                                              get_config, gethostname):
     """Test get the Geojson Feature Collection from fire detection."""
+    get_config.return_value = CONFIG_EXAMPLE
+    gethostname.return_value = "my.host.name"
+
+    myconfigfile = "/my/config/file/path"
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    # afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 11, 55, 0), 'counter': 1}
+    afpp._initialize_fire_detection_id()
+
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2)
@@ -370,6 +388,8 @@ def test_get_feature_collection_from_firedata(readdata):
         mypatch.return_value = True
         afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
 
+    afdata = afpp.add_unique_day_id(afdata)
+
     result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
 
     # NB! The time of the afdata is here still in UTC!
@@ -378,6 +398,7 @@ def test_get_feature_collection_from_firedata(readdata):
                                    "properties": {"confidence": 8,
                                                   "observation_time": "2023-06-16T11:10:47.200000",
                                                   "platform_name": "Suomi-NPP",
+                                                  "id": '20230616-1',
                                                   "power": 2.51202917, "tb": 339.66326904},
                                    "type": "Feature"},
                                   {"geometry": {"coordinates": [17.42075, 64.216942],
@@ -385,6 +406,7 @@ def test_get_feature_collection_from_firedata(readdata):
                                    "properties": {"confidence": 8,
                                                   "observation_time": "2023-06-16T11:10:47.200000",
                                                   "platform_name": "Suomi-NPP",
+                                                  "id": '20230616-2',
                                                   "power": 3.39806151,
                                                   "tb": 329.65161133},
                                    "type": "Feature"},
@@ -393,6 +415,7 @@ def test_get_feature_collection_from_firedata(readdata):
                                    "properties": {"confidence": 8,
                                                   "observation_time": "2023-06-16T11:10:47.200000",
                                                   "platform_name": "Suomi-NPP",
+                                                  "id": '20230616-3',
                                                   "power": 20.5928936,
                                                   "tb": 346.52050781},
                                    "type": "Feature"},
@@ -401,6 +424,7 @@ def test_get_feature_collection_from_firedata(readdata):
                                    "properties": {"confidence": 8,
                                                   "observation_time": "2023-06-16T11:10:47.200000",
                                                   "platform_name": "Suomi-NPP",
+                                                  "id": '20230616-4',
                                                   "power": 20.5928936,
                                                   "tb": 348.72860718},
                                    "type": "Feature"}])

@@ -270,6 +270,7 @@ def geojson_feature_collection_from_detections(detections, platform_name=None):
         prop = {'power': detections.iloc[idx].power,
                 'tb': detections.iloc[idx].tb,
                 'confidence': int(detections.iloc[idx].conf),
+                'id': detections.iloc[idx].detection_id,
                 'observation_time': json_serial(mean_granule_time)
                 }
         if platform_name:
