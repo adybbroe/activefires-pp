@@ -24,7 +24,9 @@
 
 import pytest
 from unittest.mock import patch
+from unittest import TestCase
 import pandas as pd
+from geojson import FeatureCollection
 import numpy as np
 import io
 from datetime import datetime
@@ -32,10 +34,12 @@ from datetime import datetime
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
-# from activefires_pp.utils import datetime_utc2local
-# from geojson import Feature, Point, FeatureCollection
+
+from activefires_pp.post_processing import geojson_feature_collection_from_detections
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
+TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.txt"
+
 
 TEST_ACTIVE_FIRES_FILE_DATA = """
 # Active Fires I-band EDR
@@ -73,6 +77,30 @@ TEST_ACTIVE_FIRES_FILE_DATA = """
   57.42747116,   -3.47912717,  353.80722046,  0.375,  0.375,    8,   12.13035393
 """
 
+# Here we have sorted out all detections not passing the filter mask!
+# So, 4 fire detections are left corresponding to what would end up in the geojson files:
+TEST_ACTIVE_FIRES_FILE_DATA2 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 14
+#
+  62.65801239,   17.25905228,  339.66326904,  0.375,  0.375,    8,    2.51202917
+  64.21694183,   17.42074966,  329.65161133,  0.375,  0.375,    8,    3.39806151
+  64.56904602,   16.60095215,  346.52050781,  0.375,  0.375,    8,   20.59289360
+  64.57222748,   16.59840012,  348.72860718,  0.375,  0.375,    8,   20.59289360
+"""
+
 CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'subscribe_topics': 'VIIRS/L2/AFI',
                   'af_pattern_ibands':
@@ -83,6 +111,7 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   '{region_name:s}.geojson',
                   'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
                   'output_dir': '/path/where/the/filtered/results/will/be/stored',
+                  'filepath_detection_id_cache': '/path/to/the/detection_id/cache',
                   'timezone': 'Europe/Stockholm'}
 
 OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
@@ -126,8 +155,8 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata):
     """Test adding start and end times to the active fires data."""
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH
 
-    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    # fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
+    afdata = pd.read_csv(OPEN_FSTREAM, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
@@ -327,14 +356,53 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_co
     assert str(exec_info.value) == expected
 
 
-# def test_get_feature_collection_from_firedata():
-#     """Test get the Geojson Feature Collection from fire detection."""
-#     myfilepath = TEST_ACTIVE_FIRES_FILEPATH
+@patch('activefires_pp.post_processing._read_data')
+def test_get_feature_collection_from_firedata(readdata):
+    """Test get the Geojson Feature Collection from fire detection."""
+    myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
 
-#     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-#     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
-#     readdata.return_value = afdata
+    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2)
+    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    readdata.return_value = afdata
 
-#     breakpoint()
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
+    with patch('os.path.exists') as mypatch:
+        mypatch.return_value = True
+        afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
 
-#     x = 1
+    result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
+
+    # NB! The time of the afdata is here still in UTC!
+    expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 2.51202917, "tb": 339.66326904},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [17.42075, 64.216942],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 3.39806151,
+                                                  "tb": 329.65161133},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [16.600952, 64.569046],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 20.5928936,
+                                                  "tb": 346.52050781},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [16.5984, 64.572227],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 20.5928936,
+                                                  "tb": 348.72860718},
+                                   "type": "Feature"}])
+
+    TestCase().assertDictEqual(result, expected)

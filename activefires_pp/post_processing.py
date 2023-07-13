@@ -358,6 +358,7 @@ class ActiveFiresPostprocessing(Thread):
         self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
         self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
         self.output_dir = self.options.get('output_dir', '/tmp')
+        self.filepath_detection_id_cache = self.options.get('filepath_detection_id_cache')
 
         frmt = self.options['regional_shapefiles_format']
         self.regional_shapefiles_globstr = globify(frmt)
@@ -449,7 +450,8 @@ class ActiveFiresPostprocessing(Thread):
             return
 
         # It is here that we should add a uniue day-ID to each of the detections!
-        # afdata = self.add_unique_day_id(afdata)
+        afdata = self.add_unique_day_id(afdata)
+        self.save_id_to_file()
 
         # 1) Create geojson feature collection
         # 2) Dump geojson data to disk
@@ -575,23 +577,6 @@ class ActiveFiresPostprocessing(Thread):
             logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
 
         return afdata_ff
-        # # It is here that we should add a uniue day-ID to each of the detections!
-        # # afdata_ff = self.add_unique_day_id(afdata_ff)
-
-        # # 1) Create geojson feature collection
-        # # 2) Dump geojson data to disk
-        # # filepath = store_geojson(out_filepath, afdata_ff, platform_name=af_shapeff.platform_name)
-        # feature_collection = geojson_feature_collection_from_detections(afdata_ff,
-        #                                                                 platform_name=af_shapeff.platform_name)
-        # if feature_collection is None:
-        #     logger.info("No geojson file created, number of fires after filtering = %d", number_of_data)
-        #     out_messages = self._generate_no_fires_messages(msg,
-        #                                                     'No true fire detections inside National borders')
-        # else:
-        #     filepath = store_geojson(out_filepath, feature_collection)
-        #     out_messages = self.get_output_messages(filepath, msg, len(afdata_ff))
-
-        # return out_messages, afdata_ff
 
     def get_output_messages(self, filepath, msg, number_of_data):
         """Generate the adequate output message(s) depending on if an output file was created or not."""
@@ -628,19 +613,57 @@ class ActiveFiresPostprocessing(Thread):
 
     def _initialize_fire_detection_id(self):
         """Initialize the fire detection ID."""
-        self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+        if self.filepath_detection_id_cache and os.path.exists(self.filepath_detection_id_cache):
+            self._fire_detection_id = self.get_id_from_file()
+        else:
+            self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
 
     def update_fire_detection_id(self):
-        """Update the fire detection ID."""
-        pass
+        """Update the fire detection ID registry."""
+        now = datetime.utcnow()
+        tdelta = now - self._fire_detection_id['date']
+        if tdelta.total_seconds() > 24*3600:
+            self._initialize_fire_detection_id()
+        elif tdelta.total_seconds() > 0 and self._fire_detection_id['date'].day != now.day:
+            self._initialize_fire_detection_id()
+
+        self._fire_detection_id['counter'] = self._fire_detection_id['counter'] + 1
+
+    def save_id_to_file(self):
+        """Save the (current) detection id on disk."""
+        with open(self.filepath_detection_id_cache, 'w') as fpt:
+            id_ = self._create_id_string()
+            fpt.write(id_)
+
+    def get_id_from_file(self):
+        """Read the latest stored detection id string from disk and convert to internal format."""
+        with open(self.filepath_detection_id_cache, 'r') as fpt:
+            idstr = fpt.read()
+
+        return self._get_id_from_string(idstr)
+
+    def _get_id_from_string(self, idstr):
+        """Get the detection id from string."""
+        datestr, counter = idstr.split('-')
+        return {'date': datetime.strptime(datestr, '%Y%m%d'),
+                'counter': int(counter)}
+
+    def _create_id_string(self):
+        """From the internal fire detection id create the id string to be exposed to the user."""
+        return (self._fire_detection_id['date'].strftime('%Y%m%d') +
+                '-' + str(self._fire_detection_id['counter']))
 
     def add_unique_day_id(self, afdata):
         """Add a unique detection id - date + a running number for the day."""
-        # self.update_fire_detection_id()
         # Add id's to the detections:
+        id_list = []
+        for _i in range(len(afdata)):
+            self.update_fire_detection_id()
+            id_ = self._create_id_string()
+            id_list.append(id_)
 
-        # return afdata
-        pass
+        afdata['detection_id'] = id_list
+        return afdata
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""
