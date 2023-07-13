@@ -243,6 +243,7 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp._initialize_fire_detection_id()
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -252,6 +253,8 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
 
     afdata['starttime'] = np.repeat(starttime, len(afdata)).astype(np.datetime64)
     afdata['endtime'] = np.repeat(endtime, len(afdata)).astype(np.datetime64)
+
+    afdata = afpp.add_unique_day_id(afdata)
 
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j01',
@@ -374,7 +377,6 @@ def test_get_feature_collection_from_firedata(readdata, setup_comm,
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-    # afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 11, 55, 0), 'counter': 1}
     afpp._initialize_fire_detection_id()
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
