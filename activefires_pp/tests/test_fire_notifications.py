@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022 Adam Dybbroe
+# Copyright (c) 2021 - 2023 Adam Dybbroe
 
 # Author(s):
 
@@ -20,14 +20,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit testing the fire notifications.
-"""
+"""Unit testing the fire notifications."""
 
 import unittest
 from unittest.mock import patch
 import yaml
 import io
-from posttroll.message import Message
+# from posttroll.message import Message
 
 from activefires_pp.fire_notifications import EndUserNotifier
 from activefires_pp.fire_notifications import EndUserNotifierRegional
@@ -99,29 +98,32 @@ unsubscribe:
   text: 'Stop being bothered: Send a note to unsubscribe@mydomain.xx'
 """
 
-REGIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/Regional/0114 file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.542021 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "region_name": "Storstockholms brandf\u00f6rsvar", "region_code": "0114", "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_NOAA-20_d20210416_t122953_0114.geojson", "uid": "AFIMG_NOAA-20_d20210416_t122953_0114.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""
+REGIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/Regional/0114 file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.542021 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "region_name": "Storstockholms brandf\u00f6rsvar", "region_code": "0114", "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_NOAA-20_d20210416_t122953_0114.geojson", "uid": "AFIMG_NOAA-20_d20210416_t122953_0114.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""  # noqa
 
-NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""
+NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""  # noqa
 
 
 class MyNetrcMock(object):
+    """Mocking the handling of secrets via the .netrc file."""
 
     def __init__(self):
-
+        """Initialize the netrc mock class."""
         self.hosts = {'default': ('my_user', None, 'my_passwd')}
 
     def authenticators(self, host):
+        """Return authentication for host."""
         return self.hosts.get(host)
 
 
 class TestNotifyEndUsers(unittest.TestCase):
+    """Test notifications on National fires."""
 
     @patch('activefires_pp.fire_notifications.netrc')
     @patch('activefires_pp.fire_notifications.socket.gethostname')
     @patch('activefires_pp.fire_notifications.read_config')
     @patch('activefires_pp.fire_notifications.EndUserNotifier._setup_and_start_communication')
     def test_get_options_national_filtering(self, setup_comm, read_config, gethostname, netrc):
-
+        """Test get the config options for National fires filtering."""
         secrets = MyNetrcMock()
         netrc.return_value = secrets
         gethostname.return_value = 'default'
@@ -166,13 +168,14 @@ class TestNotifyEndUsers(unittest.TestCase):
 
 
 class TestNotifyEndUsersRegional(unittest.TestCase):
+    """Test the regional notifications."""
 
     @patch('activefires_pp.fire_notifications.netrc')
     @patch('activefires_pp.fire_notifications.socket.gethostname')
     @patch('activefires_pp.fire_notifications.read_config')
     @patch('activefires_pp.fire_notifications.EndUserNotifierRegional._setup_and_start_communication')
     def test_get_options_regional_filtering(self, setup_comm, read_config, gethostname, netrc):
-
+        """Test get the config options for regional filtering."""
         secrets = MyNetrcMock()
         netrc.return_value = secrets
         gethostname.return_value = 'default'
@@ -228,7 +231,7 @@ class TestNotifyEndUsersRegional(unittest.TestCase):
         # assert this.input_topic == 'VIIRS/L2/Fires/PP/Regional'
         # assert this.output_topic == 'VIIRS/L2/MSB/Regional'
 
-        input_msg = Message.decode(rawstr=REGIONAL_TEST_MESSAGE)
+        # input_msg = Message.decode(rawstr=REGIONAL_TEST_MESSAGE)
         # this.notify_end_users(input_msg)
 
         # ffdata = {"features": [{"geometry": {"coordinates": [17.198933, 59.577972], "type": "Point"},
@@ -242,7 +245,6 @@ class TestNotifyEndUsersRegional(unittest.TestCase):
     @patch('activefires_pp.fire_notifications.EndUserNotifierRegional._setup_and_start_communication')
     def test_get_recipients_for_region(self, setup_comm, read_config, gethostname, netrc):
         """Test getting the recipients for a given region."""
-
         secrets = MyNetrcMock()
         netrc.return_value = secrets
         gethostname.return_value = 'default'
