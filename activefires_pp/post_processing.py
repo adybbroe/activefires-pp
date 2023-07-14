@@ -631,7 +631,11 @@ class ActiveFiresPostprocessing(Thread):
         self._fire_detection_id['counter'] = self._fire_detection_id['counter'] + 1
 
     def save_id_to_file(self):
-        """Save the (current) detection id on disk."""
+        """Save the (current) detection id on disk.
+
+        It is assumed that the user permissions are so that a file can actually
+        be written to disk here!
+        """
         with open(self.filepath_detection_id_cache, 'w') as fpt:
             id_ = self._create_id_string()
             fpt.write(id_)
@@ -670,6 +674,8 @@ class ActiveFiresPostprocessing(Thread):
         """Shutdown the Active Fires postprocessing."""
         logger.info('Terminating Active Fires post processing.')
         self.loop = False
+        logger.info('Dumping the latest detection id to disk: %s', str(self.filepath_detection_id_cache))
+        self.save_id_to_file()
         try:
             self.listener.stop()
         except Exception:
