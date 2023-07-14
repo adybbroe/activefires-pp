@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022 Adam.Dybbroe
+# Copyright (c) 2021, 2022, 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit testing the utility functions.
-"""
+"""Unit testing the utility functions."""
 
 import pytest
 from freezegun import freeze_time
@@ -32,12 +31,11 @@ from activefires_pp.utils import get_filename_from_posttroll_message
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import json_serial
 
-NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""
+NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""  # noqa
 
 
 def test_json_serial():
     """Test the json_serial function."""
-
     dtime_obj = datetime(2021, 4, 7, 11, 58, 53, 200000)
     res = json_serial(dtime_obj)
 
@@ -64,7 +62,6 @@ def test_get_filename_from_posttroll_message():
 @freeze_time('2022-03-26 18:12:05')
 def test_utc2localtime_conversion():
     """Test converting utc time to local time."""
-
     atime1 = datetime.utcnow()
     dtobj = datetime_utc2local(atime1, 'Europe/Stockholm')
     assert dtobj.strftime('%Y%m%d-%H%M') == '20220326-1912'
