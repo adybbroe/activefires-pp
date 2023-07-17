@@ -4,8 +4,8 @@ subscribe_topics: VIIRS/L2/AFI
 
 af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
 
-#geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-#geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
 
 regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
@@ -16,13 +16,13 @@ filepath_detection_id_cache: /path/to/the/detection_id/cache
 timezone: Europe/Stockholm
 # pytz.all_timezones
 
-geojson-national:
-  - kelvin:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-  - celcius:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
-      unit: degC
+# geojson-national:
+#   - kelvin:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+#   - celcius:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
+#       unit: degC
 
-geojson-regional:
-  - si-units:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+# geojson-regional:
+#   - si-units:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
