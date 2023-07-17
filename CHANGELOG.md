@@ -1,3 +1,20 @@
+## Version <v0.1.8> (2023/07/14)
+
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 14](https://github.com/adybbroe/activefires-pp/pull/14) - Bugfix multipolygon treatment and adapt to latest Shapely
+
+#### Features added
+
+* [PR 16](https://github.com/adybbroe/activefires-pp/pull/16) - Feature add unique detection
+* [PR 14](https://github.com/adybbroe/activefires-pp/pull/14) - Bugfix multipolygon treatment and adapt to latest Shapely
+
+In this release 3 pull requests were closed.
+
+
 ## Version <v0.1.7> (2022/10/24)
 
 
