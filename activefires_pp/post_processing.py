@@ -307,22 +307,6 @@ def store_geojson(output_filename, feature_collection):
         dump(feature_collection, fpt)
 
 
-def _unit_conversion(variable, units, unit_registry, varname):
-    """Convert to requested unit."""
-    if unit_registry is None:
-        return variable
-
-    orig_units = {'power': unit_registry.watt * 1e6,
-                  'temperature': unit_registry.kelvin}
-
-    if units.get(varname):
-        variable = variable * orig_units[varname]
-        variable.ito(units.get(varname))
-        return variable.magnitude
-    else:
-        return variable
-
-
 def get_mask_from_multipolygon(points, geometry, start_idx=1):
     """Get mask for points from a shapely Multipolygon."""
     shape = geometry.geoms[0]
@@ -403,15 +387,6 @@ class ActiveFiresPostprocessing(Thread):
         self.publisher = None
         self.loop = False
         self._setup_and_start_communication()
-
-    # def set_output_filename_parsers(self):
-    #     """Set the geojson output filename parsers."""
-    #     for output in self.national_outputs:
-    #         for prod in output:
-    #             output[prod].update({'parser': Parser(output[prod]['file_pattern'])})
-    #     for output in self.regional_outputs:
-    #         for prod in output:
-    #             output[prod].update({'parser': Parser(output[prod]['file_pattern'])})
 
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
