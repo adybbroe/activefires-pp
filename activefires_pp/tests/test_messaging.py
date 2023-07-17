@@ -22,6 +22,7 @@
 
 """Unit testing the message handling part of the post-processing."""
 
+# import pytest
 from unittest.mock import patch
 from datetime import datetime
 
@@ -50,6 +51,49 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
 def get_fake_publiser():
     """Return a fake publisher."""
     return create_publisher_from_dict_config(dict(port=1979, nameservers=False))
+
+
+# @pytest.fixture(scope='session')
+# @patch('os.path.exists')
+# @patch('socket.gethostname')
+# @patch('activefires_pp.post_processing.read_config')
+# @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+# def fake_af_instance(setup_comm, get_config, gethostname, path_exists):
+
+#     get_config.return_value = CONFIG_EXAMPLE
+#     gethostname.return_value = "my.host.name"
+#     path_exists.return_value = True
+
+#     myconfigfile = "/my/config/file/path"
+#     myborders_file = "/my/shape/file/with/country/borders"
+#     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+#     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+#     afpp.publisher = get_fake_publiser()
+#     afpp.publisher.start()
+
+#     return afpp
+
+
+# class TestCheckMessaging:
+
+#     @pytest.fixture(autouse=True)
+#     def setup_method(self, fake_af_instance):
+#         self.afpp = fake_af_instance
+
+#     def test_check_incoming_message_nc_file_exists(self):
+#         input_msg = Message.decode(rawstr=TEST_MSG)
+
+#         with patched_publisher() as published_messages:
+#             result = self.afpp.check_incoming_message_and_get_filename(input_msg)
+
+#         assert result is None
+#         assert len(published_messages) == 2
+#         assert 'No fire detections for this granule' in published_messages[0]
+#         assert 'No fire detections for this granule' in published_messages[1]
+#         assert 'VIIRS/L2/Fires/PP/National' in published_messages[0]
+#         assert 'VIIRS/L2/Fires/PP/Regional' in published_messages[1]
+#         self.afpp.publisher.stop()
 
 
 @patch('os.path.exists')
