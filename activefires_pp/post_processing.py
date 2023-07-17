@@ -277,10 +277,12 @@ def geojson_feature_collection_from_detections(detections, platform_name=None):
         try:
             prop['tb_celcius'] = detections.iloc[idx].tb_celcius
         except AttributeError:
+            logger.debug("Failed adding the TB in celcius!")
             pass
         try:
             prop['id'] = detections.iloc[idx].detection_id
         except AttributeError:
+            logger.debug("Failed adding the unique detection id!")
             pass
 
         if platform_name:
