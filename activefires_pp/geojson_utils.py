@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam Dybbroe
+# Copyright (c) 2022 - 2023 Adam Dybbroe
 
 # Author(s):
 
@@ -22,7 +22,10 @@
 
 """Geojson utilities."""
 
+import os
+import pyproj
 import geojson
+from geojson import Feature, Point, FeatureCollection, dump
 import json
 import logging
 from trollsift import Parser, globify
@@ -30,7 +33,9 @@ import pytz
 from datetime import datetime
 import numpy as np
 
-LOG = logging.getLogger(__name__)
+from activefires_pp.utils import json_serial
+
+logger = logging.getLogger(__name__)
 
 
 def read_geojson_data(filename):
@@ -41,9 +46,9 @@ def read_geojson_data(filename):
             with open(filename, "r") as fpt:
                 return geojson.load(fpt)
         except json.decoder.JSONDecodeError:
-            LOG.exception("Geojson file invalid and cannot be read: %s", str(filename))
+            logger.exception("Geojson file invalid and cannot be read: %s", str(filename))
     else:
-        LOG.error("No valid filename to read: %s", str(filename))
+        logger.error("No valid filename to read: %s", str(filename))
 
 
 def get_geojson_files_in_observation_time_order(path, pattern, time_interval):
@@ -72,6 +77,57 @@ def get_geojson_files_in_observation_time_order(path, pattern, time_interval):
     return files.tolist()
 
 
+def geojson_feature_collection_from_detections(detections, platform_name=None):
+    """Create the Geojson feature collection from fire detection data."""
+    if len(detections) == 0:
+        logger.debug("No detections to save!")
+        return None
+
+    # Convert points to GeoJSON
+    features = []
+    for idx in range(len(detections)):
+        starttime = detections.iloc[idx].starttime
+        endtime = detections.iloc[idx].endtime
+        mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
+                                                         starttime.to_pydatetime()) / 2.
+
+        prop = {'power': detections.iloc[idx].power,
+                'tb': detections.iloc[idx].tb,
+                'confidence': int(detections.iloc[idx].conf),
+                'id': detections.iloc[idx].detection_id,
+                'observation_time': json_serial(mean_granule_time)
+                }
+        if platform_name:
+            prop['platform_name'] = platform_name
+        else:
+            logger.debug("No platform name specified for output")
+
+        feat = Feature(
+            geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
+            properties=prop)
+        features.append(feat)
+
+    return FeatureCollection(features)
+
+
+def map_coordinates_in_feature_collection(feature_collection, epsg_str):
+    """Map the Point coordinates of all data in Feature Collection."""
+    outp = pyproj.Proj(init='EPSG:'+epsg_str)
+
+    mapped_features = []
+    # Iterate through each feature of the feature collection
+    for feature in feature_collection['features']:
+        lon, lat = feature['geometry']['coordinates']
+        prop = feature['properties']
+        feature_out = Feature(geometry=Point(map(float, [lon, lat])), properties=prop)
+        # Project/transform coordinate pairs of each Point
+        result = outp(lon, lat)
+        feature_out['geometry']['coordinates'] = [result[0], result[1]]
+        mapped_features.append(feature_out)
+
+    return FeatureCollection(mapped_features)
+
+
 def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
     """Store the fire alarm to a geojson file."""
     utc = pytz.timezone('utc')
@@ -82,6 +138,17 @@ def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
                                  'platform_name': platform_name})
     output_filename = fires_alarms_dir / fname
     with open(output_filename, 'w') as fpt:
-        geojson.dump(alarm, fpt)
+        dump(alarm, fpt)
 
     return output_filename
+
+
+def store_geojson(output_filename, feature_collection):
+    """Store the Geojson feature collection of fire detections on disk."""
+    path = os.path.dirname(output_filename)
+    if not os.path.exists(path):
+        logger.info("Create directory: %s", path)
+        os.makedirs(path)
+
+    with open(output_filename, 'w') as fpt:
+        dump(feature_collection, fpt)

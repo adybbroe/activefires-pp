@@ -30,7 +30,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import os
 from six.moves.urllib.parse import urlparse
-from geojson import Feature, Point, FeatureCollection, dump
+
 import logging
 import signal
 from queue import Empty
@@ -42,9 +42,12 @@ import pyproj
 from matplotlib.path import Path
 import shapely
 
+from activefires_pp.geojson_utils import store_geojson
+from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
+from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
+
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import get_local_timezone_offset
-from activefires_pp.utils import json_serial
 from activefires_pp.config import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
@@ -253,50 +256,6 @@ def store(output_filename, detections):
         return None
 
 
-def geojson_feature_collection_from_detections(detections, platform_name=None):
-    """Create the Geojson feature collection from fire detection data."""
-    if len(detections) == 0:
-        logger.debug("No detections to save!")
-        return None
-
-    # Convert points to GeoJSON
-    features = []
-    for idx in range(len(detections)):
-        starttime = detections.iloc[idx].starttime
-        endtime = detections.iloc[idx].endtime
-        mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
-                                                         starttime.to_pydatetime()) / 2.
-
-        prop = {'power': detections.iloc[idx].power,
-                'tb': detections.iloc[idx].tb,
-                'confidence': int(detections.iloc[idx].conf),
-                'id': detections.iloc[idx].detection_id,
-                'observation_time': json_serial(mean_granule_time)
-                }
-        if platform_name:
-            prop['platform_name'] = platform_name
-        else:
-            logger.debug("No platform name specified for output")
-
-        feat = Feature(
-            geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
-            properties=prop)
-        features.append(feat)
-
-    return FeatureCollection(features)
-
-
-def store_geojson(output_filename, feature_collection):
-    """Store the Geojson feature collection of fire detections on disk."""
-    path = os.path.dirname(output_filename)
-    if not os.path.exists(path):
-        logger.info("Create directory: %s", path)
-        os.makedirs(path)
-
-    with open(output_filename, 'w') as fpt:
-        dump(feature_collection, fpt)
-
-
 def get_mask_from_multipolygon(points, geometry, start_idx=1):
     """Get mask for points from a shapely Multipolygon."""
     shape = geometry.geoms[0]
@@ -357,6 +316,7 @@ class ActiveFiresPostprocessing(Thread):
         self.output_topic = self.options['publish_topic']
         self.infile_pattern = self.options.get('af_pattern_ibands')
         self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
+        self.outfile_pattern_national_sweref99 = self.options.get('geojson_file_pattern_national_sweref99')
         self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
         self.output_dir = self.options.get('output_dir', '/tmp')
         self.filepath_detection_id_cache = self.options.get('filepath_detection_id_cache')
@@ -431,6 +391,31 @@ class ActiveFiresPostprocessing(Thread):
 
         return filename
 
+    def _national_save_and_publish(self, feature_collection, ndata, af_shapeff, msg, sweref99=False):
+        """Take the fearure collection and store the results in a Geojson file and publish."""
+        if feature_collection is None:
+            logger.info("No geojson file created, number of fires after filtering = %d", ndata)
+            output_messages = self._generate_no_fires_messages(msg,
+                                                               'No true fire detections inside National borders')  # noqa
+            return
+
+        fmda = af_shapeff.metadata
+        if sweref99:
+            pout = Parser(self.outfile_pattern_national_sweref99)
+        else:
+            pout = Parser(self.outfile_pattern_national)
+
+        out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
+        logger.debug("Output file path = %s", out_filepath)
+
+        store_geojson(out_filepath, feature_collection)
+        output_messages = self.get_output_messages(out_filepath, msg, ndata)
+
+        for output_msg in output_messages:
+            if output_msg:
+                logger.debug("Sending message: %s", str(output_msg))
+                self.publisher.send(str(output_msg))
+
     def do_postprocessing_on_message(self, msg, filename):
         """Do the fires post processing on a message."""
         platform_name = msg.data.get('platform_name')
@@ -456,26 +441,14 @@ class ActiveFiresPostprocessing(Thread):
 
         # 1) Create geojson feature collection
         # 2) Dump geojson data to disk
+
         feature_collection = geojson_feature_collection_from_detections(afdata,
                                                                         platform_name=af_shapeff.platform_name)
 
-        fmda = af_shapeff.metadata
-        pout = Parser(self.outfile_pattern_national)
-        out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
-        logger.debug("Output file path = %s", out_filepath)
+        self._national_save_and_publish(feature_collection, len(afdata), af_shapeff, msg)
 
-        if feature_collection is None:
-            logger.info("No geojson file created, number of fires after filtering = %d", len(afdata))
-            output_messages = self._generate_no_fires_messages(msg,
-                                                               'No true fire detections inside National borders')  # noqa
-        else:
-            store_geojson(out_filepath, feature_collection)
-            output_messages = self.get_output_messages(out_filepath, msg, len(afdata))
-
-        for output_msg in output_messages:
-            if output_msg:
-                logger.debug("Sending message: %s", str(output_msg))
-                self.publisher.send(str(output_msg))
+        sweref99_fc = map_coordinates_in_feature_collection(feature_collection, '4976')
+        self._national_save_and_publish(sweref99_fc, len(afdata), af_shapeff, msg, sweref99=True)
 
         # Do the regional filtering now:
         if not self.regional_filtermask:

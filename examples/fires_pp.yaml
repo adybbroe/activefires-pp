@@ -5,6 +5,7 @@ subscribe_topics: VIIRS/L2/AFI
 af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
 
 geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+geojson_file_pattern_national_sweref99: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_sweref99.geojson
 geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
 
 regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
