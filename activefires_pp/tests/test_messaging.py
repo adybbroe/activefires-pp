@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022, 2023 Adam.Dybbroe
+# Copyright (c) 2021-2023 Adam.Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam Dybbroe <Firstname.Lastname@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 """Unit testing the message handling part of the post-processing."""
 
+# import pytest
 from unittest.mock import patch
 from datetime import datetime
 
@@ -34,6 +35,7 @@ from activefires_pp.spatiotemporal_alarm_filtering import _create_output_message
 
 
 TEST_MSG = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2021-04-07T00:41:41.568370 v1.01 application/json {"start_time": "2021-04-07T00:28:17", "end_time": "2021-04-07T00:29:40", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "format": "edr", "type": "netcdf", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17530, "origin": "172.29.4.164:9099", "uri": "ssh://lxserv2313.smhi.se/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc", "uid": "AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc"}"""  # noqa
+
 TEST_MSG_TXT = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2023-07-05T10:27:28.821803 v1.01 application/json {"start_time": "2023-07-05T10:07:50", "end_time": "2023-07-05T10:09:15", "orbit_number": 1, "platform_name": "Suomi-NPP", "sensor": "viirs", "format": "edr", "type": "txt", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 60553, "origin": "172.29.4.164:9099", "uri": "/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt", "uid": "AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt"}"""  # noqa
 
 CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
@@ -49,6 +51,49 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
 def get_fake_publiser():
     """Return a fake publisher."""
     return create_publisher_from_dict_config(dict(port=1979, nameservers=False))
+
+
+# @pytest.fixture(scope='session')
+# @patch('os.path.exists')
+# @patch('socket.gethostname')
+# @patch('activefires_pp.post_processing.read_config')
+# @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+# def fake_af_instance(setup_comm, get_config, gethostname, path_exists):
+
+#     get_config.return_value = CONFIG_EXAMPLE
+#     gethostname.return_value = "my.host.name"
+#     path_exists.return_value = True
+
+#     myconfigfile = "/my/config/file/path"
+#     myborders_file = "/my/shape/file/with/country/borders"
+#     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+#     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+#     afpp.publisher = get_fake_publiser()
+#     afpp.publisher.start()
+
+#     return afpp
+
+
+# class TestCheckMessaging:
+
+#     @pytest.fixture(autouse=True)
+#     def setup_method(self, fake_af_instance):
+#         self.afpp = fake_af_instance
+
+#     def test_check_incoming_message_nc_file_exists(self):
+#         input_msg = Message.decode(rawstr=TEST_MSG)
+
+#         with patched_publisher() as published_messages:
+#             result = self.afpp.check_incoming_message_and_get_filename(input_msg)
+
+#         assert result is None
+#         assert len(published_messages) == 2
+#         assert 'No fire detections for this granule' in published_messages[0]
+#         assert 'No fire detections for this granule' in published_messages[1]
+#         assert 'VIIRS/L2/Fires/PP/National' in published_messages[0]
+#         assert 'VIIRS/L2/Fires/PP/Regional' in published_messages[1]
+#         self.afpp.publisher.stop()
 
 
 @patch('os.path.exists')
@@ -154,28 +199,29 @@ def test_check_incoming_message_txt_file_does_not_exist(setup_comm,
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
+def test_prepare_posttroll_message(setup_comm, get_config,
+                                   gethostname, fake_yamlconfig_file_post_processing):
     """Test setup the posttroll message."""
     get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
 
     input_msg = Message.decode(rawstr=TEST_MSG)
-    res_msg = afpp._generate_output_message(test_filepath, input_msg)
+    result_messages = afpp.get_output_messages(test_filepath, input_msg, 1)
 
-    assert res_msg.data['platform_name'] == 'NOAA-20'
-    assert res_msg.data['type'] == 'GEOJSON-filtered'
-    assert res_msg.data['format'] == 'geojson'
-    assert res_msg.data['product'] == 'afimg'
-    assert res_msg.subject == '/VIIRS/L2/Fires/PP/National'
-    assert res_msg.data['uri'] == 'ssh://my.host.name//my/geojson/file/path'
+    assert result_messages[0].data['platform_name'] == 'NOAA-20'
+    assert result_messages[0].data['type'] == 'GEOJSON-filtered'
+    assert result_messages[0].data['format'] == 'geojson'
+    assert result_messages[0].data['product'] == 'afimg'
+    assert result_messages[0].subject == '/VIIRS/L2/Fires/PP/National'
+    assert result_messages[0].data['uri'] == 'ssh://my.host.name//my/geojson/file/path'
 
     input_msg = Message.decode(rawstr=TEST_MSG)
 
