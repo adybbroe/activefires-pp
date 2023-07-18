@@ -722,7 +722,7 @@ class ActiveFiresPostprocessing(Thread):
         """Add a column with TB in Celcius to the fire detection data frame."""
         tbc_list = []
         for _i in range(len(data_frame)):
-            tbc = self.unit_converter.convert('temperature', data_frame['tb'][_i])
+            tbc = self.unit_converter.convert('temperature', data_frame['tb'].iloc[_i])
             tbc_list.append(tbc.magnitude)
 
         data_frame['tb_celcius'] = tbc_list

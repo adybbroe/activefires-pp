@@ -99,6 +99,8 @@ TEST_ACTIVE_FIRES_FILE_DATA2 = """
 #
 # number of fire pixels: 14
 #
+  58.74638367,    8.54766846,  340.68481445,  0.375,  0.375,    8,   10.83046722
+  55.34669113,   -4.51371527,  325.72799683,  0.375,  0.375,    8,    6.21815872
   62.65801239,   17.25905228,  339.66326904,  0.375,  0.375,    8,    2.51202917
   64.21694183,   17.42074966,  329.65161133,  0.375,  0.375,    8,    3.39806151
   64.56904602,   16.60095215,  346.52050781,  0.375,  0.375,    8,   20.59289360
@@ -436,6 +438,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
         mypatch.return_value = True
         afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
 
+    afdata = afdata[2::]  # Reduce to only contain the last detections!
     afdata = afpp.add_unique_day_id(afdata)
     result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
 
@@ -499,8 +502,8 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm,
     units = {'temperature': 'degC'}
     afpp.unit_converter = UnitConverter(units)
 
-    myfilepath = TEST_ACTIVE_FIRES_FILEPATH3
-    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA3)
+    myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
+    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2)
 
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
@@ -510,18 +513,50 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm,
         mypatch.return_value = True
         afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
 
+    afdata = afdata[2::]  # Reduce to only contain the last detections!
+
     afdata = afpp.add_tb_celcius(afdata)
     result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
 
     # NB! The time of the afdata is here still in UTC!
-    expected = FeatureCollection([{"geometry": {"coordinates": [17.650284, 64.467072],
+    expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
                                                 "type": "Point"},
                                    "properties": {
-                                       "confidence": 8, "observation_time": "2023-06-17T11:41:38.200000",
+                                       "confidence": 8,
+                                       "observation_time": "2023-06-16T11:10:47.200000",
                                        "platform_name": "Suomi-NPP",
-                                       "power": 3.75669074,
-                                       "tb": 330.15390015,
-                                       "tb_celcius": 57.00390015000005},
+                                       "power": 2.51202917,
+                                       "tb": 339.66326904,
+                                       "tb_celcius": 66.51326904000001},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [17.42075, 64.216942],
+                                                "type": "Point"},
+                                   "properties": {
+                                       "confidence": 8,
+                                       "observation_time": "2023-06-16T11:10:47.200000",
+                                       "platform_name": "Suomi-NPP",
+                                       "power": 3.39806151,
+                                       "tb": 329.65161133,
+                                       "tb_celcius": 56.50161133},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [16.600952, 64.569046],
+                                                "type": "Point"},
+                                   "properties": {
+                                       "confidence": 8,
+                                       "observation_time": "2023-06-16T11:10:47.200000",
+                                       "platform_name": "Suomi-NPP",
+                                       "power": 20.5928936,
+                                       "tb": 346.52050781,
+                                       "tb_celcius": 73.37050781000005},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [16.5984, 64.572227],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 20.5928936,
+                                                  "tb": 348.72860718,
+                                                  "tb_celcius": 75.57860718},
                                    "type": "Feature"}])
 
     TestCase().assertDictEqual(result, expected)
