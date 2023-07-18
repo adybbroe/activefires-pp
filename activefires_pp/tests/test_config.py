@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam.Dybbroe
+# Copyright (c) 2022, 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -52,12 +52,7 @@ def test_read_yaml_configuration_for_postprocessing(fake_yamlconfig_file_post_pr
     assert config['af_pattern_ibands'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa
     assert config['regional_shapefiles_format'] == 'omr_{region_code:s}_Buffer.{ext:s}'
     assert config['output_dir'] == '/path/where/the/filtered/results/will/be/stored'
-    assert len(config['geojson-national']) == 2
-    assert config['geojson-national'][1] == {'celcius':
-                                             {'file_pattern':
-                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson',  # noqa
-                                              'unit': 'degC'}}
-    assert len(config['geojson-regional']) == 1
-    assert config['geojson-regional'][0] == {'si-units':
-                                             {'file_pattern':
-                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson'}}  # noqa
+
+    assert config['geojson_file_pattern_national'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson'  # noqa
+    assert config['geojson_file_pattern_national_sweref99'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_sweref99.geojson'  # noqa
+    assert config['geojson_file_pattern_regional'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson'  # noqa

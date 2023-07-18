@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam.Dybbroe
+# Copyright (c) 2022, 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -23,7 +23,20 @@
 """Fixtures for unittests."""
 
 import pytest
+import io
 
+CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
+                  'subscribe_topics': 'VIIRS/L2/AFI',
+                  'af_pattern_ibands':
+                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
+                  '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
+                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
+                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
+                  '{region_name:s}.geojson',
+                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
+                  'output_dir': '/path/where/the/filtered/results/will/be/stored',
+                  'filepath_detection_id_cache': '/path/to/the/detection_id/cache',
+                  'timezone': 'Europe/Stockholm'}
 
 TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
 subscribe_topics: /VIIRS/L2/Fires/PP/National
@@ -47,25 +60,16 @@ subscribe_topics: VIIRS/L2/AFI
 
 af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
 
-#geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-#geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+geojson_file_pattern_national_sweref99: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_sweref99.geojson
+geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+
 
 regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
 output_dir: /path/where/the/filtered/results/will/be/stored
 
 timezone: Europe/Stockholm
-
-geojson-national:
-  - kelvin:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-  - celcius:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
-      unit: degC
-
-geojson-regional:
-  - si-units:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
 
 """  # noqa
 
@@ -146,6 +150,85 @@ PAST_ALARMS_MONSTERAS3 = """{"features": {"geometry": {"coordinates": [16.252192
 "type": "Feature"}, "type": "FeatureCollection"}"""
 
 
+TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
+TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.txt"
+
+
+TEST_ACTIVE_FIRES_FILE_DATA = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 18
+#
+  59.14783859,   37.85886765,  331.58309937,  0.375,  0.375,    8,    4.67825794
+  59.05127335,   28.15227890,  349.83993530,  0.375,  0.375,    8,    7.10289335
+  59.05587006,   28.15146446,  326.76165771,  0.375,  0.375,    8,    7.10289335
+  59.46587372,   29.04332352,  327.60366821,  0.375,  0.375,    8,    5.01662874
+  59.59255981,   28.77226448,  345.88961792,  0.375,  0.375,    8,   13.13724804
+  59.58853149,   28.77531433,  339.56134033,  0.375,  0.375,    8,    8.76600266
+  59.59326553,   28.77456856,  352.21545410,  0.375,  0.375,    8,    8.76600266
+  59.59757233,   28.76391029,  328.43835449,  0.375,  0.375,    8,    5.08633661
+  58.35777283,   12.37761784,  327.17175293,  0.375,  0.375,    8,   17.58141518
+  60.30867004,   25.53105164,  349.98794556,  0.375,  0.375,    8,    6.93412018
+  55.01095581,   -2.28794742,  335.89736938,  0.375,  0.375,    8,    4.39908028
+  59.52483368,   17.16816330,  336.57437134,  0.375,  0.375,    8,   14.13167953
+  55.00822449,   -2.28098702,  344.50894165,  0.375,  0.375,    8,    4.16644764
+  60.13325882,   16.18420029,  329.47689819,  0.375,  0.375,    8,    5.32859230
+  61.30901337,   21.98561668,  341.69180298,  0.375,  0.375,    8,    8.87900448
+  58.29126740,    0.20132475,  331.47875977,  0.375,  0.375,    8,    3.64687872
+  57.42922211,   -3.47403550,  336.02111816,  0.375,  0.375,    8,    8.39092922
+  57.42747116,   -3.47912717,  353.80722046,  0.375,  0.375,    8,   12.13035393
+"""
+
+# Here we have sorted out all detections not passing the filter mask!
+# So, 4 fire detections are left corresponding to what would end up in the geojson files:
+TEST_ACTIVE_FIRES_FILE_DATA2 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 14
+#
+  58.74638367,    8.54766846,  340.68481445,  0.375,  0.375,    8,   10.83046722
+  55.34669113,   -4.51371527,  325.72799683,  0.375,  0.375,    8,    6.21815872
+  62.65801239,   17.25905228,  339.66326904,  0.375,  0.375,    8,    2.51202917
+  64.21694183,   17.42074966,  329.65161133,  0.375,  0.375,    8,    3.39806151
+  64.56904602,   16.60095215,  346.52050781,  0.375,  0.375,    8,   20.59289360
+  64.57222748,   16.59840012,  348.72860718,  0.375,  0.375,    8,   20.59289360
+"""
+
+
+@pytest.fixture
+def fake_active_fires_file_data():
+    """Fake active fires output in a file - return an open stream with and the filepath."""
+    return io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA), TEST_ACTIVE_FIRES_FILEPATH
+
+
+@pytest.fixture
+def fake_active_fires_file_data2():
+    """Fake active fires output in a file - return an open stream with and the filepath."""
+    return io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2), TEST_ACTIVE_FIRES_FILEPATH2
+
+
 @pytest.fixture
 def fake_token_file(tmp_path):
     """Write fake token file."""
@@ -154,6 +237,12 @@ def fake_token_file(tmp_path):
         fpt.write(TEST_YAML_TOKENS)
 
     yield file_path
+
+
+@pytest.fixture
+def fake_config_data():
+    """Fake post-processing config content."""
+    return CONFIG_EXAMPLE
 
 
 @pytest.fixture
