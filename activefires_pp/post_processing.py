@@ -447,7 +447,7 @@ class ActiveFiresPostprocessing(Thread):
 
         self._national_save_and_publish(feature_collection, len(afdata), af_shapeff, msg)
 
-        sweref99_fc = map_coordinates_in_feature_collection(feature_collection, '4976')
+        sweref99_fc = map_coordinates_in_feature_collection(feature_collection, '3006')
         self._national_save_and_publish(sweref99_fc, len(afdata), af_shapeff, msg, sweref99=True)
 
         # Do the regional filtering now:

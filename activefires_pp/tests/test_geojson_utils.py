@@ -299,7 +299,44 @@ def test_get_feature_collection_from_firedata(readdata, setup_comm,
 
 
 def test_map_coordinates_in_feature_collection_sweref99():
-    """Test mapping the coordinates to SWEREF99."""
+    """Test mapping the coordinates to SWEREF99.
+
+    Three points in WGS84 lon,lat (taken from eniro.se):
+
+    WGS84
+    62°39'28.8"N 17°15'32.6"E
+    WGS84 DDM
+    62°39.481'N 17°15.543'E
+    WGS84 decimal (lat, lon)
+    62.658012, 17.259052
+    RT90 (nord, öst)
+    6950477, 1574536
+    SWEREF99 TM (nord, öst)
+    6949514, 615746
+
+    WGS84
+    64°13'1.0"N 17°25'14.7"E
+    WGS84 DDM
+    64°13.017'N 17°25.245'E
+    WGS84 decimal (lat, lon)
+    64.216942, 17.42075
+    RT90 (nord, öst)
+    7124405, 1578444
+    SWEREF99 TM (nord, öst)
+    7123424, 617464
+
+    WGS84
+    57°7'24.4"N 14°40'44.0"E
+    WGS84 DDM
+    57°7.407'N 14°40.734'E
+    WGS84 decimal (lat, lon)
+    57.12345, 14.6789
+    RT90 (nord, öst)
+    6333593, 1431779
+    SWEREF99 TM (nord, öst)
+    6331174, 480559
+
+    """
     fc_in = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
                                              "type": "Point"},
                                 "properties": {"confidence": 8,
@@ -316,9 +353,18 @@ def test_map_coordinates_in_feature_collection_sweref99():
                                                "id": '20230616-2',
                                                "power": 3.39806151,
                                                "tb": 329.65161133},
+                                "type": "Feature"},
+                               {"geometry": {"coordinates": [14.6789, 57.12345],
+                                             "type": "Point"},
+                                "properties": {"confidence": 6,
+                                               "observation_time": "2023-06-16T11:10:47.200000",
+                                               "platform_name": "Suomi-NPP",
+                                               "id": '20230616-3',
+                                               "power": 1.0,
+                                               "tb": 330.0},
                                 "type": "Feature"}])
 
-    expected = FeatureCollection([{"geometry": {"coordinates": [2804994.83249444, 871459.9503322293],
+    expected = FeatureCollection([{"geometry": {"coordinates": [615746, 6949514],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
                                                   "id": "20230616-1",
@@ -327,7 +373,7 @@ def test_map_coordinates_in_feature_collection_sweref99():
                                                   "power": 2.51202917,
                                                   "tb": 339.66326904},
                                    "type": "Feature"},
-                                  {"geometry": {"coordinates": [2654228.542928629, 832840.571493448],
+                                  {"geometry": {"coordinates": [617464, 7123424],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
                                                   "id": "20230616-2",
@@ -335,8 +381,20 @@ def test_map_coordinates_in_feature_collection_sweref99():
                                                   "platform_name": "Suomi-NPP",
                                                   "power": 3.39806151,
                                                   "tb": 329.65161133},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [480559, 6331174],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 6,
+                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "platform_name": "Suomi-NPP",
+                                                  "id": '20230616-3',
+                                                  "power": 1.0,
+                                                  "tb": 330.0},
                                    "type": "Feature"}])
 
-    fc_out = map_coordinates_in_feature_collection(fc_in, '4976')
+    fc_out = map_coordinates_in_feature_collection(fc_in, '3006')
+    for i in range(3):
+        for j in range(2):
+            fc_out[i]['geometry']['coordinates'][j] = round(fc_out[i]['geometry']['coordinates'][j])
 
     TestCase().assertDictEqual(fc_out, expected)
