@@ -399,7 +399,7 @@ class ActiveFiresPostprocessing(Thread):
         tic = time.time()
         units = {'temperature': 'degC'}
         self.unit_converter = UnitConverter(units)
-        logger.debug("Unit conversion initialization with Pint took %f seconds.", tic - time.time())
+        logger.debug("Unit conversion initialization with Pint took %f seconds.", time.time() - tic)
 
         self._check_borders_shapes_exists()
 
