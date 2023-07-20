@@ -430,6 +430,7 @@ class ActiveFiresPostprocessing(Thread):
 
     def do_postprocessing_on_message(self, msg, filename):
         """Do the fires post processing on a message."""
+        logger.debug("Current detection id: ", str(self._fire_detection_id))
         platform_name = msg.data.get('platform_name')
         af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name,
                                                    timezone=self.timezone)
@@ -449,6 +450,7 @@ class ActiveFiresPostprocessing(Thread):
 
         afdata = self.add_unique_day_id(afdata)
         self.save_id_to_file()
+        logger.debug("Current detection id: ", str(self._fire_detection_id))
 
         afdata = self.add_tb_celcius(afdata)
 
@@ -573,7 +575,6 @@ class ActiveFiresPostprocessing(Thread):
         """Create the output message to publish."""
         output_topic = generate_posttroll_topic(self.output_topic, region)
         to_send = prepare_posttroll_message(input_msg, region)
-        # to_send['uri'] = ('ssh://%s/%s' % (self.host, filepath))
         to_send['uri'] = str(filepath)
         to_send['uid'] = os.path.basename(filepath)
         to_send['type'] = 'GEOJSON-filtered'
@@ -649,6 +650,7 @@ class ActiveFiresPostprocessing(Thread):
         # Add id's to the detections:
         id_list = []
         for _i in range(len(afdata)):
+            logger.debug("Updating the fire detection id...")
             self.update_fire_detection_id()
             id_ = self._create_id_string()
             id_list.append(id_)
