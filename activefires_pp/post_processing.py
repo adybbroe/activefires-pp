@@ -409,7 +409,7 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Output file path = %s", out_filepath)
 
         store_geojson(out_filepath, feature_collection)
-        output_messages = self.get_output_messages(out_filepath, msg, ndata)
+        output_messages = self.get_output_messages(out_filepath, msg, ndata, sweref99=sweref99)
 
         for output_msg in output_messages:
             if output_msg:
@@ -552,12 +552,12 @@ class ActiveFiresPostprocessing(Thread):
 
         return afdata_ff
 
-    def get_output_messages(self, filepath, msg, number_of_data):
+    def get_output_messages(self, filepath, msg, number_of_data, sweref99=False):
         """Generate the adequate output message(s) depending on if an output file was created or not."""
         logger.info("Geojson file created! Number of fires = %d", number_of_data)
-        return [self._generate_output_message(filepath, msg)]
+        return [self._generate_output_message(filepath, msg, sweref99=sweref99)]
 
-    def _generate_output_message(self, filepath, input_msg, region=None):
+    def _generate_output_message(self, filepath, input_msg, region=None, sweref99=False):
         """Create the output message to publish."""
         output_topic = generate_posttroll_topic(self.output_topic, region)
         to_send = prepare_posttroll_message(input_msg, region)
@@ -565,7 +565,10 @@ class ActiveFiresPostprocessing(Thread):
         to_send['uid'] = os.path.basename(filepath)
         to_send['type'] = 'GEOJSON-filtered'
         to_send['format'] = 'geojson'
-        to_send['product'] = 'afimg'
+        if sweref99:
+            to_send['product'] = 'afimg_sweref99'
+        else:
+            to_send['product'] = 'afimg'
         pubmsg = Message(output_topic, 'file', to_send)
         return pubmsg
 
