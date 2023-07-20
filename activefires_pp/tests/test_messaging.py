@@ -22,9 +22,10 @@
 
 """Unit testing the message handling part of the post-processing."""
 
-# import pytest
+import pytest
 from unittest.mock import patch
 from datetime import datetime
+import logging
 
 from posttroll.message import Message
 from posttroll.testing import patched_publisher
@@ -196,32 +197,81 @@ def test_check_incoming_message_txt_file_does_not_exist(setup_comm,
     assert result is None
 
 
-@patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_prepare_posttroll_message(setup_comm, get_config,
-                                   gethostname, fake_yamlconfig_file_post_processing):
-    """Test setup the posttroll message."""
-    get_config.return_value = CONFIG_EXAMPLE
-    gethostname.return_value = "my.host.name"
-
+@pytest.mark.parametrize("sweref99, expected",
+                         [(True, 'afimg_sweref99'),
+                          (False, 'afimg')]
+                         )
+def test_prepare_posttroll_message_national(caplog, sweref99, expected):
+    """Test prepare the posttroll message for detections on a National level."""
+    myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
-                                     myboarders_file, mymask_file)
+    with patch('socket.gethostname') as gethostname:
+        with patch('activefires_pp.post_processing.read_config') as get_config:
+            with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
+                get_config.return_value = CONFIG_EXAMPLE
+                gethostname.return_value = "my.host.name"
+
+                afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
 
     input_msg = Message.decode(rawstr=TEST_MSG)
-    res_msg = afpp.get_output_messages(test_filepath, input_msg, 1)
+    with caplog.at_level(logging.INFO):
+        result_messages = afpp.get_output_messages(test_filepath, input_msg, 1, sweref99=sweref99)
 
-    assert res_msg[0].data['platform_name'] == 'NOAA-20'
-    assert res_msg[0].data['type'] == 'GEOJSON-filtered'
-    assert res_msg[0].data['format'] == 'geojson'
-    assert res_msg[0].data['product'] == 'afimg'
-    assert res_msg[0].subject == '/VIIRS/L2/Fires/PP/National'
-    assert res_msg[0].data['uri'] == '/my/geojson/file/path'
+    log_expected = "Geojson file created! Number of fires = 1"
+    assert log_expected in caplog.text
+
+    res_msg = result_messages[0]
+
+    assert res_msg.data['platform_name'] == 'NOAA-20'
+    assert res_msg.data['type'] == 'GEOJSON-filtered'
+    assert res_msg.data['format'] == 'geojson'
+    assert res_msg.data['product'] == expected
+    assert res_msg.subject == '/VIIRS/L2/Fires/PP/National'
+    assert res_msg.data['uri'] == '/my/geojson/file/path'
+
+
+def test_prepare_posttroll_message_regional(caplog):
+    """Test setup the posttroll message."""
+    myconfigfile = "/my/config/file/path"
+    myboarders_file = "/my/shape/file/with/country/boarders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    with patch('socket.gethostname') as gethostname:
+        with patch('activefires_pp.post_processing.read_config') as get_config:
+            with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
+                get_config.return_value = CONFIG_EXAMPLE
+                gethostname.return_value = "my.host.name"
+                afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+
+    test_filepath = "/my/geojson/file/path"
+
+    input_msg = Message.decode(rawstr=TEST_MSG)
+
+    fake_region_mask = {'attributes': {'Kod_omr': '9999',
+                                       'Testomr': 'Some area description'}}
+    with caplog.at_level(logging.INFO):
+        res_msg = afpp._generate_output_message(test_filepath, input_msg, region=fake_region_mask)
+
+    assert caplog.text == ''
+    assert res_msg.subject == '/VIIRS/L2/Fires/PP/Regional/9999'
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_prepare_posttroll_message_no_fires(setup_comm, gethostname, fake_yamlconfig_file_post_processing):
+    """Test setup the posttroll message."""
+    gethostname.return_value = "my.host.name"
+
+    myboarders_file = "/my/shape/file/with/country/boarders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+    test_filepath = "/my/geojson/file/path"
+
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myboarders_file, mymask_file)
 
     input_msg = Message.decode(rawstr=TEST_MSG)
 
