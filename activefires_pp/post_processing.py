@@ -430,7 +430,7 @@ class ActiveFiresPostprocessing(Thread):
 
     def do_postprocessing_on_message(self, msg, filename):
         """Do the fires post processing on a message."""
-        logger.debug("Current detection id: ", str(self._fire_detection_id))
+        logger.debug("Current detection id: %s", str(self._fire_detection_id))
         platform_name = msg.data.get('platform_name')
         af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name,
                                                    timezone=self.timezone)
@@ -450,7 +450,7 @@ class ActiveFiresPostprocessing(Thread):
 
         afdata = self.add_unique_day_id(afdata)
         self.save_id_to_file()
-        logger.debug("Current detection id: ", str(self._fire_detection_id))
+        logger.debug("Current detection id: %s", str(self._fire_detection_id))
 
         afdata = self.add_tb_celcius(afdata)
 
