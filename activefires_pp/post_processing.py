@@ -392,7 +392,7 @@ class ActiveFiresPostprocessing(Thread):
         return filename
 
     def _national_save_and_publish(self, feature_collection, ndata, af_shapeff, msg, sweref99=False):
-        """Take the fearure collection and store the results in a Geojson file and publish."""
+        """Take the feature collection and store the results in a Geojson file and publish."""
         if feature_collection is None:
             logger.info("No geojson file created, number of fires after filtering = %d", ndata)
             output_messages = self._generate_no_fires_messages(msg,
