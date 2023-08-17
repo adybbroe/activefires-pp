@@ -257,8 +257,7 @@ def store(output_filename, detections):
 def geojson_feature_collection_from_detections(detections, platform_name=None):
     """Create the Geojson feature collection from fire detection data."""
     if len(detections) == 0:
-        logger.debug("No detections to save!")
-        return None
+        raise ValueError("No detections to save!")
 
     # Convert points to GeoJSON
     features = []
@@ -372,10 +371,6 @@ class ActiveFiresPostprocessing(Thread):
         self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
         self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
 
-        # self.regional_outputs = self.options.get('geojson-regional')
-        # self.national_outputs = self.options.get('geojson-national')
-        # self.set_output_filename_parsers()
-
         self.output_dir = self.options.get('output_dir', '/tmp')
         self.filepath_detection_id_cache = self.options.get('filepath_detection_id_cache')
 
@@ -478,17 +473,17 @@ class ActiveFiresPostprocessing(Thread):
 
         afdata = self.add_tb_celcius(afdata)
 
-        # 1) Create geojson feature collection
-        # 2) Dump geojson data to disk
-        feature_collection = geojson_feature_collection_from_detections(afdata,
-                                                                        platform_name=af_shapeff.platform_name)
-
         fmda = af_shapeff.metadata
         pout = Parser(self.outfile_pattern_national)
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
 
-        if feature_collection is None:
+        # 1) Create geojson feature collection
+        # 2) Dump geojson data to disk
+        try:
+            feature_collection = geojson_feature_collection_from_detections(afdata,
+                                                                            platform_name=af_shapeff.platform_name)
+        except ValueError:
             logger.info("No geojson file created, number of fires after filtering = %d", len(afdata))
             output_messages = self._generate_no_fires_messages(msg,
                                                                'No true fire detections inside National borders')  # noqa
@@ -555,9 +550,10 @@ class ActiveFiresPostprocessing(Thread):
             logger.debug("Output file path = %s", out_filepath)
             data_in_region = afdata[regional_fmask[region_name]['mask']]
 
-            feature_collection = geojson_feature_collection_from_detections(data_in_region,
-                                                                            platform_name=fmda['platform'])
-            if feature_collection is None:
+            try:
+                feature_collection = geojson_feature_collection_from_detections(data_in_region,
+                                                                                platform_name=fmda['platform'])
+            except ValueError:
                 logger.warning("Something wrong happended storing regional " +
                                "data to Geojson - area: {name}".format(name=str(region_name)))
                 continue
@@ -601,31 +597,6 @@ class ActiveFiresPostprocessing(Thread):
             logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
 
         return afdata_ff
-
-    # def create_output(self, data, metadata, outputs):
-    #     """Create geojson output and return filepaths."""
-    #     paths_and_units = []
-    #     for item in outputs:
-    #         for output in item:
-    #             filepath = os.path.join(self.output_dir, item[output]['parser'].compose(metadata))
-    #             if 'unit' in item[output]:
-    #                 paths_and_units.append({'filepath': filepath, 'unit': item[output]['unit']})
-    #             else:
-    #                 paths_and_units.append({'filepath': filepath})
-
-    #     filepaths = []
-    #     for item in paths_and_units:
-    #         out_filepath = item['filepath']
-    #         logger.debug("Output file path = %s", out_filepath)
-    #         if 'unit' in item:
-    #             filepath = store_geojson(out_filepath, data, platform_name=metadata['platform'],
-    #                                      units={'temperature': item['unit']})
-    #         else:
-    #             filepath = store_geojson(out_filepath, data, platform_name=metadata['platform'])
-
-    #         filepaths.append(filepath)
-
-    #     return filepaths
 
     def get_output_messages(self, filepath, msg, number_of_data):
         """Generate the adequate output message(s) depending on if an output file was created or not."""

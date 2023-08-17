@@ -253,31 +253,6 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
     assert str(this._afdata['endtime'][0]) == '2021-04-14 12:28:08'
 
 
-# @patch('socket.gethostname')
-# @patch('activefires_pp.post_processing.read_config')
-# @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-# def test_activefires_postprocessing_filenames_parsing(setup_comm, get_config, gethostname):
-#     """Test check the output file patterns and names parsing."""
-#     get_config.return_value = CONFIG_EXAMPLE
-#     gethostname.return_value = "my.host.name"
-
-#     myconfigfile = "/my/config/file/path"
-#     myborders_file = "/my/shape/file/with/country/borders"
-#     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
-
-#     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-
-#     p__ = afpp.regional_outputs[0]['si-units']['parser']
-#     res = p__.compose({'start_time': datetime(2000, 1, 1, 12, 0), 'region_name': 'kurt',
-#                        'platform': 'NOAA-20'})
-#     assert res == 'AFIMG_NOAA-20_d20000101_t120000_kurt.geojson'
-
-#     p__ = afpp.national_outputs[1]['celcius']['parser']
-#     res = p__.compose({'start_time': datetime(2000, 1, 1, 12, 0),
-#                        'platform': 'NOAA-20'})
-#     assert res == 'AFIMG_NOAA-20_d20000101_t120000_celcius.geojson'
-
-
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
