@@ -41,6 +41,7 @@ from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.geojson_utils import get_geojson_files_in_observation_time_order
 from activefires_pp.geojson_utils import store_geojson_alarm
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
+from activefires_pp.config import read_config
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
@@ -228,22 +229,20 @@ def test_store_geojson_file_sweref99_coordinates(tmp_path):
 
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_feature_collection_from_firedata(readdata, setup_comm,
-                                              get_config, gethostname,
-                                              fake_active_fires_file_data2, fake_config_data):
+def test_get_feature_collection_from_firedata(readdata, setup_comm, gethostname,
+                                              fake_active_fires_file_data2,
+                                              fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
     open_fstream, myfilepath = fake_active_fires_file_data2
-    get_config.return_value = fake_config_data
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
     afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -298,7 +297,7 @@ def test_get_feature_collection_from_firedata(readdata, setup_comm,
     TestCase().assertDictEqual(result, expected)
 
 
-def test_map_coordinates_in_feature_collection_sweref99():
+def test_map_coordinates_in_feature_collection_sweref99(fake_yamlconfig_file_post_processing):
     """Test mapping the coordinates to SWEREF99.
 
     Three points in WGS84 lon,lat (taken from eniro.se):
@@ -392,7 +391,10 @@ def test_map_coordinates_in_feature_collection_sweref99():
                                                   "tb": 330.0},
                                    "type": "Feature"}])
 
-    fc_out = map_coordinates_in_feature_collection(fc_in, '3006')
+    config = read_config(fake_yamlconfig_file_post_processing)
+    proj_str = config['output']['national']['sweref99']['projection']
+
+    fc_out = map_coordinates_in_feature_collection(fc_in, proj_str)
     for i in range(3):
         for j in range(2):
             fc_out[i]['geometry']['coordinates'][j] = round(fc_out[i]['geometry']['coordinates'][j])

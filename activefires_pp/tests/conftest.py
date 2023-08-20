@@ -25,19 +25,6 @@
 import pytest
 import io
 
-CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
-                  'subscribe_topics': 'VIIRS/L2/AFI',
-                  'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
-                  '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
-                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
-                  '{region_name:s}.geojson',
-                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
-                  'output_dir': '/path/where/the/filtered/results/will/be/stored',
-                  'filepath_detection_id_cache': '/path/to/the/detection_id/cache',
-                  'timezone': 'Europe/Stockholm'}
-
 TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
 subscribe_topics: /VIIRS/L2/Fires/PP/National
 publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
@@ -60,13 +47,23 @@ subscribe_topics: VIIRS/L2/AFI
 
 af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
 
-geojson_file_pattern_national: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-geojson_file_pattern_national_sweref99: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_sweref99.geojson
-geojson_file_pattern_regional: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+output:
+  national:
+    default:
+      geojson_file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+    sweref99:
+      geojson_file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_sweref99.geojson
+      projection: "EPSG:3006"
+  regional:
+    default:
+      geojson_file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+
 
 regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
 output_dir: /path/where/the/filtered/results/will/be/stored
+
+filepath_detection_id_cache: /path/to/the/detection_id/cache/fire_detection_id_cache.txt
 
 timezone: Europe/Stockholm
 """  # noqa
@@ -233,12 +230,6 @@ def fake_token_file(tmp_path):
         fpt.write(TEST_YAML_TOKENS)
 
     yield file_path
-
-
-@pytest.fixture
-def fake_config_data():
-    """Fake post-processing config content."""
-    return CONFIG_EXAMPLE
 
 
 @pytest.fixture

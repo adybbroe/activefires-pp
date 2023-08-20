@@ -315,10 +315,12 @@ class ActiveFiresPostprocessing(Thread):
         self.input_topic = self.options['subscribe_topics'][0]
         self.output_topic = self.options['publish_topic']
         self.infile_pattern = self.options.get('af_pattern_ibands')
-        self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
-        self.outfile_pattern_national_sweref99 = self.options.get('geojson_file_pattern_national_sweref99')
-        self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
+
+        self.outfile_patterns_national = config.get('output').get('national')
+        self.outfile_patterns_regional = config.get('output').get('regional')
+
         self.output_dir = self.options.get('output_dir', '/tmp')
+
         self.filepath_detection_id_cache = self.options.get('filepath_detection_id_cache')
 
         frmt = self.options['regional_shapefiles_format']
@@ -391,7 +393,7 @@ class ActiveFiresPostprocessing(Thread):
 
         return filename
 
-    def _national_save_and_publish(self, feature_collection, ndata, af_shapeff, msg, sweref99=False):
+    def _national_save_and_publish(self, feature_collection, ndata, af_shapeff, msg, projname='default'):
         """Take the fearure collection and store the results in a Geojson file and publish."""
         if feature_collection is None:
             logger.info("No geojson file created, number of fires after filtering = %d", ndata)
@@ -400,16 +402,16 @@ class ActiveFiresPostprocessing(Thread):
             return
 
         fmda = af_shapeff.metadata
-        if sweref99:
-            pout = Parser(self.outfile_pattern_national_sweref99)
+        if projname != 'default':
+            pout = Parser(self.outfile_patterns_national[projname]['geojson_file_pattern'])
         else:
-            pout = Parser(self.outfile_pattern_national)
+            pout = Parser(self.outfile_patterns_national['deafult']['geojson_file_pattern'])
 
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
 
         store_geojson(out_filepath, feature_collection)
-        output_messages = self.get_output_messages(out_filepath, msg, ndata, sweref99=sweref99)
+        output_messages = self.get_output_messages(out_filepath, msg, ndata, proj_name=projname)
 
         for output_msg in output_messages:
             if output_msg:
@@ -445,10 +447,13 @@ class ActiveFiresPostprocessing(Thread):
         feature_collection = geojson_feature_collection_from_detections(afdata,
                                                                         platform_name=af_shapeff.platform_name)
 
-        self._national_save_and_publish(feature_collection, len(afdata), af_shapeff, msg)
-
-        sweref99_fc = map_coordinates_in_feature_collection(feature_collection, '3006')
-        self._national_save_and_publish(sweref99_fc, len(afdata), af_shapeff, msg, sweref99=True)
+        for proj_name in self.outfile_patterns_national:
+            if proj_name == "default":
+                self._national_save_and_publish(feature_collection, len(afdata), af_shapeff, msg)
+            else:
+                epsg_str = self.outfile_patterns_national[proj_name].get('projection')
+                other_fc = map_coordinates_in_feature_collection(feature_collection, epsg_str)
+                self._national_save_and_publish(other_fc, len(afdata), af_shapeff, msg, proj_name)
 
         # Do the regional filtering now:
         if not self.regional_filtermask:
@@ -489,7 +494,7 @@ class ActiveFiresPostprocessing(Thread):
 
         fmda['platform'] = afsff_obj.platform_name
 
-        pout = Parser(self.outfile_pattern_regional)
+        pout = Parser(self.outfile_patterns_regional['default']['geojson_file_pattern'])
 
         output_messages = []
         regions_with_detections = 0
@@ -514,7 +519,8 @@ class ActiveFiresPostprocessing(Thread):
 
             store_geojson(out_filepath, feature_collection)
 
-            outmsg = self._generate_output_message(out_filepath, msg, regional_fmask[region_name])
+            outmsg = self._generate_output_message(out_filepath, msg, 'default',
+                                                   regional_fmask[region_name])
             output_messages.append(outmsg)
             logger.info("Geojson file created! Number of fires in region = %d", len(data_in_region))
 
@@ -534,7 +540,7 @@ class ActiveFiresPostprocessing(Thread):
         fmda = af_shapeff.metadata
         # metdata contains time and everything but it is not being transfered to the dataframe.attrs
 
-        pout = Parser(self.outfile_pattern_national)
+        pout = Parser(self.outfile_patterns_national['default']['geojson_file_pattern'])
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
 
@@ -552,12 +558,12 @@ class ActiveFiresPostprocessing(Thread):
 
         return afdata_ff
 
-    def get_output_messages(self, filepath, msg, number_of_data, sweref99=False):
+    def get_output_messages(self, filepath, msg, number_of_data, proj_name='default'):
         """Generate the adequate output message(s) depending on if an output file was created or not."""
         logger.info("Geojson file created! Number of fires = %d", number_of_data)
-        return [self._generate_output_message(filepath, msg, sweref99=sweref99)]
+        return [self._generate_output_message(filepath, msg, proj_name)]
 
-    def _generate_output_message(self, filepath, input_msg, region=None, sweref99=False):
+    def _generate_output_message(self, filepath, input_msg, proj_name, region=None):
         """Create the output message to publish."""
         output_topic = generate_posttroll_topic(self.output_topic, region)
         to_send = prepare_posttroll_message(input_msg, region)
@@ -565,10 +571,11 @@ class ActiveFiresPostprocessing(Thread):
         to_send['uid'] = os.path.basename(filepath)
         to_send['type'] = 'GEOJSON-filtered'
         to_send['format'] = 'geojson'
-        if sweref99:
-            to_send['product'] = 'afimg_sweref99'
-        else:
+        if proj_name == 'default':
             to_send['product'] = 'afimg'
+        else:
+            to_send['product'] = 'afimg_{proj_name}'.format(proj_name=proj_name)
+
         pubmsg = Message(output_topic, 'file', to_send)
         return pubmsg
 

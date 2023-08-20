@@ -112,7 +112,7 @@ def geojson_feature_collection_from_detections(detections, platform_name=None):
 
 def map_coordinates_in_feature_collection(feature_collection, epsg_str):
     """Map the Point coordinates of all data in Feature Collection."""
-    outp = pyproj.Proj(init='EPSG:'+epsg_str)
+    outp = pyproj.Proj(init=epsg_str)
 
     mapped_features = []
     # Iterate through each feature of the feature collection

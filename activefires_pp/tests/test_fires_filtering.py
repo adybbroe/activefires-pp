@@ -139,22 +139,20 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_regional_fires_filtering(setup_comm, get_config, gethostname,
-                                  fake_active_fires_file_data, fake_config_data):
+def test_regional_fires_filtering(setup_comm, gethostname,
+                                  fake_active_fires_file_data,
+                                  fake_yamlconfig_file_post_processing):
     """Test the regional fires filtering."""
     # FIXME! This test is to big/broad. Need for refactoring!
     open_fstream, _ = fake_active_fires_file_data
-
-    get_config.return_value = fake_config_data
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
     afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
@@ -193,23 +191,20 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname,
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
 def test_general_national_fires_filtering(get_global_mask, setup_comm,
-                                          get_config, gethostname, fake_active_fires_file_data,
-                                          fake_config_data):
+                                          gethostname, fake_active_fires_file_data,
+                                          fake_yamlconfig_file_post_processing):
     """Test the general/basic national fires filtering."""
     open_fstream, _ = fake_active_fires_file_data
-
-    get_config.return_value = fake_config_data
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
 
     # Add metadata to the pandas dataframe:
@@ -255,19 +250,17 @@ def test_checking_national_borders_shapefile_file_exists(setup_comm, gethostname
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_config, gethostname,
-                                                              fake_config_data):
+def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethostname,
+                                                              fake_yamlconfig_file_post_processing):
     """Test the checking of the national borders shapefile - borders shapefile does not exist."""
-    get_config.return_value = fake_config_data
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     with pytest.raises(OSError) as exec_info:
         afpp._check_borders_shapes_exists()
 

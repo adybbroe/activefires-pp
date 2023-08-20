@@ -127,19 +127,18 @@ MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour
 
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_add_unique_day_id_to_detections_sameday(readdata, setup_comm, get_config, gethostname):
+def test_add_unique_day_id_to_detections_sameday(readdata, setup_comm, gethostname,
+                                                 fake_yamlconfig_file_post_processing):
     """Test adding unique id's to the fire detection data."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
 
@@ -166,20 +165,18 @@ def test_add_unique_day_id_to_detections_sameday(readdata, setup_comm, get_confi
 
 @freeze_time('2023-06-17 11:55:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_add_unique_day_id_to_detections_24hours_plus(readdata, setup_comm,
-                                                      get_config, gethostname):
+def test_add_unique_day_id_to_detections_24hours_plus(readdata, setup_comm, gethostname,
+                                                      fake_yamlconfig_file_post_processing):
     """Test adding unique id's to the fire detection data."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._fire_detection_id = {'date': datetime(2023, 6, 16, 11, 24, 0), 'counter': 4}
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH3
@@ -206,19 +203,18 @@ def test_add_unique_day_id_to_detections_24hours_plus(readdata, setup_comm,
 
 @freeze_time('2023-06-18 09:56:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_add_unique_day_id_to_detections_newday(readdata, setup_comm, get_config, gethostname):
+def test_add_unique_day_id_to_detections_newday(readdata, setup_comm, gethostname,
+                                                fake_yamlconfig_file_post_processing):
     """Test adding unique id's to the fire detection data."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 11, 55, 0), 'counter': 1}
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH4
@@ -244,20 +240,18 @@ def test_add_unique_day_id_to_detections_newday(readdata, setup_comm, get_config
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_store_fire_detection_id_on_disk(readdata, setup_comm,
-                                         get_config, gethostname, tmp_path):
+def test_store_fire_detection_id_on_disk(readdata, setup_comm, gethostname, tmp_path,
+                                         fake_yamlconfig_file_post_processing):
     """Test store the latest/current detection id to a file."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 11, 55, 0), 'counter': 1}
 
     detection_id_cache = tmp_path / 'detection_id_cache.txt'
@@ -272,22 +266,20 @@ def test_store_fire_detection_id_on_disk(readdata, setup_comm,
 
 @freeze_time('2023-06-18 12:00:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_initialize_fire_detection_id_nofile(readdata, setup_comm,
-                                             get_config, gethostname, tmp_path):
+def test_initialize_fire_detection_id_nofile(readdata, setup_comm, gethostname, tmp_path,
+                                             fake_yamlconfig_file_post_processing):
     """Test initialize the fire detection id with no cache on disk."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
 
-    assert afpp.filepath_detection_id_cache == '/path/to/the/detection_id/cache'
+    assert afpp.filepath_detection_id_cache == '/path/to/the/detection_id/cache/fire_detection_id_cache.txt'
 
     expected = {'date': datetime(2023, 6, 18, 12, 0, 0), 'counter': 0}
 
@@ -296,20 +288,18 @@ def test_initialize_fire_detection_id_nofile(readdata, setup_comm,
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_fire_detection_id_from_file(readdata, setup_comm,
-                                         get_config, gethostname, tmp_path):
+def test_get_fire_detection_id_from_file(readdata, setup_comm, gethostname, tmp_path,
+                                         fake_yamlconfig_file_post_processing):
     """Test rtrieve the detection id from file."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 11, 55, 0), 'counter': 1}
 
     detection_id_cache = tmp_path / 'detection_id_cache.txt'

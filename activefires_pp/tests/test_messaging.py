@@ -38,15 +38,6 @@ from activefires_pp.spatiotemporal_alarm_filtering import _create_output_message
 TEST_MSG = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2021-04-07T00:41:41.568370 v1.01 application/json {"start_time": "2021-04-07T00:28:17", "end_time": "2021-04-07T00:29:40", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "format": "edr", "type": "netcdf", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17530, "origin": "172.29.4.164:9099", "uri": "ssh://lxserv2313.smhi.se/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc", "uid": "AFIMG_j01_d20210407_t0028179_e0029407_b17531_c20210407004133375592_cspp_dev.nc"}"""  # noqa
 TEST_MSG_TXT = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2023-07-05T10:27:28.821803 v1.01 application/json {"start_time": "2023-07-05T10:07:50", "end_time": "2023-07-05T10:09:15", "orbit_number": 1, "platform_name": "Suomi-NPP", "sensor": "viirs", "format": "edr", "type": "txt", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 60553, "origin": "172.29.4.164:9099", "uri": "/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt", "uid": "AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt"}"""  # noqa
 
-CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
-                  'subscribe_topics': 'VIIRS/L2/AFI',
-                  'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',  # noqa
-                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson',  # noqa
-                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
-                  'output_dir': '/path/where/the/filtered/results/will/be/stored'}
-
 
 def get_fake_publiser():
     """Return a fake publisher."""
@@ -55,24 +46,27 @@ def get_fake_publiser():
 
 @patch('os.path.exists')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_check_incoming_message_nc_file_exists(setup_comm,
-                                               get_config, gethostname, path_exists):
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_id_from_file')
+def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exists,
+                                               get_id_from_file,
+                                               fake_yamlconfig_file_post_processing):
     """Test the check of incoming message content and getting the file path from the message.
 
     Here we test the case when a netCDF file is provided in the message and we
     test the behaviour when the file also actually exist on the file system.
     """
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
     path_exists.return_value = True
+    get_id_from_file.return_value = {'date': datetime.utcnow(), 'counter': 0}
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
+    afpp.filepath_detection_id_cache = False
+
     afpp.publisher = get_fake_publiser()
     afpp.publisher.start()
 
@@ -91,24 +85,25 @@ def test_check_incoming_message_nc_file_exists(setup_comm,
 
 @patch('os.path.exists')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_check_incoming_message_txt_file_exists(setup_comm,
-                                                get_config, gethostname, path_exists):
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_id_from_file')
+def test_check_incoming_message_txt_file_exists(setup_comm, gethostname, path_exists,
+                                                get_id_from_file,
+                                                fake_yamlconfig_file_post_processing):
     """Test the check of incoming message content and getting the file path from the message.
 
     Here we test the case when a txt file is provided in the message and we
     test the behaviour when the file also actually exist on the file system.
     """
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
     path_exists.return_value = True
+    get_id_from_file.return_value = {'date': datetime.utcnow(), 'counter': 0}
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp.publisher = get_fake_publiser()
     afpp.publisher.start()
 
@@ -123,24 +118,22 @@ def test_check_incoming_message_txt_file_exists(setup_comm,
 
 @patch('os.path.exists')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_check_incoming_message_txt_file_does_not_exist(setup_comm,
-                                                        get_config, gethostname, path_exists):
+def test_check_incoming_message_txt_file_does_not_exist(setup_comm, gethostname, path_exists,
+                                                        fake_yamlconfig_file_post_processing):
     """Test the check of incoming message content and getting the file path from the message.
 
     Here we test the case when a txt file is provided in the message and we
     test the behaviour when the file does not exist on the file system.
     """
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
     path_exists.return_value = False
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp.publisher = get_fake_publiser()
     afpp.publisher.start()
 
@@ -153,29 +146,28 @@ def test_check_incoming_message_txt_file_does_not_exist(setup_comm,
     assert result is None
 
 
-@pytest.mark.parametrize("sweref99, expected",
-                         [(True, 'afimg_sweref99'),
-                          (False, 'afimg')]
+@pytest.mark.parametrize("projname, expected",
+                         [("sweref99", 'afimg_sweref99'),
+                          ("default", 'afimg')]
                          )
-def test_prepare_posttroll_message_national(caplog, sweref99, expected):
+def test_prepare_posttroll_message_national(caplog, projname, expected,
+                                            fake_yamlconfig_file_post_processing):
     """Test prepare the posttroll message for detections on a National level."""
-    myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     with patch('socket.gethostname') as gethostname:
-        with patch('activefires_pp.post_processing.read_config') as get_config:
-            with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
-                get_config.return_value = CONFIG_EXAMPLE
-                gethostname.return_value = "my.host.name"
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
+            gethostname.return_value = "my.host.name"
 
-                afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+            afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                             myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
 
     input_msg = Message.decode(rawstr=TEST_MSG)
     with caplog.at_level(logging.INFO):
-        result_messages = afpp.get_output_messages(test_filepath, input_msg, 1, sweref99=sweref99)
+        result_messages = afpp.get_output_messages(test_filepath, input_msg, 1, proj_name=projname)
 
     log_expected = "Geojson file created! Number of fires = 1"
     assert log_expected in caplog.text
@@ -190,18 +182,16 @@ def test_prepare_posttroll_message_national(caplog, sweref99, expected):
     assert res_msg.data['uri'] == 'ssh://my.host.name//my/geojson/file/path'
 
 
-def test_prepare_posttroll_message_regional(caplog):
+def test_prepare_posttroll_message_regional(caplog, fake_yamlconfig_file_post_processing):
     """Test setup the posttroll message."""
-    myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     with patch('socket.gethostname') as gethostname:
-        with patch('activefires_pp.post_processing.read_config') as get_config:
-            with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
-                get_config.return_value = CONFIG_EXAMPLE
-                gethostname.return_value = "my.host.name"
-                afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
+            gethostname.return_value = "my.host.name"
+            afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                             myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
 
@@ -210,25 +200,25 @@ def test_prepare_posttroll_message_regional(caplog):
     fake_region_mask = {'attributes': {'Kod_omr': '9999',
                                        'Testomr': 'Some area description'}}
     with caplog.at_level(logging.INFO):
-        res_msg = afpp._generate_output_message(test_filepath, input_msg, region=fake_region_mask)
+        res_msg = afpp._generate_output_message(test_filepath, input_msg, 'default',
+                                                region=fake_region_mask)
 
     assert caplog.text == ''
     assert res_msg.subject == '/VIIRS/L2/Fires/PP/Regional/9999'
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_prepare_posttroll_message_no_fires(setup_comm, get_config, gethostname):
+def test_prepare_posttroll_message_no_fires(setup_comm, gethostname,
+                                            fake_yamlconfig_file_post_processing):
     """Test setup the posttroll message."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myboarders_file = "/my/shape/file/with/country/boarders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myboarders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myboarders_file, mymask_file)
 
     input_msg = Message.decode(rawstr=TEST_MSG)
     msg_str = 'No fire detections for this granule'
