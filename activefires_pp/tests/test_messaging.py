@@ -175,7 +175,7 @@ def test_prepare_posttroll_message(setup_comm, get_config, gethostname):
     assert res_msg.data['format'] == 'geojson'
     assert res_msg.data['product'] == 'afimg'
     assert res_msg.subject == '/VIIRS/L2/Fires/PP/National'
-    assert res_msg.data['uri'] == 'ssh://my.host.name//my/geojson/file/path'
+    assert res_msg.data['uri'] == '/my/geojson/file/path'
 
     input_msg = Message.decode(rawstr=TEST_MSG)
 
