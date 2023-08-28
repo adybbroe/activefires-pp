@@ -40,6 +40,10 @@ NAT_CONFIG = """
 publish_topic: VIIRS/L2/MSB/National
 subscribe_topics: VIIRS/L2/Fires/PP/National
 
+products:
+  - afimg
+  - afimg_some_other_geoid
+
 smtp_server: smtp.mydomain.se
 
 domain: mydomain.se
@@ -137,7 +141,9 @@ class TestNotifyEndUsers(unittest.TestCase):
 
         expected = {'publish_topic': 'VIIRS/L2/MSB/National',
                     'subscribe_topics': ['VIIRS/L2/Fires/PP/National'],
-                    'smtp_server': 'smtp.mydomain.se', 'domain': 'mydomain.se', 'sender': 'active-fires@mydomain.se',
+                    'products': ['afimg', 'afimg_some_other_geoid'],
+                    'smtp_server': 'smtp.mydomain.se',
+                    'domain': 'mydomain.se', 'sender': 'active-fires@mydomain.se',
                     'recipients': ['recipient1@recipients.se', 'recipient2@recipients.se', 'recipient3@recipients.se'],
                     'recipients_attachment': ['recipient1@recipients.se', 'recipient2@recipients.se'],
                     'subject': 'My subject', 'max_number_of_fires_in_sms': 3,
