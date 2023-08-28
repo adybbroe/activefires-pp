@@ -184,10 +184,7 @@ class EndUserNotifier(Thread):
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
 
-                product_name = msg.data.get('product')
-                product_list = self.options.get('products')
-                if product_list and product_name and product_name not in product_list:
-                    LOG.info('Product %s will not generate a notification!', product_name)
+                if not self._product_name_supported(msg):
                     continue
 
                 output_msg = self.notify_end_users(msg)
@@ -196,6 +193,16 @@ class EndUserNotifier(Thread):
                     self.publisher.send(str(output_msg))
                 else:
                     LOG.debug("No message to send")
+
+    def _product_name_supported(self, incoming_msg):
+        """Check that the product name is supported via the configuration."""
+        product_name = incoming_msg.data.get('product')
+        product_list = self.options.get('products')
+        if product_list and product_name and product_name not in product_list:
+            LOG.info('Product %s will not generate a notification!', product_name)
+            return False
+
+        return True
 
     def notify_end_users(self, msg):
         """Send notifications to configured end users (mail and text messages)."""
