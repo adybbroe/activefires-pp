@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2022 Adam.Dybbro
+# Copyright (c) 2021 - 2023 Adam.Dybbro
 
 # Author(s):
 
@@ -68,7 +68,6 @@ from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 # column 7: fire radiative power (MW)
 #
 COL_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res", "conf", "power"]
-
 
 logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.WARNING)
@@ -557,7 +556,7 @@ class ActiveFiresPostprocessing(Thread):
         """Create the output message to publish."""
         output_topic = generate_posttroll_topic(self.output_topic, region)
         to_send = prepare_posttroll_message(input_msg, region)
-        to_send['uri'] = ('ssh://%s/%s' % (self.host, filepath))
+        to_send['uri'] = str(filepath)
         to_send['uid'] = os.path.basename(filepath)
         to_send['type'] = 'GEOJSON-filtered'
         to_send['format'] = 'geojson'
