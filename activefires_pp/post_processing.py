@@ -607,7 +607,7 @@ class ActiveFiresPostprocessing(Thread):
         """Create the output message to publish."""
         output_topic = generate_posttroll_topic(self.output_topic, region)
         to_send = prepare_posttroll_message(input_msg, region)
-        to_send['uri'] = ('ssh://%s/%s' % (self.host, filepath))
+        to_send['uri'] = str(filepath)
         to_send['uid'] = os.path.basename(filepath)
         to_send['type'] = 'GEOJSON-filtered'
         to_send['format'] = 'geojson'
