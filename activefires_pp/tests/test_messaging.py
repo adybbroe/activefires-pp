@@ -214,15 +214,15 @@ def test_prepare_posttroll_message(setup_comm, get_config,
     test_filepath = "/my/geojson/file/path"
 
     input_msg = Message.decode(rawstr=TEST_MSG)
-    result_messages = afpp.get_output_messages(test_filepath, input_msg, 1)
+    res_msg = afpp._generate_output_message(test_filepath, input_msg)
 
-    assert result_messages[0].data['platform_name'] == 'NOAA-20'
-    assert result_messages[0].data['type'] == 'GEOJSON-filtered'
-    assert result_messages[0].data['format'] == 'geojson'
-    assert result_messages[0].data['product'] == 'afimg'
-    assert result_messages[0].subject == '/VIIRS/L2/Fires/PP/National'
-    assert result_messages[0].data['uri'] == 'ssh://my.host.name//my/geojson/file/path'
-
+    assert res_msg.data['platform_name'] == 'NOAA-20'
+    assert res_msg.data['type'] == 'GEOJSON-filtered'
+    assert res_msg.data['format'] == 'geojson'
+    assert res_msg.data['product'] == 'afimg'
+    assert res_msg.subject == '/VIIRS/L2/Fires/PP/National'
+    assert res_msg.data['uri'] == '/my/geojson/file/path'
+    
     input_msg = Message.decode(rawstr=TEST_MSG)
 
     fake_region_mask = {'attributes': {'Kod_omr': '9999',
