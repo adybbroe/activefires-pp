@@ -111,9 +111,7 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
                                      myborders_file, mymask_file)
     afpp.filepath_detection_id_cache = False
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
     afpp.publisher = get_fake_publiser(1979)
-
     afpp.publisher.start()
 
     input_msg = Message.decode(rawstr=TEST_MSG)
@@ -239,8 +237,7 @@ def test_prepare_posttroll_message_regional(caplog, fake_yamlconfig_file_post_pr
             afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                              myboarders_file, mymask_file)
 
-    assert res_msg.data['uri'] == '/my/geojson/file/path'
-    
+    test_filepath = "/my/geojson/file/path"
     input_msg = Message.decode(rawstr=TEST_MSG)
 
     fake_region_mask = {'attributes': {'Kod_omr': '9999',
@@ -249,6 +246,7 @@ def test_prepare_posttroll_message_regional(caplog, fake_yamlconfig_file_post_pr
         res_msg = afpp._generate_output_message(test_filepath, input_msg, 'default',
                                                 region=fake_region_mask)
 
+    assert res_msg.data['uri'] == test_filepath
     assert caplog.text == ''
     assert res_msg.subject == '/VIIRS/L2/Fires/PP/Regional/9999'
 

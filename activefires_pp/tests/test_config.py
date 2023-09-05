@@ -53,17 +53,12 @@ def test_read_yaml_configuration_for_postprocessing(fake_yamlconfig_file_post_pr
     assert config['regional_shapefiles_format'] == 'omr_{region_code:s}_Buffer.{ext:s}'
     assert config['output_dir'] == '/path/where/the/filtered/results/will/be/stored'
 
-    assert len(config['output']['national']['default']) == 2
-    assert config['output']['national']['default'][1] == {'celcius':
-                                             {'geojson_file_pattern':
-                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson',  # noqa
-                                              'unit': 'degC'}}
-    assert config['output']['national']['sweref99'][0] == {'si-units':
-                                                     {'geojson_file_pattern':
+    assert len(config['output']['national']['default']) == 1
+    assert config['output']['national']['default'] == {'geojson_file_pattern':
+                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson'}  # noqa
+    assert config['output']['national']['sweref99'] == {'geojson_file_pattern':
                                                         'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_sweref99.geojson',  # noqa
-                                                        'projection': "EPSG:3006"}}    
-    assert len(config['output']['regional']['default']) == 1
-    assert config['output']['regional']['default'][0] == {'si-units':
-                                             {'geojson_file_pattern':
-                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson'}}  # noqa
+                                                        'projection': "EPSG:3006"}
 
+    assert config['output']['regional']['default'] == {'geojson_file_pattern':
+                                              'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson'}  # noqa

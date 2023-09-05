@@ -80,8 +80,7 @@ def get_geojson_files_in_observation_time_order(path, pattern, time_interval):
 def geojson_feature_collection_from_detections(detections, platform_name=None):
     """Create the Geojson feature collection from fire detection data."""
     if len(detections) == 0:
-        logger.debug("No detections to save!")
-        return None
+        raise ValueError("No detections to save!")
 
     # Convert points to GeoJSON
     features = []
@@ -94,9 +93,20 @@ def geojson_feature_collection_from_detections(detections, platform_name=None):
         prop = {'power': detections.iloc[idx].power,
                 'tb': detections.iloc[idx].tb,
                 'confidence': int(detections.iloc[idx].conf),
-                'id': detections.iloc[idx].detection_id,
                 'observation_time': json_serial(mean_granule_time)
                 }
+
+        try:
+            prop['tb_celcius'] = detections.iloc[idx].tb_celcius
+        except AttributeError:
+            logger.debug("Failed adding the TB in celcius!")
+            pass
+        try:
+            prop['id'] = detections.iloc[idx].detection_id
+        except AttributeError:
+            logger.debug("Failed adding the unique detection id!")
+            pass
+
         if platform_name:
             prop['platform_name'] = platform_name
         else:

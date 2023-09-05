@@ -42,15 +42,16 @@ import pyproj
 from matplotlib.path import Path
 import shapely
 
-from activefires_pp.geojson_utils import store_geojson
-from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
-from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
-
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import UnitConverter
 from activefires_pp.utils import get_local_timezone_offset
 from activefires_pp.config import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
+
+from activefires_pp.geojson_utils import store_geojson
+from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
+from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
+
 
 # M-band output:
 # column 1: latitude of fire pixel (degrees)
@@ -255,60 +256,6 @@ def store(output_filename, detections):
     else:
         logger.debug("No detections to save!")
         return None
-
-      
-def geojson_feature_collection_from_detections(detections, platform_name=None):
-    """Create the Geojson feature collection from fire detection data."""
-    if len(detections) == 0:
-        raise ValueError("No detections to save!")
-
-    # Convert points to GeoJSON
-    features = []
-    for idx in range(len(detections)):
-        starttime = detections.iloc[idx].starttime
-        endtime = detections.iloc[idx].endtime
-        mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
-                                                         starttime.to_pydatetime()) / 2.
-
-        prop = {'power': detections.iloc[idx].power,
-                'tb': detections.iloc[idx].tb,
-                'confidence': int(detections.iloc[idx].conf),
-                'observation_time': json_serial(mean_granule_time)
-                }
-
-        try:
-            prop['tb_celcius'] = detections.iloc[idx].tb_celcius
-        except AttributeError:
-            logger.debug("Failed adding the TB in celcius!")
-            pass
-        try:
-            prop['id'] = detections.iloc[idx].detection_id
-        except AttributeError:
-            logger.debug("Failed adding the unique detection id!")
-            pass
-
-        if platform_name:
-            prop['platform_name'] = platform_name
-        else:
-            logger.debug("No platform name specified for output")
-
-        feat = Feature(
-            geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
-            properties=prop)
-        features.append(feat)
-
-    return FeatureCollection(features)
-
-
-def store_geojson(output_filename, feature_collection):
-    """Store the Geojson feature collection of fire detections on disk."""
-    path = os.path.dirname(output_filename)
-    if not os.path.exists(path):
-        logger.info("Create directory: %s", path)
-        os.makedirs(path)
-
-    with open(output_filename, 'w') as fpt:
-        dump(feature_collection, fpt)
 
 
 def get_mask_from_multipolygon(points, geometry, start_idx=1):

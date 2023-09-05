@@ -24,10 +24,14 @@
 
 import pytest
 from unittest.mock import patch
+from unittest import TestCase
 
 import pandas as pd
+from geojson import FeatureCollection
 import numpy as np
+import io
 from datetime import datetime
+from freezegun import freeze_time
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
@@ -377,20 +381,17 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethos
 
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_comm,
-                                                                get_config, gethostname):
+def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_comm, gethostname,
+                                                                fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
-
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
@@ -449,20 +450,17 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm,
-                                                         get_config, gethostname):
+def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, gethostname,
+                                                         fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
-
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
     units = {'temperature': 'degC'}
