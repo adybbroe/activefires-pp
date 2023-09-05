@@ -412,7 +412,7 @@ class ActiveFiresPostprocessing(Thread):
         if projname != 'default':
             pout = Parser(self.outfile_patterns_national[projname]['geojson_file_pattern'])
         else:
-            pout = Parser(self.outfile_patterns_national['deafult']['geojson_file_pattern'])
+            pout = Parser(self.outfile_patterns_national['default']['geojson_file_pattern'])
 
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
