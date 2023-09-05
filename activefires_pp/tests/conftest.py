@@ -66,6 +66,18 @@ output_dir: /path/where/the/filtered/results/will/be/stored
 filepath_detection_id_cache: /path/to/the/detection_id/cache/fire_detection_id_cache.txt
 
 timezone: Europe/Stockholm
+
+geojson-national:
+  - kelvin:
+      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+  - celcius:
+      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
+      unit: degC
+
+geojson-regional:
+  - si-units:
+      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
+
 """  # noqa
 
 TEST_YAML_TOKENS = """xauth_tokens:

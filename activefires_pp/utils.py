@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2022 Adam Dybbroe
+# Copyright (c) 2021-2023 Adam Dybbroe
 
 # Author(s):
 
@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-"""
+"""Utility functions for the Active Fires postprocessing."""
 
 import cartopy.io.shapereader as shpreader
 from datetime import date, datetime, timezone
@@ -29,6 +28,7 @@ from urllib.parse import urlparse
 import pathlib
 import logging
 import zoneinfo
+from pint import UnitRegistry
 
 LOG = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def get_local_timezone_offset(timezone_str):
 
 
 def get_geometry_from_shapefile(shapefile):
-    """Read shapefile and return geometry as a multipolygon"""
+    """Read shapefile and return geometry as a multipolygon."""
     records = shpreader.Reader(shapefile).records()
     geometries = [c.geometry for c in records]
 
@@ -57,7 +57,7 @@ def get_geometry_from_shapefile(shapefile):
 
 
 def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
+    """JSON serializer for objects not serializable by default json code."""
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
@@ -69,3 +69,21 @@ def get_filename_from_posttroll_message(pytroll_message):
     filepath = pathlib.Path(url.path)
     LOG.info('File path: %s', str(filepath))
     return filepath
+
+
+class UnitConverter:
+    """A converter for physical units using Pint."""
+
+    def __init__(self, units):
+        """Initialize the unit converter."""
+        self.units = units
+        self.ureg = UnitRegistry()
+
+        self.orig_units = {'power': self.ureg.watt * 1e6,
+                           'temperature': self.ureg.kelvin}
+
+    def convert(self, varname, variable):
+        """Convert a unit."""
+        variable = variable * self.orig_units[varname]
+        variable.ito(self.units[varname])
+        return variable

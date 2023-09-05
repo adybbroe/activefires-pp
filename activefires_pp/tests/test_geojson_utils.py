@@ -14,7 +14,7 @@
 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULARPURPOSE.  See the
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
@@ -400,3 +400,50 @@ def test_map_coordinates_in_feature_collection_sweref99(fake_yamlconfig_file_pos
             fc_out[i]['geometry']['coordinates'][j] = round(fc_out[i]['geometry']['coordinates'][j])
 
     TestCase().assertDictEqual(fc_out, expected)
+
+_TEST_ACTIVE_FIRES_FILE_DATA = """
+59.52483368,17.1681633,336.57437134,0.375,0.375,8,14.13167953
+60.13325882,16.18420029,329.47689819,0.375,0.375,8,5.3285923
+"""
+_COLUMN_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res", "conf", "power"]
+
+
+class TestStoreGeojsonData:
+    """Test storing the Geojson data to file."""
+
+    def setup_method(self):
+        """Read test data set with fire detections and prepare pandas data frame format."""
+        from activefires_pp.utils import datetime_utc2local
+        fstream = io.StringIO(_TEST_ACTIVE_FIRES_FILE_DATA)
+        afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=_COLUMN_NAMES)
+        self.afdata = afdata
+
+        starttime = datetime_utc2local(datetime.fromisoformat('2021-04-14 11:26:43.900'), 'GMT')
+        endtime = datetime_utc2local(datetime.fromisoformat('2021-04-14 11:28:08'), 'GMT')
+
+        self.afdata['starttime'] = np.repeat(starttime, len(self.afdata)).astype(np.datetime64)
+        self.afdata['endtime'] = np.repeat(endtime, len(self.afdata)).astype(np.datetime64)
+
+        self.feature_collection = geojson_feature_collection_from_detections(self.afdata,
+                                                                             platform_name='NOAA-20')
+
+    def test_store_geojson_no_unit_conversion(self, tmp_path):
+        """Test the storing of detections in geojson format without unit conversion."""
+        from activefires_pp.post_processing import store_geojson
+        from activefires_pp.geojson_utils import read_geojson_data
+        output_filename = tmp_path / 'test1_geojsonfile_si_units.geojson'
+
+        store_geojson(output_filename, self.feature_collection)
+        assert output_filename.exists() is True
+
+        jsondata = read_geojson_data(output_filename)
+
+        assert len(jsondata) == 2
+        assert jsondata['type'] == 'FeatureCollection'
+        assert len(jsondata['features']) == 2
+        feature1 = jsondata['features'][0]
+        assert isinstance(feature1['properties']['tb'], float)
+        assert feature1['properties']['tb'] == 336.57437134
+        assert feature1['properties']['power'] == 14.13167953
+
+

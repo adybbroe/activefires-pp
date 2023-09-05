@@ -24,3 +24,14 @@ filepath_detection_id_cache: /path/to/the/detection_id/cache/fire_detection_id_c
 
 timezone: Europe/Stockholm
 # pytz.all_timezones
+
+# geojson-national:
+#   - kelvin:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
+#   - celcius:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
+#       unit: degC
+
+# geojson-regional:
+#   - si-units:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
