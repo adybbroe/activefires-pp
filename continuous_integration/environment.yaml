@@ -27,6 +27,7 @@ dependencies:
   - requests
   - openssl
   - pytz
+  - pint
   - pytest
   - pytest-cov
   - pip

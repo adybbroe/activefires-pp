@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2023 Adam.Dybbro
+# Copyright (c) 2021 - 2023 Adam.Dybbroe
 
 # Author(s):
 
@@ -43,6 +43,7 @@ from matplotlib.path import Path
 import shapely
 
 from activefires_pp.utils import datetime_utc2local
+from activefires_pp.utils import UnitConverter
 from activefires_pp.utils import get_local_timezone_offset
 from activefires_pp.utils import json_serial
 from activefires_pp.config import read_config
@@ -256,8 +257,7 @@ def store(output_filename, detections):
 def geojson_feature_collection_from_detections(detections, platform_name=None):
     """Create the Geojson feature collection from fire detection data."""
     if len(detections) == 0:
-        logger.debug("No detections to save!")
-        return None
+        raise ValueError("No detections to save!")
 
     # Convert points to GeoJSON
     features = []
@@ -270,9 +270,20 @@ def geojson_feature_collection_from_detections(detections, platform_name=None):
         prop = {'power': detections.iloc[idx].power,
                 'tb': detections.iloc[idx].tb,
                 'confidence': int(detections.iloc[idx].conf),
-                'id': detections.iloc[idx].detection_id,
                 'observation_time': json_serial(mean_granule_time)
                 }
+
+        try:
+            prop['tb_celcius'] = detections.iloc[idx].tb_celcius
+        except AttributeError:
+            logger.debug("Failed adding the TB in celcius!")
+            pass
+        try:
+            prop['id'] = detections.iloc[idx].detection_id
+        except AttributeError:
+            logger.debug("Failed adding the unique detection id!")
+            pass
+
         if platform_name:
             prop['platform_name'] = platform_name
         else:
@@ -356,8 +367,10 @@ class ActiveFiresPostprocessing(Thread):
         self.input_topic = self.options['subscribe_topics'][0]
         self.output_topic = self.options['publish_topic']
         self.infile_pattern = self.options.get('af_pattern_ibands')
+
         self.outfile_pattern_national = self.options.get('geojson_file_pattern_national')
         self.outfile_pattern_regional = self.options.get('geojson_file_pattern_regional')
+
         self.output_dir = self.options.get('output_dir', '/tmp')
         self.filepath_detection_id_cache = self.options.get('filepath_detection_id_cache')
 
@@ -377,6 +390,11 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Starting up... Input topic: %s", self.input_topic)
         now = datetime_utc2local(datetime.now(), self.timezone)
         logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
+
+        tic = time.time()
+        units = {'temperature': 'degC'}
+        self.unit_converter = UnitConverter(units)
+        logger.debug("Unit conversion initialization with Pint took %f seconds.", time.time() - tic)
 
         self._check_borders_shapes_exists()
 
@@ -450,21 +468,22 @@ class ActiveFiresPostprocessing(Thread):
             logger.debug("No fires - so no regional filtering to be done!")
             return
 
-        # It is here that we should add a uniue day-ID to each of the detections!
         afdata = self.add_unique_day_id(afdata)
         self.save_id_to_file()
 
-        # 1) Create geojson feature collection
-        # 2) Dump geojson data to disk
-        feature_collection = geojson_feature_collection_from_detections(afdata,
-                                                                        platform_name=af_shapeff.platform_name)
+        afdata = self.add_tb_celcius(afdata)
 
         fmda = af_shapeff.metadata
         pout = Parser(self.outfile_pattern_national)
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
 
-        if feature_collection is None:
+        # 1) Create geojson feature collection
+        # 2) Dump geojson data to disk
+        try:
+            feature_collection = geojson_feature_collection_from_detections(afdata,
+                                                                            platform_name=af_shapeff.platform_name)
+        except ValueError:
             logger.info("No geojson file created, number of fires after filtering = %d", len(afdata))
             output_messages = self._generate_no_fires_messages(msg,
                                                                'No true fire detections inside National borders')  # noqa
@@ -531,10 +550,10 @@ class ActiveFiresPostprocessing(Thread):
             logger.debug("Output file path = %s", out_filepath)
             data_in_region = afdata[regional_fmask[region_name]['mask']]
 
-            # filepath = store_geojson(out_filepath, data_in_region, platform_name=fmda['platform'])
-            feature_collection = geojson_feature_collection_from_detections(data_in_region,
-                                                                            platform_name=fmda['platform'])
-            if feature_collection is None:
+            try:
+                feature_collection = geojson_feature_collection_from_detections(data_in_region,
+                                                                                platform_name=fmda['platform'])
+            except ValueError:
                 logger.warning("Something wrong happended storing regional " +
                                "data to Geojson - area: {name}".format(name=str(region_name)))
                 continue
@@ -669,6 +688,15 @@ class ActiveFiresPostprocessing(Thread):
 
         afdata['detection_id'] = id_list
         return afdata
+
+    def add_tb_celcius(self, data_frame):
+        """Add a column with TB in Celcius to the fire detection data frame."""
+        def kelvin2celcius(x):
+            tb_c = self.unit_converter.convert('temperature', x)
+            return tb_c.magnitude
+
+        data_frame['tb_celcius'] = data_frame['tb'].apply(kelvin2celcius)
+        return data_frame
 
     def close(self):
         """Shutdown the Active Fires postprocessing."""
