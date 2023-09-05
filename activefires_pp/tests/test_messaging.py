@@ -48,9 +48,9 @@ CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
                   'output_dir': '/path/where/the/filtered/results/will/be/stored'}
 
 
-def get_fake_publiser():
+def get_fake_publiser(portnumber=1979):
     """Return a fake publisher."""
-    return create_publisher_from_dict_config(dict(port=1979, nameservers=False))
+    return create_publisher_from_dict_config(dict(port=portnumber, nameservers=False))
 
 
 # @pytest.fixture(scope='session')
@@ -116,7 +116,7 @@ def test_check_incoming_message_nc_file_exists(setup_comm,
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-    afpp.publisher = get_fake_publiser()
+    afpp.publisher = get_fake_publiser(1979)
     afpp.publisher.start()
 
     input_msg = Message.decode(rawstr=TEST_MSG)
@@ -152,7 +152,7 @@ def test_check_incoming_message_txt_file_exists(setup_comm,
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-    afpp.publisher = get_fake_publiser()
+    afpp.publisher = get_fake_publiser(1980)
     afpp.publisher.start()
 
     input_msg = Message.decode(rawstr=TEST_MSG_TXT)
@@ -184,7 +184,7 @@ def test_check_incoming_message_txt_file_does_not_exist(setup_comm,
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-    afpp.publisher = get_fake_publiser()
+    afpp.publisher = get_fake_publiser(1981)
     afpp.publisher.start()
 
     input_msg = Message.decode(rawstr=TEST_MSG_TXT)
