@@ -24,6 +24,7 @@
 
 from unittest.mock import patch
 from unittest import TestCase
+import io
 
 from freezegun import freeze_time
 from datetime import datetime
@@ -401,6 +402,7 @@ def test_map_coordinates_in_feature_collection_sweref99(fake_yamlconfig_file_pos
 
     TestCase().assertDictEqual(fc_out, expected)
 
+
 _TEST_ACTIVE_FIRES_FILE_DATA = """
 59.52483368,17.1681633,336.57437134,0.375,0.375,8,14.13167953
 60.13325882,16.18420029,329.47689819,0.375,0.375,8,5.3285923
@@ -445,5 +447,3 @@ class TestStoreGeojsonData:
         assert isinstance(feature1['properties']['tb'], float)
         assert feature1['properties']['tb'] == 336.57437134
         assert feature1['properties']['power'] == 14.13167953
-
-
