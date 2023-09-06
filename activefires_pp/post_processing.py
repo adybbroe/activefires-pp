@@ -648,17 +648,18 @@ class ActiveFiresPostprocessing(Thread):
         return (self._fire_detection_id['date'].strftime('%Y%m%d') +
                 '-' + str(self._fire_detection_id['counter']))
 
-    def add_unique_day_id(self, afdata):
+    def add_unique_day_id(self, data_frame):
         """Add a unique detection id - date + a running number for the day."""
         # Add id's to the detections:
         id_list = []
-        for _i in range(len(afdata)):
+        for _i in range(len(data_frame)):
             self.update_fire_detection_id()
             id_ = self._create_id_string()
             id_list.append(id_)
 
-        afdata['detection_id'] = id_list
-        return afdata
+        col = len(data_frame.columns)
+        data_frame.insert(col, 'detection_id', id_list)
+        return data_frame
 
     def add_tb_celcius(self, data_frame):
         """Add a column with TB in Celcius to the fire detection data frame."""
@@ -666,7 +667,8 @@ class ActiveFiresPostprocessing(Thread):
             tb_c = self.unit_converter.convert('temperature', x)
             return tb_c.magnitude
 
-        data_frame['tb_celcius'] = data_frame['tb'].apply(kelvin2celcius)
+        col = data_frame.columns.get_loc('tb')
+        data_frame.insert(2, "tb_celcius", data_frame.iloc[:, col].apply(kelvin2celcius))
         return data_frame
 
     def close(self):
