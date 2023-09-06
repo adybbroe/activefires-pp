@@ -423,6 +423,8 @@ class TestStoreGeojsonData:
         starttime = datetime_utc2local(datetime.fromisoformat('2021-04-14 11:26:43.900'), 'GMT')
         endtime = datetime_utc2local(datetime.fromisoformat('2021-04-14 11:28:08'), 'GMT')
 
+        starttime = starttime.replace(tzinfo=None)
+        endtime = endtime.replace(tzinfo=None)
         self.afdata['starttime'] = np.repeat(starttime, len(self.afdata)).astype(np.datetime64)
         self.afdata['endtime'] = np.repeat(endtime, len(self.afdata)).astype(np.datetime64)
 
