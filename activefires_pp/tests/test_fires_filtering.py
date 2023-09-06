@@ -129,21 +129,6 @@ TEST_ACTIVE_FIRES_FILE_DATA3 = """
   64.46707153,   17.65028381,  330.15390015,  0.375,  0.375,    8,    3.75669074
 """
 
-CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
-                  'subscribe_topics': 'VIIRS/L2/AFI',
-                  'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
-                  '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
-                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
-                  '{region_name:s}.geojson',
-                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
-                  'output_dir': '/path/where/the/filtered/results/will/be/stored',
-                  'filepath_detection_id_cache': '/path/to/the/detection_id/cache',
-                  'timezone': 'Europe/Stockholm'}
-
-OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-
 
 TEST_REGIONAL_MASK = {}
 TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False,
@@ -247,6 +232,38 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
 
     assert str(this._afdata['starttime'][0]) == '2021-04-14 12:26:43.900000'
     assert str(this._afdata['endtime'][0]) == '2021-04-14 12:28:08'
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_get_output_filepath_from_projname(setup_comm, gethostname,
+                                           fake_yamlconfig_file_post_processing):
+    """Test getting the correct output file path from the projection name."""
+    gethostname.return_value = "my.host.name"
+
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
+
+    fake_metadata = {'platform': 'j01',
+                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'orbit': '17637',
+                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+
+    outpath = afpp.get_output_filepath_from_projname('default', fake_metadata)
+    assert outpath == '/path/where/the/filtered/results/will/be/stored/AFIMG_j01_d20210414_t112643.geojson'
+    outpath = afpp.get_output_filepath_from_projname('sweref99', fake_metadata)
+    assert outpath == '/path/where/the/filtered/results/will/be/stored/AFIMG_j01_d20210414_t112643_sweref99.geojson'
+
+    with pytest.raises(KeyError) as exec_info:
+        outpath = afpp.get_output_filepath_from_projname('some_other_projection_name', fake_metadata)
+
+    expected = "'Projection name some_other_projection_name not supported in configuration!'"
+    assert str(exec_info.value) == expected
 
 
 @patch('socket.gethostname')

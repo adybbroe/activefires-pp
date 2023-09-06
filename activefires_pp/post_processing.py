@@ -400,6 +400,15 @@ class ActiveFiresPostprocessing(Thread):
 
         return filename
 
+    def get_output_filepath_from_projname(self, projname, metadata):
+        """From the projection-name (given in the config file) retrieve the output file path."""
+        try:
+            pout = Parser(self.outfile_patterns_national[projname]['geojson_file_pattern'])
+        except KeyError:
+            raise KeyError('Projection name %s not supported in configuration!' % projname)
+
+        return os.path.join(self.output_dir, pout.compose(metadata))
+
     def _national_save_and_publish(self, feature_collection, ndata, af_shapeff, msg, projname='default'):
         """Take the fearure collection and store the results in a Geojson file and publish."""
         if feature_collection is None:
@@ -408,13 +417,7 @@ class ActiveFiresPostprocessing(Thread):
                                                                'No true fire detections inside National borders')  # noqa
             return
 
-        fmda = af_shapeff.metadata
-        if projname != 'default':
-            pout = Parser(self.outfile_patterns_national[projname]['geojson_file_pattern'])
-        else:
-            pout = Parser(self.outfile_patterns_national['default']['geojson_file_pattern'])
-
-        out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
+        out_filepath = self.get_output_filepath_from_projname(projname, af_shapeff.metadata)
         logger.debug("Output file path = %s", out_filepath)
 
         store_geojson(out_filepath, feature_collection)
