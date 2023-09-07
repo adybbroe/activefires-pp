@@ -18,24 +18,25 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this 2program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Test the Fires filtering functionality."""
 
 import pytest
 from unittest.mock import patch
 from unittest import TestCase
-from freezegun import freeze_time
 
 import pandas as pd
 from geojson import FeatureCollection
 import numpy as np
 import io
 from datetime import datetime
+from freezegun import freeze_time
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
+from activefires_pp.tests.test_utils import MY_FILE_PATTERN
 from activefires_pp.utils import UnitConverter
 
 from activefires_pp.post_processing import geojson_feature_collection_from_detections
@@ -128,24 +129,6 @@ TEST_ACTIVE_FIRES_FILE_DATA3 = """
   64.46707153,   17.65028381,  330.15390015,  0.375,  0.375,    8,    3.75669074
 """
 
-CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
-                  'subscribe_topics': 'VIIRS/L2/AFI',
-                  'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
-                  '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
-                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
-                  '{region_name:s}.geojson',
-                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
-                  'output_dir': '/path/where/the/filtered/results/will/be/stored',
-                  'filepath_detection_id_cache': '/path/to/the/detection_id/cache',
-                  'timezone': 'Europe/Stockholm'}
-
-OPEN_FSTREAM = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-
-
-MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_" +
-                   "b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt")
 
 TEST_REGIONAL_MASK = {}
 TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False,
@@ -178,12 +161,11 @@ FAKE_MASK2 = np.array([True, False,  True])
 
 
 @patch('activefires_pp.post_processing._read_data')
-def test_add_start_and_end_time_to_active_fires_data_utc(readdata):
+def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_fires_file_data):
     """Test adding start and end times to the active fires data."""
-    myfilepath = TEST_ACTIVE_FIRES_FILEPATH
+    open_fstream, myfilepath = fake_active_fires_file_data
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
 
-    # fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-    afdata = pd.read_csv(OPEN_FSTREAM, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
@@ -200,12 +182,11 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata):
 
 
 @patch('activefires_pp.post_processing._read_data')
-def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
+def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_active_fires_file_data):
     """Test adding start and end times to the active fires data."""
-    myfilepath = TEST_ACTIVE_FIRES_FILEPATH
+    open_fstream, myfilepath = fake_active_fires_file_data
 
-    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Stockholm')
@@ -254,23 +235,56 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata):
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_regional_fires_filtering(setup_comm, get_config, gethostname):
-    """Test the regional fires filtering."""
-    # FIXME! This test is too big/broad. Need for refactoring!
-    get_config.return_value = CONFIG_EXAMPLE
+def test_get_output_filepath_from_projname(setup_comm, gethostname,
+                                           fake_yamlconfig_file_post_processing):
+    """Test getting the correct output file path from the projection name."""
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
+
+    fake_metadata = {'platform': 'j01',
+                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'orbit': '17637',
+                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+
+    outpath = afpp.get_output_filepath_from_projname('default', fake_metadata)
+    assert outpath == '/path/where/the/filtered/results/will/be/stored/AFIMG_j01_d20210414_t112643.geojson'
+    outpath = afpp.get_output_filepath_from_projname('sweref99', fake_metadata)
+    assert outpath == '/path/where/the/filtered/results/will/be/stored/AFIMG_j01_d20210414_t112643_sweref99.geojson'
+
+    with pytest.raises(KeyError) as exec_info:
+        outpath = afpp.get_output_filepath_from_projname('some_other_projection_name', fake_metadata)
+
+    expected = "'Projection name some_other_projection_name not supported in configuration!'"
+    assert str(exec_info.value) == expected
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+def test_regional_fires_filtering(setup_comm, gethostname,
+                                  fake_active_fires_file_data,
+                                  fake_yamlconfig_file_post_processing):
+    """Test the regional fires filtering."""
+    # FIXME! This test is to big/broad. Need for refactoring!
+    open_fstream, _ = fake_active_fires_file_data
+
+    gethostname.return_value = "my.host.name"
+
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
-    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
 
     starttime = datetime.fromisoformat('2021-04-14 11:26:43.900')
     endtime = datetime.fromisoformat('2021-04-14 11:28:08')
@@ -305,22 +319,21 @@ def test_regional_fires_filtering(setup_comm, get_config, gethostname):
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
-def test_general_national_fires_filtering(get_global_mask, setup_comm, get_config, gethostname):
+def test_general_national_fires_filtering(get_global_mask, setup_comm,
+                                          gethostname, fake_active_fires_file_data,
+                                          fake_yamlconfig_file_post_processing):
     """Test the general/basic national fires filtering."""
-    get_config.return_value = CONFIG_EXAMPLE
+    open_fstream, _ = fake_active_fires_file_data
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-
-    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA)
-    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
 
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j01',
@@ -365,18 +378,17 @@ def test_checking_national_borders_shapefile_file_exists(setup_comm, gethostname
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_config, gethostname):
+def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethostname,
+                                                              fake_yamlconfig_file_post_processing):
     """Test the checking of the national borders shapefile - borders shapefile does not exist."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
 
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     with pytest.raises(OSError) as exec_info:
         afpp._check_borders_shapes_exists()
 
@@ -386,20 +398,17 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, get_co
 
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_comm,
-                                                                get_config, gethostname):
+def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_comm, gethostname,
+                                                                fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
-
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
@@ -458,20 +467,17 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.read_config')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm,
-                                                         get_config, gethostname):
+def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, gethostname,
+                                                         fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
-    get_config.return_value = CONFIG_EXAMPLE
     gethostname.return_value = "my.host.name"
-
-    myconfigfile = "/my/config/file/path"
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
     afpp._initialize_fire_detection_id()
 
     units = {'temperature': 'degC'}
