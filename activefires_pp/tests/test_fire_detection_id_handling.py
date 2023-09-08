@@ -108,18 +108,6 @@ TEST_ACTIVE_FIRES_FILE_DATA4 = """
   67.27209473,   20.14731216,  348.89843750,  0.375,  0.375,    8,   11.79477501
 """
 
-CONFIG_EXAMPLE = {'publish_topic': '/VIIRS/L2/Fires/PP',
-                  'subscribe_topics': 'VIIRS/L2/AFI',
-                  'af_pattern_ibands':
-                  'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}' +
-                  '_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt',
-                  'geojson_file_pattern_national': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson',
-                  'geojson_file_pattern_regional': 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_' +
-                  '{region_name:s}.geojson',
-                  'regional_shapefiles_format': 'omr_{region_code:s}_Buffer.{ext:s}',
-                  'output_dir': '/path/where/the/filtered/results/will/be/stored',
-                  'filepath_detection_id_cache': '/path/to/the/detection_id/cache',
-                  'timezone': 'Europe/Stockholm'}
 
 MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_" +
                    "b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt")
@@ -139,7 +127,6 @@ def test_add_unique_day_id_to_detections_sameday(readdata, setup_comm, gethostna
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                      myborders_file, mymask_file)
-
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH2
 
     fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2)
@@ -205,17 +192,16 @@ def test_add_unique_day_id_to_detections_24hours_plus(readdata, setup_comm, geth
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
 @patch('activefires_pp.post_processing._read_data')
-def test_add_unique_day_id_to_detections_newday(readdata, setup_comm, gethostname,
-                                                fake_yamlconfig_file_post_processing):
+def test_add_unique_day_id_to_detections_newday_from_cache(readdata, setup_comm, gethostname,
+                                                           fake_yamlconfig_file_post_processing_with_id_cache):
     """Test adding unique id's to the fire detection data."""
     gethostname.return_value = "my.host.name"
 
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing_with_id_cache,
                                      myborders_file, mymask_file)
-    afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 11, 55, 0), 'counter': 1}
 
     myfilepath = TEST_ACTIVE_FIRES_FILEPATH4
 
@@ -228,7 +214,45 @@ def test_add_unique_day_id_to_detections_newday(readdata, setup_comm, gethostnam
         mypatch.return_value = True
         afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
 
-    TestCase().assertDictEqual(afpp._fire_detection_id, {'date': datetime(2023, 6, 17, 11, 55, 0),
+    TestCase().assertDictEqual(afpp._fire_detection_id, {'date': datetime(2023, 5, 1, 0, 0),
+                                                         'counter': 1})
+    # 2 new fire detections, so (current) ID should be raised - a new day, so id
+    # starting over from 0, and a new date!
+    afdata = afpp.add_unique_day_id(afdata)
+    assert 'detection_id' in afdata
+    assert afdata['detection_id'].values.tolist() == ['20230618-1', '20230618-2']
+    TestCase().assertDictEqual(afpp._fire_detection_id, {'date': datetime(2023, 6, 18, 9, 56, 0),
+                                                         'counter': 2})
+
+
+@freeze_time('2023-06-18 09:56:00')
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing._read_data')
+def test_add_unique_day_id_to_detections_newday_no_cache(readdata, setup_comm, gethostname,
+                                                         fake_yamlconfig_file_post_processing):
+    """Test adding unique id's to the fire detection data."""
+    gethostname.return_value = "my.host.name"
+
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
+    afpp._fire_detection_id = {'date': datetime(2023, 6, 17, 23, 55, 0), 'counter': 1}
+
+    myfilepath = TEST_ACTIVE_FIRES_FILEPATH4
+
+    fstream = io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA4)
+    afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+    readdata.return_value = afdata
+
+    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
+    with patch('os.path.exists') as mypatch:
+        mypatch.return_value = True
+        afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+
+    TestCase().assertDictEqual(afpp._fire_detection_id, {'date': datetime(2023, 6, 17, 23, 55),
                                                          'counter': 1})
     # 2 new fire detections, so (current) ID should be raised - a new day, so id
     # starting over from 0, and a new date!
@@ -278,8 +302,6 @@ def test_initialize_fire_detection_id_nofile(readdata, setup_comm, gethostname, 
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                      myborders_file, mymask_file)
-
-    assert afpp.filepath_detection_id_cache == '/path/to/the/detection_id/cache/fire_detection_id_cache.txt'
 
     expected = {'date': datetime(2023, 6, 18, 12, 0, 0), 'counter': 0}
 

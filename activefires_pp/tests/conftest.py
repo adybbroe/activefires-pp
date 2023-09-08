@@ -63,20 +63,10 @@ regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
 output_dir: /path/where/the/filtered/results/will/be/stored
 
-filepath_detection_id_cache: /path/to/the/detection_id/cache/fire_detection_id_cache.txt
+#filepath_detection_id_cache: /path/to/the/detection_id/cache/fire_detection_id_cache.txt
 
 timezone: Europe/Stockholm
 
-geojson-national:
-  - kelvin:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-  - celcius:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
-      unit: degC
-
-geojson-regional:
-  - si-units:
-      file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_{region_name:s}.geojson
 
 """  # noqa
 
@@ -245,6 +235,16 @@ def fake_token_file(tmp_path):
 
 
 @pytest.fixture
+def fake_detection_id_cache_file(tmp_path):
+    """Write fake detection-id cache file."""
+    file_path = tmp_path / 'fire_detection_id_cache.txt'
+    with open(file_path, 'w') as fpt:
+        fpt.write('20230501-1')
+
+    yield file_path
+
+
+@pytest.fixture
 def fake_yamlconfig_file(tmp_path):
     """Write fake yaml config file."""
     file_path = tmp_path / 'test_alarm_filtering_config.yaml'
@@ -256,10 +256,21 @@ def fake_yamlconfig_file(tmp_path):
 
 @pytest.fixture
 def fake_yamlconfig_file_post_processing(tmp_path):
-    """Write fake yaml config file."""
+    """Write fake yaml config file - with no id cache file."""
     file_path = tmp_path / 'test_af_post_processing_config.yaml'
     with open(file_path, 'w') as fpt:
         fpt.write(TEST_POST_PROCESSING_YAML_CONFIG_CONTENT)
+
+    yield file_path
+
+
+@pytest.fixture
+def fake_yamlconfig_file_post_processing_with_id_cache(tmp_path, fake_detection_id_cache_file):
+    """Write fake yaml config file - with a realistic id-cache file."""
+    file_path = tmp_path / 'test_af_post_processing_config.yaml'
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_POST_PROCESSING_YAML_CONFIG_CONTENT)
+        fpt.write('filepath_detection_id_cache: ' + str(fake_detection_id_cache_file))
 
     yield file_path
 
