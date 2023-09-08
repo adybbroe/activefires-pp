@@ -2,6 +2,10 @@
 publish_topic: VIIRS/L2/MSB/National
 subscribe_topics: VIIRS/L2/Fires/PP/National
 
+products:
+  - afimg
+  - afimg_some_other_geoid
+
 smtp_server: smtp.mydomain.se
 
 domain: mydomain.se

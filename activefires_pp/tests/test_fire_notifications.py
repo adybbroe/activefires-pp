@@ -26,7 +26,7 @@ import unittest
 from unittest.mock import patch
 import yaml
 import io
-# from posttroll.message import Message
+from posttroll.message import Message
 
 from activefires_pp.fire_notifications import EndUserNotifier
 from activefires_pp.fire_notifications import EndUserNotifierRegional
@@ -39,6 +39,10 @@ NAT_CONFIG = """
 # Publish/subscribe
 publish_topic: VIIRS/L2/MSB/National
 subscribe_topics: VIIRS/L2/Fires/PP/National
+
+products:
+  - afimg
+  - afimg_some_other_geoid
 
 smtp_server: smtp.mydomain.se
 
@@ -102,6 +106,8 @@ REGIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/Regional/0114 file safusr
 
 NATIONAL_TEST_MESSAGE = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg"}"""  # noqa
 
+NATIONAL_TEST_MESSAGE2 = """pytroll://VIIRS/L2/Fires/PP/National file safusr.u@lxserv1043.smhi.se 2021-04-19T11:16:49.519087 v1.01 application/json {"start_time": "2021-04-16T12:29:53", "end_time": "2021-04-16T12:31:18", "orbit_number": 1, "platform_name": "NOAA-20", "sensor": "viirs", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 17666, "uri": "ssh://lxserv1043.smhi.se//san1/polar_out/direct_readout/viirs_active_fires/filtered/AFIMG_j01_d20210416_t122953.geojson", "uid": "AFIMG_j01_d20210416_t122953_somegeoid.geojson", "type": "GEOJSON-filtered", "format": "geojson", "product": "afimg_somegeoid"}"""  # noqa
+
 
 class MyNetrcMock(object):
     """Mocking the handling of secrets via the .netrc file."""
@@ -122,6 +128,52 @@ class TestNotifyEndUsers(unittest.TestCase):
     @patch('activefires_pp.fire_notifications.socket.gethostname')
     @patch('activefires_pp.fire_notifications.read_config')
     @patch('activefires_pp.fire_notifications.EndUserNotifier._setup_and_start_communication')
+    def test_check_incoming_message_product_name_ok(self, setup_comm, read_config, gethostname, netrc):
+        """Test the incoming message for the 'right' product (name)."""
+        secrets = MyNetrcMock()
+        netrc.return_value = secrets
+        gethostname.return_value = 'default'
+
+        myconfigfile = "/my/config/file/path"
+        natstream = io.StringIO(NAT_CONFIG)
+
+        read_config.return_value = yaml.load(natstream, Loader=yaml.UnsafeLoader)
+
+        this = EndUserNotifier(myconfigfile)
+
+        input_msg = Message.decode(rawstr=NATIONAL_TEST_MESSAGE)
+
+        result = this._product_name_supported(input_msg)
+
+        assert result is True
+
+    @patch('activefires_pp.fire_notifications.netrc')
+    @patch('activefires_pp.fire_notifications.socket.gethostname')
+    @patch('activefires_pp.fire_notifications.read_config')
+    @patch('activefires_pp.fire_notifications.EndUserNotifier._setup_and_start_communication')
+    def test_check_incoming_message_product_name_not_ok(self, setup_comm, read_config, gethostname, netrc):
+        """Test the incoming message for the 'right' product (name)."""
+        secrets = MyNetrcMock()
+        netrc.return_value = secrets
+        gethostname.return_value = 'default'
+
+        myconfigfile = "/my/config/file/path"
+        natstream = io.StringIO(NAT_CONFIG)
+
+        read_config.return_value = yaml.load(natstream, Loader=yaml.UnsafeLoader)
+
+        this = EndUserNotifier(myconfigfile)
+
+        input_msg = Message.decode(rawstr=NATIONAL_TEST_MESSAGE2)
+
+        result = this._product_name_supported(input_msg)
+
+        assert result is False
+
+    @patch('activefires_pp.fire_notifications.netrc')
+    @patch('activefires_pp.fire_notifications.socket.gethostname')
+    @patch('activefires_pp.fire_notifications.read_config')
+    @patch('activefires_pp.fire_notifications.EndUserNotifier._setup_and_start_communication')
     def test_get_options_national_filtering(self, setup_comm, read_config, gethostname, netrc):
         """Test get the config options for National fires filtering."""
         secrets = MyNetrcMock()
@@ -137,7 +189,9 @@ class TestNotifyEndUsers(unittest.TestCase):
 
         expected = {'publish_topic': 'VIIRS/L2/MSB/National',
                     'subscribe_topics': ['VIIRS/L2/Fires/PP/National'],
-                    'smtp_server': 'smtp.mydomain.se', 'domain': 'mydomain.se', 'sender': 'active-fires@mydomain.se',
+                    'products': ['afimg', 'afimg_some_other_geoid'],
+                    'smtp_server': 'smtp.mydomain.se',
+                    'domain': 'mydomain.se', 'sender': 'active-fires@mydomain.se',
                     'recipients': ['recipient1@recipients.se', 'recipient2@recipients.se', 'recipient3@recipients.se'],
                     'recipients_attachment': ['recipient1@recipients.se', 'recipient2@recipients.se'],
                     'subject': 'My subject', 'max_number_of_fires_in_sms': 3,

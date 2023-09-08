@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022 Adam Dybbroe
+# Copyright (c) 2021 - 2023 Adam Dybbroe
 
 # Author(s):
 
@@ -20,8 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Creating and sending notifications for detected forest fires.
-"""
+"""Creating and sending notifications for detected forest fires."""
 
 import socket
 from netrc import netrc
@@ -56,8 +55,10 @@ LOG = logging.getLogger(__name__)
 
 
 class RecipientDataStruct(object):
-    def __init__(self):
+    """A data structure to control the list of configured recipients."""
 
+    def __init__(self):
+        """Initialize the recipient data structure."""
         self.recipients_with_attachment = []
         self.recipients_without_attachment = []
         self.recipients_all = []
@@ -140,7 +141,6 @@ class EndUserNotifier(Thread):
 
     def _set_options_from_config(self, config):
         """From the configuration on disk set the option dictionary, holding all metadata for processing."""
-
         for item in config:
             self.options[item] = config[item]
 
@@ -184,12 +184,25 @@ class EndUserNotifier(Thread):
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
 
+                if not self._product_name_supported(msg):
+                    continue
+
                 output_msg = self.notify_end_users(msg)
                 if output_msg:
                     LOG.debug("Sending message: %s", str(output_msg))
                     self.publisher.send(str(output_msg))
                 else:
                     LOG.debug("No message to send")
+
+    def _product_name_supported(self, incoming_msg):
+        """Check that the product name is supported via the configuration."""
+        product_name = incoming_msg.data.get('product')
+        product_list = self.options.get('products')
+        if product_list and product_name and product_name not in product_list:
+            LOG.info('Product %s will not generate a notification!', product_name)
+            return False
+
+        return True
 
     def notify_end_users(self, msg):
         """Send notifications to configured end users (mail and text messages)."""
@@ -218,7 +231,6 @@ class EndUserNotifier(Thread):
 
     def _send_notifications_with_attachments(self, server, recipients, full_message, filename, platform_name):
         """Send notifications with attachments."""
-
         notification = MIMEMultipart()
         notification['From'] = self.sender
         if platform_name:
@@ -252,7 +264,6 @@ class EndUserNotifier(Thread):
 
     def _send_notifications_without_attachments(self, server, recipients, sub_messages, platform_name):
         """Send notifications without attachments."""
-
         for submsg in sub_messages:
             notification = MIMEMultipart()
             notification['From'] = self.sender
