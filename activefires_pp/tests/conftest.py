@@ -63,8 +63,6 @@ regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
 output_dir: /path/where/the/filtered/results/will/be/stored
 
-#filepath_detection_id_cache: /path/to/the/detection_id/cache/fire_detection_id_cache.txt
-
 timezone: Europe/Stockholm
 
 
@@ -149,6 +147,9 @@ PAST_ALARMS_MONSTERAS3 = """{"features": {"geometry": {"coordinates": [16.252192
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.txt"
+TEST_ACTIVE_FIRES_FILEPATH3 = "./AFIMG_j01_d20230617_t1140564_e1142209_b28903_c20230617115513873196_cspp_dev.txt"
+
+TEST_ACTIVE_FIRES_FILEPATH4 = "./AFIMG_j01_d20230618_t0942269_e0943514_b28916_c20230618095604331171_cspp_dev.txt"
 
 
 TEST_ACTIVE_FIRES_FILE_DATA = """
@@ -212,6 +213,50 @@ TEST_ACTIVE_FIRES_FILE_DATA2 = """
 """
 
 
+# Here we have sorted out all detections not passing the filter mask!
+# So, 1 fire detection is left corresponding to what would end up in the geojson files:
+TEST_ACTIVE_FIRES_FILE_DATA3 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j01_d20230617_t1140564_e1142209_b28903_c20230617115513873196_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 9
+#
+  64.46707153,   17.65028381,  330.15390015,  0.375,  0.375,    8,    3.75669074
+"""
+
+# Here we have sorted out all detections not passing the filter mask!
+# So, 2 fire detections are left corresponding to what would end up in the geojson files:
+TEST_ACTIVE_FIRES_FILE_DATA4 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j01_d20230618_t0942269_e0943514_b28916_c20230618095604331171_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 10
+#
+  65.55922699,   17.62709618,  335.81488037,  0.375,  0.375,    8,    4.66374302
+  67.27209473,   20.14731216,  348.89843750,  0.375,  0.375,    8,   11.79477501
+"""
+
+
 @pytest.fixture
 def fake_active_fires_file_data():
     """Fake active fires output in a file - return an open stream with and the filepath."""
@@ -222,6 +267,36 @@ def fake_active_fires_file_data():
 def fake_active_fires_file_data2():
     """Fake active fires output in a file - return an open stream with and the filepath."""
     return io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2), TEST_ACTIVE_FIRES_FILEPATH2
+
+
+@pytest.fixture
+def fake_active_fires_ascii_file2(tmp_path):
+    """Create a fake active fires ascii file."""
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH2
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_DATA2)
+
+    yield file_path
+
+
+@pytest.fixture
+def fake_active_fires_ascii_file3(tmp_path):
+    """Create a fake active fires ascii file."""
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH3
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_DATA3)
+
+    yield file_path
+
+
+@pytest.fixture
+def fake_active_fires_ascii_file4(tmp_path):
+    """Create a fake active fires ascii file."""
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH4
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_DATA4)
+
+    yield file_path
 
 
 @pytest.fixture

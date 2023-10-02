@@ -615,9 +615,7 @@ class ActiveFiresPostprocessing(Thread):
     def update_fire_detection_id(self):
         """Update the fire detection ID registry."""
         now = datetime.utcnow()
-        tdelta = now - self._fire_detection_id['date']
-        if (tdelta.total_seconds() > 24*3600 or
-                (tdelta.total_seconds() > 0 and self._fire_detection_id['date'].day != now.day)):
+        if self._fire_detection_id['date'].date() < now.date():
             self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
 
         self._fire_detection_id['counter'] = self._fire_detection_id['counter'] + 1
