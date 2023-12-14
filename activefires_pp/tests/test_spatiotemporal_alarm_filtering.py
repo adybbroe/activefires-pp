@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam Dybbroe
+# Copyright (c) 2022, 2023 Adam Dybbroe
 
 # Author(s):
 
@@ -30,6 +30,7 @@ import logging
 
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.spatiotemporal_alarm_filtering import create_alarms_from_fire_detections
+from activefires_pp.spatiotemporal_alarm_filtering import get_distance_between_two_points
 from activefires_pp.spatiotemporal_alarm_filtering import join_fire_detections
 from activefires_pp.spatiotemporal_alarm_filtering import split_large_fire_clusters
 from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_from_collection
@@ -514,3 +515,33 @@ def test_check_and_set_threshold_wrong_threshold(setup_comm,
 
     expected = alarm_runner._log_message_per_threshold[thr_type][1]
     assert str(exec_info.value) == expected
+
+# @pytest.mark.parametrize()
+
+
+@pytest.mark.parametrize("lonlats, expected",
+                         [((12.5, 62.5),
+                           135.02288790715303),
+                          ((13.5, 68.5),
+                           542.596822830585),
+                          ]
+                         )
+def test_get_distance_between_two_points_input_okay(lonlats, expected):
+    """Test the derivation of distance between two lon,lat points."""
+    point1 = (13.438972, 63.634071)
+    point2 = lonlats[0], lonlats[1]
+
+    dist_km = get_distance_between_two_points(point1, point2)
+    assert dist_km == pytest.approx(expected)
+
+
+def test_get_distance_between_two_points_input_invalid():
+    """Test the derivation of distance between two lon,lat points."""
+    point1 = (13.438972, 63.634071)
+    point2 = (386845.899472, 6420007.169359)
+
+    with pytest.raises(ValueError) as exec_info:
+        _ = get_distance_between_two_points(point1, point2)
+
+    expected = "Latitude must be in the [-90; 90] range."
+    assert str(exec_info.value) in expected

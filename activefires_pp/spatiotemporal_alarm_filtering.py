@@ -180,6 +180,9 @@ class AlarmFilterRunner(Thread):
                 elif msg.type not in ['file', 'collection', 'dataset']:
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
+                elif msg.data.get('product') not in ['afimg', ]:
+                    LOG.debug("Product not 'afimg'. Ignore.")
+                    continue
 
                 generated_alarms = self.spatio_temporal_alarm_filtering(msg)
                 if generated_alarms:
@@ -487,17 +490,22 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
 
 def distance_and_time_from_geojson_position(position, filepath):
     """Read the geojson data and get the observation time and the distance to a position given as input."""
-    lon0, lat0 = position
     gjdata = read_geojson_data(filepath)
-    lon, lat = gjdata["geometry"]["coordinates"]
     # Get distance to this fire point:
-    dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
+    dist = get_distance_between_two_points(position, gjdata["geometry"]["coordinates"])
 
     obstime = datetime.fromisoformat(gjdata["properties"]["observation_time"])
     utc = pytz.timezone('utc')
     obstime = obstime.astimezone(utc).replace(tzinfo=None)
 
     return obstime, dist
+
+
+def get_distance_between_two_points(geo_point1, geo_point2):
+    """Get the distance in km on the earth between two (lon,lat) points."""
+    lon0, lat0 = geo_point1
+    lon, lat = geo_point2
+    return distance.distance((lat0, lon0), (lat, lon)).kilometers
 
 
 def _create_output_message(msg, topic, geojson, filename):
