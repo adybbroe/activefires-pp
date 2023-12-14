@@ -1,3 +1,21 @@
+## Version <v0.1.10> (2023/12/14)
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 20](https://github.com/adybbroe/activefires-pp/pull/20) - Fixing bug updating the detection id while running more than one day
+
+#### Features added
+
+* [PR 19](https://github.com/adybbroe/activefires-pp/pull/19) - Allow specify products to notify
+* [PR 18](https://github.com/adybbroe/activefires-pp/pull/18) - Leave out ssh and hostname from the URI in the output message
+* [PR 17](https://github.com/adybbroe/activefires-pp/pull/17) - Refactor and add sweref99 output
+* [PR 15](https://github.com/adybbroe/activefires-pp/pull/15) - Add unit conversion support
+
+In this release 5 pull requests were closed.
+
+
 ## Version <v0.1.9> (2023/07/17)
 
 ## Version <v0.1.8> (2023/07/14)
