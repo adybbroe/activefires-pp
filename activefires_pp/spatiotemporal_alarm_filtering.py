@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 Adam Dybbroe
+# Copyright (c) 2022, 2023 Adam Dybbroe
 
 # Author(s):
 
@@ -121,7 +121,7 @@ class AlarmFilterRunner(Thread):
 
         self._log_message_per_threshold = {
             'hour_threshold': ("Threshold defining when a new detection should trigger an " +
-                               "alarm on the same spot (in hours): ",
+                               "alarm on the same spot (in hours): %3.1f",
                                "Threshold in time is missing!"),
             'long_fires_threshold_km': ("Threshold defining the maximum extention of a fire before " +
                                         "dividing it in smaller pieces (in km): %3.1f",
