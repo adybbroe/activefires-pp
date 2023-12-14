@@ -31,8 +31,8 @@ import logging
 from trollsift import Parser, globify
 import pytz
 from datetime import datetime
-import numpy as np
 
+import numpy as np
 from activefires_pp.utils import json_serial
 
 logger = logging.getLogger(__name__)
