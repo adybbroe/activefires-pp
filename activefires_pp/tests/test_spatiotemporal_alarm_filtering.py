@@ -153,13 +153,6 @@ TEST_MONSTERAS_PREVIOUS2_COLLECTION = """{"type": "FeatureCollection", "features
 "observation_time": "2021-06-18T14:49:01.750000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 
-CONFIG_EXAMPLE = {'subscribe_topics': '/VIIRS/L2/Fires/PP/National',
-                  'publish_topic': '/VIIRS/L2/Fires/PP/SOSAlarm',
-                  'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
-                  'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
-                  'restapi_url': 'https://xxx.smhi.se:xxxx'}
-
-
 def test_join_fire_detections_large_fire(fake_geojson_file_many_detections):
     """Test create alarm from set of fire detections."""
     ffdata = read_geojson_data(fake_geojson_file_many_detections)
@@ -384,6 +377,7 @@ def test_alarm_filter_runner_init(setup_comm,
     assert alarm_runner.restapi_url == 'https://xxx.smhi.se:xxxx'
     assert alarm_runner.options == {'subscribe_topics': ['/VIIRS/L2/Fires/PP/National'],
                                     'publish_topic': '/VIIRS/L2/Fires/PP/SOSAlarm',
+                                    'products': ['afimg'],
                                     'geojson_file_pattern_alarms': 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson',
                                     'fire_alarms_dir': '/path/where/the/filtered/alarms/will/be/stored',
                                     'restapi_url': 'https://xxx.smhi.se:xxxx',
