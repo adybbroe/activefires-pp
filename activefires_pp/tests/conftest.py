@@ -29,6 +29,9 @@ TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
 subscribe_topics: /VIIRS/L2/Fires/PP/National
 publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
 
+products:
+  - afimg
+
 geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
 
 fire_alarms_dir: /path/where/the/filtered/alarms/will/be/stored
