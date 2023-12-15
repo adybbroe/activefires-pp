@@ -29,6 +29,7 @@ from activefires_pp.config import get_xauthentication_token
 def test_get_yaml_configuration_for_alarm_filtering(fake_yamlconfig_file):
     """Test read and get the yaml configuration from file for alarm filtering."""
     config = read_config(fake_yamlconfig_file)
+    assert config['products'] == ['afimg']
     assert config['subscribe_topics'] == '/VIIRS/L2/Fires/PP/National'
     assert config['publish_topic'] == '/VIIRS/L2/Fires/PP/SOSAlarm'
     assert config['geojson_file_pattern_alarms'] == 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'

@@ -166,6 +166,7 @@ class AlarmFilterRunner(Thread):
 
     def run(self):
         """Run the spatiotemporal alarm filtering."""
+        product_list = self.options.get('products')
         while self.loop:
             try:
                 msg = self.listener.output_queue.get(timeout=1)
@@ -180,8 +181,8 @@ class AlarmFilterRunner(Thread):
                 elif msg.type not in ['file', 'collection', 'dataset']:
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
-                elif msg.data.get('product') not in ['afimg', ]:
-                    LOG.debug("Product not 'afimg'. Ignore.")
+                elif product_list and msg.data.get('product') not in product_list:
+                    LOG.debug("Product %s not supported/requested. Ignore.", str(msg.data.get('product')))
                     continue
 
                 generated_alarms = self.spatio_temporal_alarm_filtering(msg)
