@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2023 Adam Dybbroe
+# Copyright (c) 2021 - 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -129,6 +129,26 @@ TEST_ACTIVE_FIRES_FILE_DATA3 = """
   64.46707153,   17.65028381,  330.15390015,  0.375,  0.375,    8,    3.75669074
 """
 
+# Here an example with one spurious detection, with high TB in I-band 4 and very low FRP:
+TEST_ACTIVE_FIRES_FILE_DATA4 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j02_d20231211_t0152445_e0154074_b05616_c20231211020710860273_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 2
+#
+  57.90747833,   13.09044647,  324.07070923,  0.375,  0.375,    8,    0.11022940
+  60.17847443,   -3.87098718,  295.43579102,  0.375,  0.375,    8,    0.82296646
+"""
 
 TEST_REGIONAL_MASK = {}
 TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False,

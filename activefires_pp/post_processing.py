@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2023 Adam.Dybbroe
+# Copyright (c) 2021 - 2024 Adam.Dybbroe
 
 # Author(s):
 
@@ -151,7 +151,7 @@ class ActiveFiresShapefileFiltering(object):
         return np.repeat(obstime.replace(tzinfo=None) + obstime_offset,
                          len(self._afdata)).astype(np.datetime64)
 
-    def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
+    def fires_shapefile_filtering(self, shapefile, start_geometries_index=1, inside=True):
         """Remove fires outside National borders or filter out potential false detections.
 
         If *inside* is True the filtering will keep those detections that are inside the polygon.
@@ -554,17 +554,20 @@ class ActiveFiresPostprocessing(Thread):
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
 
+        # Remove spurious detections:
+        # FIXME!
+
         # National filtering:
-        af_shapeff.fires_filtering(self.shp_borders)
+        af_shapeff.fires_shapefile_filtering(self.shp_borders)
 
         # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
 
         if len(afdata_ff) > 0:
             logger.debug("Doing the fires filtering: shapefile-mask = %s", str(self.shp_filtermask))
-            af_shapeff.fires_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
+            af_shapeff.fires_shapefile_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
             afdata_ff = af_shapeff.get_af_data()
-            logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
+            logger.debug("After fires_shapefile_filtering: Number of fire detections left: %d", len(afdata_ff))
 
         return afdata_ff
 
