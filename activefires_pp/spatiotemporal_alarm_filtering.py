@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022, 2023 Adam Dybbroe
+# Copyright (c) 2022, 2023, 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -51,7 +51,7 @@ import pytz
 from datetime import datetime, timedelta
 
 from geopy import distance
-from geojson import FeatureCollection, dump
+from geojson import FeatureCollection
 from itertools import combinations
 from pathlib import Path
 
@@ -258,16 +258,6 @@ def get_xauthentication_filepath_from_environment():
         raise OSError("Environment variable FIREALARMS_XAUTH_FILEPATH not set!")
 
     return xauth_filepath
-
-
-def dump_collection(idx, features):
-    """Dump the list of features as a Geojson Feature Collection."""
-    tmpdir = Path(DIR_SPATIAL_FILTER)
-    fname = 'sos_alarm_{index}.geojson'.format(index=idx)
-    output_filename = tmpdir / fname
-    feature_collection = FeatureCollection(features)
-    with open(output_filename, 'w') as fpt:
-        dump(feature_collection, fpt)
 
 
 def create_alarms_from_fire_detections(fire_data, past_detections_dir, sos_alarms_file_pattern,
