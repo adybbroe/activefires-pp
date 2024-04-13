@@ -112,7 +112,7 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
                                      myborders_file, mymask_file)
     afpp.filepath_detection_id_cache = False
 
-    afpp.publisher = get_fake_publisher(1979)
+    afpp.publisher = get_fake_publisher()
     afpp.publisher.start()
     time.sleep(1)
 
@@ -120,7 +120,7 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
     with patched_publisher() as published_messages:
         result = afpp.check_incoming_message_and_get_filename(input_msg)
 
-    afpp.publisher.stop()
+    # afpp.publisher.stop()
     assert result is None
     assert len(published_messages) == 2
     assert 'No fire detections for this granule' in published_messages[0]
