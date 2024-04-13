@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2023 Adam.Dybbroe
+# Copyright (c) 2021-2024 Adam.Dybbroe
 
 # Author(s):
 
@@ -25,6 +25,7 @@
 import pytest
 from unittest.mock import patch
 from datetime import datetime
+import time
 import logging
 
 from posttroll.message import Message
@@ -40,7 +41,7 @@ TEST_MSG = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file sa
 TEST_MSG_TXT = """pytroll://VIIRS/L2/AFI/edr/2/nrk/test/polar/direct_readout file safusr.t@lxserv2313.smhi.se 2023-07-05T10:27:28.821803 v1.01 application/json {"start_time": "2023-07-05T10:07:50", "end_time": "2023-07-05T10:09:15", "orbit_number": 1, "platform_name": "Suomi-NPP", "sensor": "viirs", "format": "edr", "type": "txt", "data_processing_level": "2", "variant": "DR", "orig_orbit_number": 60553, "origin": "172.29.4.164:9099", "uri": "/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt", "uid": "AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt"}"""  # noqa
 
 
-def get_fake_publiser(portnumber=1979):
+def get_fake_publisher(portnumber=1979):
     """Return a fake publisher."""
     return create_publisher_from_dict_config(dict(port=portnumber, nameservers=False))
 
@@ -61,7 +62,7 @@ def get_fake_publiser(portnumber=1979):
 #     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
 #     afpp = ActiveFiresPostprocessing(myconfigfile, myborders_file, mymask_file)
-#     afpp.publisher = get_fake_publiser()
+#     afpp.publisher = get_fake_publisher()
 #     afpp.publisher.start()
 
 #     return afpp
@@ -111,8 +112,9 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
                                      myborders_file, mymask_file)
     afpp.filepath_detection_id_cache = False
 
-    afpp.publisher = get_fake_publiser(1979)
+    afpp.publisher = get_fake_publisher(1979)
     afpp.publisher.start()
+    time.sleep(1)
 
     input_msg = Message.decode(rawstr=TEST_MSG)
     with patched_publisher() as published_messages:
@@ -148,8 +150,9 @@ def test_check_incoming_message_txt_file_exists(setup_comm, gethostname, path_ex
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                      myborders_file, mymask_file)
-    afpp.publisher = get_fake_publiser(1980)
+    afpp.publisher = get_fake_publisher(1980)
     afpp.publisher.start()
+    time.sleep(1)
 
     input_msg = Message.decode(rawstr=TEST_MSG_TXT)
     with patched_publisher() as published_messages:
@@ -178,8 +181,9 @@ def test_check_incoming_message_txt_file_does_not_exist(setup_comm, gethostname,
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                      myborders_file, mymask_file)
-    afpp.publisher = get_fake_publiser(1981)
+    afpp.publisher = get_fake_publisher(1981)
     afpp.publisher.start()
+    time.sleep(1)
 
     input_msg = Message.decode(rawstr=TEST_MSG_TXT)
     with patched_publisher() as published_messages:
