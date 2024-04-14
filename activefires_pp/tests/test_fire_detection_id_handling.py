@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2023 Adam.Dybbroe
+# Copyright (c) 2023, 2024 Adam.Dybbroe
 
 # Author(s):
 
@@ -28,10 +28,7 @@ from freezegun import freeze_time
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
-
-
-MY_FILE_PATTERN = ("AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_" +
-                   "b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt")
+from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 
 
 @freeze_time('2023-06-16 11:24:00')
@@ -50,7 +47,7 @@ def test_add_unique_day_id_to_detections_sameday(setup_comm, gethostname,
                                      myborders_file, mymask_file)
 
     this = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file2, timezone='GMT')
-    afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+    afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     assert afpp._fire_detection_id == {'date': datetime.utcnow(), 'counter': 0}
 
@@ -79,7 +76,7 @@ def test_add_unique_day_id_to_detections_24hours_plus(setup_comm, gethostname,
     afpp._fire_detection_id = {'date': datetime(2023, 6, 16, 11, 24, 0), 'counter': 4}
 
     this = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file3, timezone='GMT')
-    afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+    afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     assert afpp._fire_detection_id == {'date': datetime(2023, 6, 16, 11, 24, 0), 'counter': 4}
 
@@ -108,7 +105,7 @@ def test_add_unique_day_id_to_detections_newday_from_cache(setup_comm, gethostna
 
     this = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file4,
                                          timezone='GMT')
-    afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+    afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     assert afpp._fire_detection_id == {'date': datetime(2023, 5, 1, 0, 0), 'counter': 1}
     # 2 new fire detections, so (current) ID should be raised - a new day, so id
@@ -137,7 +134,7 @@ def test_add_unique_day_id_to_detections_newday_no_cache(setup_comm, gethostname
 
     this = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file4,
                                          timezone='GMT')
-    afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+    afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     assert afpp._fire_detection_id == {'date': datetime(2023, 6, 17, 23, 55), 'counter': 1}
     # 2 new fire detections, so (current) ID should be raised - a new day, so id

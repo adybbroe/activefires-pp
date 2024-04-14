@@ -30,16 +30,17 @@ import pandas as pd
 from geojson import FeatureCollection
 import numpy as np
 import io
+import logging
 from datetime import datetime
 from freezegun import freeze_time
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
-from activefires_pp.tests.test_utils import MY_FILE_PATTERN
+from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 from activefires_pp.utils import UnitConverter
-
 from activefires_pp.post_processing import geojson_feature_collection_from_detections
+
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.txt"
@@ -129,26 +130,6 @@ TEST_ACTIVE_FIRES_FILE_DATA3 = """
   64.46707153,   17.65028381,  330.15390015,  0.375,  0.375,    8,    3.75669074
 """
 
-# Here an example with one spurious detection, with high TB in I-band 4 and very low FRP:
-TEST_ACTIVE_FIRES_FILE_DATA4 = """
-# Active Fires I-band EDR
-#
-# source: AFIMG_j02_d20231211_t0152445_e0154074_b05616_c20231211020710860273_cspp_dev.nc
-# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
-#
-# column 1: latitude of fire pixel (degrees)
-# column 2: longitude of fire pixel (degrees)
-# column 3: I04 brightness temperature of fire pixel (K)
-# column 4: Along-scan fire pixel resolution (km)
-# column 5: Along-track fire pixel resolution (km)
-# column 6: detection confidence ([7,8,9]->[lo,med,hi])
-# column 7: fire radiative power (MW)
-#
-# number of fire pixels: 2
-#
-  57.90747833,   13.09044647,  324.07070923,  0.375,  0.375,    8,    0.11022940
-  60.17847443,   -3.87098718,  295.43579102,  0.375,  0.375,    8,    0.82296646
-"""
 
 TEST_REGIONAL_MASK = {}
 TEST_REGIONAL_MASK['Bergslagen (RRB)'] = {'mask': np.array([False, False, False, False, False,
@@ -179,6 +160,9 @@ FAKE_MASK1 = np.array([False, False, False, False, False, False, False, False,  
                        False, False,  True, False,  True, False, False, False, False])
 FAKE_MASK2 = np.array([True, False,  True])
 
+FAKE_MASK11 = np.array([True, True])
+FAKE_MASK12 = np.array([False])
+
 
 @patch('activefires_pp.post_processing._read_data')
 def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_fires_file_data):
@@ -191,7 +175,7 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_f
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     assert 'starttime' in this._afdata
     assert 'endtime' in this._afdata
@@ -212,7 +196,7 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Stockholm')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
     assert 'starttime' in this._afdata
     assert 'endtime' in this._afdata
@@ -223,7 +207,7 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Iceland')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
     assert 'starttime' in this._afdata
     assert 'endtime' in this._afdata
@@ -234,7 +218,7 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Helsinki')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
     assert 'starttime' in this._afdata
     assert 'endtime' in this._afdata
@@ -245,7 +229,7 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Lisbon')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=True)
+        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
     assert 'starttime' in this._afdata
     assert 'endtime' in this._afdata
@@ -292,7 +276,7 @@ def test_regional_fires_filtering(setup_comm, gethostname,
                                   fake_active_fires_file_data,
                                   fake_yamlconfig_file_post_processing):
     """Test the regional fires filtering."""
-    # FIXME! This test is to big/broad. Need for refactoring!
+    # FIXME! This test is too big/broad. Need for refactoring!
     open_fstream, _ = fake_active_fires_file_data
 
     gethostname.return_value = "my.host.name"
@@ -365,7 +349,7 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm,
     afdata.attrs = fake_metadata
 
     af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name='NOAA-20')
-    afdata = af_shapeff.get_af_data(MY_FILE_PATTERN)
+    afdata = af_shapeff.get_af_data(AF_FILE_PATTERN)
 
     mymsg = "Fake message"
     result = afpp.fires_filtering(mymsg, af_shapeff)
@@ -376,6 +360,51 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm,
     assert len(result) == 1
     np.testing.assert_almost_equal(result.iloc[0]['latitude'], 59.52483368)
     np.testing.assert_almost_equal(result.iloc[0]['longitude'], 17.1681633)
+
+
+@patch('socket.gethostname')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK11, FAKE_MASK12])
+def test_general_national_fires_filtering_spurious_detections(get_global_mask, setup_comm,
+                                                              gethostname, fake_active_fires_ascii_file5,
+                                                              fake_yamlconfig_file_post_processing,
+                                                              caplog):
+    """Test the general/basic national fires filtering - here with one spurious detection (caused by SEU onboard)."""
+    gethostname.return_value = "my.host.name"
+
+    myborders_file = "/my/shape/file/with/country/borders"
+    mymask_file = "/my/shape/file/with/polygons/to/filter/out"
+
+    this = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file5, timezone='GMT')
+    afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
+    # Add metadata to the pandas dataframe:
+    fake_metadata = {'platform': 'j02',
+                     'start_time': datetime(2023, 12, 11, 1, 52, 44, 500000),
+                     'end_hour': datetime(1900, 1, 1, 1, 54, 7, 400000),
+                     'orbit': '5616',
+                     'processing_time': datetime(2023, 12, 11, 2, 7, 10, 860273),
+                     'end_time': datetime(2023, 12, 11, 1, 54, 7)}
+    afdata.attrs = fake_metadata
+
+    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                     myborders_file, mymask_file)
+
+    af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name='NOAA-21')
+    afdata = af_shapeff.get_af_data(AF_FILE_PATTERN)
+
+    mymsg = "Fake message"
+    with caplog.at_level(logging.INFO):
+        result = afpp.fires_filtering(mymsg, af_shapeff)
+
+    log_output1 = "Number of spurious detections filtered out = 1"
+    assert log_output1 in caplog.text
+
+    log_output2 = '(13.09044647,57.90747833): Tb4 = 324.07070923 FRP = 0.1102294'
+    assert log_output2 in caplog.text
+
+    assert len(result) == 1
+    np.testing.assert_almost_equal(result.iloc[0]['latitude'], 60.17847443)
+    np.testing.assert_almost_equal(result.iloc[0]['longitude'], -3.87098718)
 
 
 @pytest.mark.usefixtures("fake_national_borders_shapefile")
@@ -440,7 +469,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+        afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     afdata = afdata[2::]  # Reduce to only contain the last detections!
     afdata = afpp.add_unique_day_id(afdata)
@@ -512,7 +541,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, g
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+        afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     afdata = afdata[2::]  # Reduce to only contain the last detections!
 

@@ -51,7 +51,7 @@ from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 from activefires_pp.geojson_utils import store_geojson
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
-
+from activefires_pp.sanity_check_detections import remove_spurious_detections
 
 # M-band output:
 # column 1: latitude of fire pixel (degrees)
@@ -100,6 +100,10 @@ class ActiveFiresShapefileFiltering(object):
 
         self.timezone = timezone
         self.platform_name = platform_name
+
+    def set_af_data(self, afdata):
+        """Set the active fires data frame."""
+        self._afdata = afdata
 
     def get_af_data(self, filepattern=None, localtime=True):
         """Read the Active Fire results from file - ascii formatted output from CSPP VIIRS-AF."""
@@ -554,14 +558,15 @@ class ActiveFiresPostprocessing(Thread):
         out_filepath = os.path.join(self.output_dir, pout.compose(fmda))
         logger.debug("Output file path = %s", out_filepath)
 
-        # Remove spurious detections:
-        # FIXME!
-
         # National filtering:
         af_shapeff.fires_shapefile_filtering(self.shp_borders)
 
         # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
+
+        # Remove spurious detections if any:
+        afdata_ff = remove_spurious_detections(afdata_ff)
+        af_shapeff.set_af_data(afdata_ff)
 
         if len(afdata_ff) > 0:
             logger.debug("Doing the fires filtering: shapefile-mask = %s", str(self.shp_filtermask))

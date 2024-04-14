@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 - 2023 Adam Dybbroe
+# Copyright (c) 2022 - 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -47,7 +47,7 @@ from activefires_pp.config import read_config
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
-from activefires_pp.tests.test_utils import MY_FILE_PATTERN
+from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
@@ -252,7 +252,7 @@ def test_get_feature_collection_from_firedata(readdata, setup_comm, gethostname,
     this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        afdata = this.get_af_data(filepattern=MY_FILE_PATTERN, localtime=False)
+        afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     afdata = afpp.add_unique_day_id(afdata)
 
