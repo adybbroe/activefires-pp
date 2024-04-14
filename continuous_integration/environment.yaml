@@ -33,4 +33,4 @@ dependencies:
   - pip
   - pip:
     - trollsift
-    - posttroll<=v1.10.0
+    - posttroll

@@ -111,14 +111,13 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
                                      myborders_file, mymask_file)
     afpp.filepath_detection_id_cache = False
 
-    afpp.publisher = get_fake_publisher()
-    afpp.publisher.start()
-
     input_msg = Message.decode(rawstr=TEST_MSG)
     with patched_publisher() as published_messages:
+        afpp.publisher = get_fake_publisher()
+        afpp.publisher.start()
         result = afpp.check_incoming_message_and_get_filename(input_msg)
+        afpp.publisher.stop()
 
-    afpp.publisher.stop()
     assert result is None
     assert len(published_messages) == 2
     assert 'No fire detections for this granule' in published_messages[0]
@@ -148,14 +147,14 @@ def test_check_incoming_message_txt_file_exists(setup_comm, gethostname, path_ex
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                      myborders_file, mymask_file)
-    afpp.publisher = get_fake_publisher(1980)
-    afpp.publisher.start()
 
     input_msg = Message.decode(rawstr=TEST_MSG_TXT)
     with patched_publisher() as published_messages:
+        afpp.publisher = get_fake_publisher(1980)
+        afpp.publisher.start()
         result = afpp.check_incoming_message_and_get_filename(input_msg)
+        afpp.publisher.stop()
 
-    afpp.publisher.stop()
     assert len(published_messages) == 0
     assert result == '/san1/polar_out/direct_readout/viirs_active_fires/unfiltered/AFIMG_npp_d20230705_t1007509_e1009151_b60553_c20230705102721942345_cspp_dev.txt'  # noqa
 
@@ -178,14 +177,14 @@ def test_check_incoming_message_txt_file_does_not_exist(setup_comm, gethostname,
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
                                      myborders_file, mymask_file)
-    afpp.publisher = get_fake_publisher(1981)
-    afpp.publisher.start()
 
     input_msg = Message.decode(rawstr=TEST_MSG_TXT)
     with patched_publisher() as published_messages:
+        afpp.publisher = get_fake_publisher(1981)
+        afpp.publisher.start()
         result = afpp.check_incoming_message_and_get_filename(input_msg)
+        afpp.publisher.stop()
 
-    afpp.publisher.stop()
     assert len(published_messages) == 0
     assert result is None
 
