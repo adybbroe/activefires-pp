@@ -172,17 +172,17 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_f
 
     readdata.return_value = afdata
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
+        af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
-    assert 'starttime' in this._afdata
-    assert 'endtime' in this._afdata
-    assert this._afdata['starttime'].shape == (18,)
+    assert 'starttime' in af_shpfile_filter.afdata
+    assert 'endtime' in af_shpfile_filter.afdata
+    assert af_shpfile_filter.afdata['starttime'].shape == (18,)
 
-    assert str(this._afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
-    assert str(this._afdata['endtime'][0]) == '2021-04-14 11:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08'
 
 
 @patch('activefires_pp.post_processing._read_data')
@@ -193,49 +193,49 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Stockholm')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Stockholm')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
+        af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
-    assert 'starttime' in this._afdata
-    assert 'endtime' in this._afdata
+    assert 'starttime' in af_shpfile_filter.afdata
+    assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(this._afdata['starttime'][0]) == '2021-04-14 13:26:43.900000'
-    assert str(this._afdata['endtime'][0]) == '2021-04-14 13:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 13:26:43.900000'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 13:28:08'
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Iceland')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Iceland')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
+        af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
-    assert 'starttime' in this._afdata
-    assert 'endtime' in this._afdata
+    assert 'starttime' in af_shpfile_filter.afdata
+    assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(this._afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
-    assert str(this._afdata['endtime'][0]) == '2021-04-14 11:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08'
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Helsinki')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Helsinki')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
+        af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
-    assert 'starttime' in this._afdata
-    assert 'endtime' in this._afdata
+    assert 'starttime' in af_shpfile_filter.afdata
+    assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(this._afdata['starttime'][0]) == '2021-04-14 14:26:43.900000'
-    assert str(this._afdata['endtime'][0]) == '2021-04-14 14:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 14:26:43.900000'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 14:28:08'
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Lisbon')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Lisbon')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
+        af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
 
-    assert 'starttime' in this._afdata
-    assert 'endtime' in this._afdata
+    assert 'starttime' in af_shpfile_filter.afdata
+    assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(this._afdata['starttime'][0]) == '2021-04-14 12:26:43.900000'
-    assert str(this._afdata['endtime'][0]) == '2021-04-14 12:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 12:26:43.900000'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 12:28:08'
 
 
 @patch('socket.gethostname')
@@ -375,8 +375,8 @@ def test_general_national_fires_filtering_spurious_detections(get_global_mask, s
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    this = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file5, timezone='GMT')
-    afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=fake_active_fires_ascii_file5, timezone='GMT')
+    afdata = af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j02',
                      'start_time': datetime(2023, 12, 11, 1, 52, 44, 500000),
@@ -466,10 +466,10 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
+        afdata = af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     afdata = afdata[2::]  # Reduce to only contain the last detections!
     afdata = afpp.add_unique_day_id(afdata)
@@ -538,10 +538,10 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, g
     afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
     readdata.return_value = afdata
 
-    this = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
+    af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='GMT')
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
-        afdata = this.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
+        afdata = af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
 
     afdata = afdata[2::]  # Reduce to only contain the last detections!
 
