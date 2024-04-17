@@ -181,7 +181,7 @@ class AlarmFilterRunner(Thread):
                 elif msg.type not in ['file', 'collection', 'dataset']:
                     LOG.debug("Message type not supported: %s", str(msg.type))
                     continue
-                elif product_list and msg.data.get('product') not in product_list:
+                elif product_list and msg.data.get('product', 'unknown') not in product_list:
                     LOG.debug("Product %s not supported/requested. Ignore.", str(msg.data.get('product')))
                     continue
 
