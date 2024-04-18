@@ -1,3 +1,15 @@
+## Version <v0.2.0> (2024/04/18)
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 22](https://github.com/adybbroe/activefires-pp/pull/22) - Add filter to discard spurious detections with very low FRP and high TB(I-Band 4)
+* [PR 21](https://github.com/adybbroe/activefires-pp/pull/21) - Filter incoming messages on product name
+
+In this release 2 pull requests were closed.
+
+
 ## Version <v0.1.10> (2023/12/14)
 
 ### Pull Requests Merged
