@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022, 2023 Adam Dybbroe
+# Copyright (c) 2022, 2023, 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -51,7 +51,7 @@ import pytz
 from datetime import datetime, timedelta
 
 from geopy import distance
-from geojson import FeatureCollection, dump
+from geojson import FeatureCollection
 from itertools import combinations
 from pathlib import Path
 
@@ -166,6 +166,7 @@ class AlarmFilterRunner(Thread):
 
     def run(self):
         """Run the spatiotemporal alarm filtering."""
+        product_list = self.options.get('products')
         while self.loop:
             try:
                 msg = self.listener.output_queue.get(timeout=1)
@@ -179,6 +180,9 @@ class AlarmFilterRunner(Thread):
                     continue
                 elif msg.type not in ['file', 'collection', 'dataset']:
                     LOG.debug("Message type not supported: %s", str(msg.type))
+                    continue
+                elif product_list and msg.data.get('product', 'unknown') not in product_list:
+                    LOG.debug("Product %s not supported/requested. Ignore.", str(msg.data.get('product')))
                     continue
 
                 generated_alarms = self.spatio_temporal_alarm_filtering(msg)
@@ -254,16 +258,6 @@ def get_xauthentication_filepath_from_environment():
         raise OSError("Environment variable FIREALARMS_XAUTH_FILEPATH not set!")
 
     return xauth_filepath
-
-
-def dump_collection(idx, features):
-    """Dump the list of features as a Geojson Feature Collection."""
-    tmpdir = Path(DIR_SPATIAL_FILTER)
-    fname = 'sos_alarm_{index}.geojson'.format(index=idx)
-    output_filename = tmpdir / fname
-    feature_collection = FeatureCollection(features)
-    with open(output_filename, 'w') as fpt:
-        dump(feature_collection, fpt)
 
 
 def create_alarms_from_fire_detections(fire_data, past_detections_dir, sos_alarms_file_pattern,
@@ -487,17 +481,22 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
 
 def distance_and_time_from_geojson_position(position, filepath):
     """Read the geojson data and get the observation time and the distance to a position given as input."""
-    lon0, lat0 = position
     gjdata = read_geojson_data(filepath)
-    lon, lat = gjdata["geometry"]["coordinates"]
     # Get distance to this fire point:
-    dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
+    dist = get_distance_between_two_points(position, gjdata["geometry"]["coordinates"])
 
     obstime = datetime.fromisoformat(gjdata["properties"]["observation_time"])
     utc = pytz.timezone('utc')
     obstime = obstime.astimezone(utc).replace(tzinfo=None)
 
     return obstime, dist
+
+
+def get_distance_between_two_points(geo_point1, geo_point2):
+    """Get the distance in km on the earth between two (lon,lat) points."""
+    lon0, lat0 = geo_point1
+    lon, lat = geo_point2
+    return distance.distance((lat0, lon0), (lat, lon)).kilometers
 
 
 def _create_output_message(msg, topic, geojson, filename):
