@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 def remove_spurious_detections(af_dataframe):
     """Check active fires data and return those that are not classified as spurious."""
-    spurious = (af_dataframe['tb']/af_dataframe['power'] > 1000) & (af_dataframe['tb'] > 305)
+    spurious = (af_dataframe['tb']/af_dataframe['power'] > 1000) & (af_dataframe['tb'] > 310)
     non_spurious = ~spurious
     n_spurious = len(af_dataframe[spurious])
     if n_spurious > 0:
