@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2023 Adam.Dybbroe
+# Copyright (c) 2021 - 2024 Adam.Dybbroe
 
 # Author(s):
 
@@ -51,7 +51,7 @@ from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 from activefires_pp.geojson_utils import store_geojson
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
-
+from activefires_pp.sanity_check_detections import remove_spurious_detections
 
 # M-band output:
 # column 1: latitude of fire pixel (degrees)
@@ -92,7 +92,7 @@ class ActiveFiresShapefileFiltering(object):
     def __init__(self, filepath=None, afdata=None, platform_name=None, timezone='GMT'):
         """Initialize the ActiveFiresShapefileFiltering class."""
         self.input_filepath = filepath
-        self._afdata = afdata
+        self.afdata = afdata
         if afdata is None:
             self.metadata = {}
         else:
@@ -103,23 +103,23 @@ class ActiveFiresShapefileFiltering(object):
 
     def get_af_data(self, filepattern=None, localtime=True):
         """Read the Active Fire results from file - ascii formatted output from CSPP VIIRS-AF."""
-        if self._afdata is not None:
+        if self.afdata is not None:
             # Make sure the attrs are populated with metadata instance attribute
-            self._afdata.attrs.update(self.metadata)
-            return self._afdata
+            self.afdata.attrs.update(self.metadata)
+            return self.afdata
 
         if not self.input_filepath or not os.path.exists(self.input_filepath):
             # FIXME! Better to raise an exception!?
-            return self._afdata
+            return self.afdata
 
         if not filepattern:
             raise AttributeError("file pattern must be provided in order to be able to read from file!")
 
         self.metadata = self._get_metadata_from_filename(filepattern)
-        self._afdata = _read_data(self.input_filepath)
+        self.afdata = _read_data(self.input_filepath)
         self._add_start_and_end_time_to_active_fires_data(localtime)
 
-        return self._afdata
+        return self.afdata
 
     def _get_metadata_from_filename(self, infile_pattern):
         """From the filename retrieve the metadata such as satellite and sensing time."""
@@ -138,26 +138,26 @@ class ActiveFiresShapefileFiltering(object):
         starttime = starttime.replace(tzinfo=None)
         endtime = endtime.replace(tzinfo=None)
 
-        self._afdata['starttime'] = np.repeat(starttime, len(self._afdata)).astype(np.datetime64)
-        self._afdata['endtime'] = np.repeat(endtime, len(self._afdata)).astype(np.datetime64)
+        self.afdata['starttime'] = np.repeat(starttime, len(self.afdata)).astype(np.datetime64)
+        self.afdata['endtime'] = np.repeat(endtime, len(self.afdata)).astype(np.datetime64)
 
         logger.info('Start and end times: %s %s',
-                    str(self._afdata['starttime'][0]),
-                    str(self._afdata['endtime'][0]))
+                    str(self.afdata['starttime'][0]),
+                    str(self.afdata['endtime'][0]))
 
     def _apply_timezone_offset(self, obstime):
         """Apply the time zone offset to the datetime objects."""
         obstime_offset = get_local_timezone_offset(self.timezone)
         return np.repeat(obstime.replace(tzinfo=None) + obstime_offset,
-                         len(self._afdata)).astype(np.datetime64)
+                         len(self.afdata)).astype(np.datetime64)
 
-    def fires_filtering(self, shapefile, start_geometries_index=1, inside=True):
+    def fires_shapefile_filtering(self, shapefile, start_geometries_index=1, inside=True):
         """Remove fires outside National borders or filter out potential false detections.
 
         If *inside* is True the filtering will keep those detections that are inside the polygon.
         If *inside* is False the filtering will disregard the detections that are inside the polygon.
         """
-        detections = self._afdata
+        detections = self.afdata
 
         lons = detections.longitude.values
         lats = detections.latitude.values
@@ -166,16 +166,16 @@ class ActiveFiresShapefileFiltering(object):
         points_inside = get_global_mask_from_shapefile(shapefile, (lons, lats), start_geometries_index)
         logger.debug("Time used checking inside polygon - mpl path method: %f", time.time() - toc)
 
-        self._afdata = detections[points_inside == inside]
+        self.afdata = detections[points_inside == inside]
 
-        if len(self._afdata) == 0:
+        if len(self.afdata) == 0:
             logger.debug("No fires after filtering on Polygon...")
         else:
-            logger.debug("Number of detections after filtering on Polygon: %d", len(self._afdata))
+            logger.debug("Number of detections after filtering on Polygon: %d", len(self.afdata))
 
     def get_regional_filtermasks(self, shapefile, globstr):
         """Get the regional filter masks from the shapefile."""
-        detections = self._afdata
+        detections = self.afdata
 
         lons = detections.longitude.values
         lats = detections.latitude.values
@@ -555,16 +555,20 @@ class ActiveFiresPostprocessing(Thread):
         logger.debug("Output file path = %s", out_filepath)
 
         # National filtering:
-        af_shapeff.fires_filtering(self.shp_borders)
+        af_shapeff.fires_shapefile_filtering(self.shp_borders)
 
         # Metadata should be transfered here!
         afdata_ff = af_shapeff.get_af_data()
 
+        # Remove spurious detections if any:
+        afdata_ff = remove_spurious_detections(afdata_ff)
+        af_shapeff.afdata = afdata_ff
+
         if len(afdata_ff) > 0:
             logger.debug("Doing the fires filtering: shapefile-mask = %s", str(self.shp_filtermask))
-            af_shapeff.fires_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
+            af_shapeff.fires_shapefile_filtering(self.shp_filtermask, start_geometries_index=0, inside=False)
             afdata_ff = af_shapeff.get_af_data()
-            logger.debug("After fires_filtering: Number of fire detections left: %d", len(afdata_ff))
+            logger.debug("After fires_shapefile_filtering: Number of fire detections left: %d", len(afdata_ff))
 
         return afdata_ff
 

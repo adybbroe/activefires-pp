@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022, 2023 Adam.Dybbroe
+# Copyright (c) 2022, 2023, 2024 Adam.Dybbroe
 
 # Author(s):
 
@@ -151,8 +151,8 @@ PAST_ALARMS_MONSTERAS3 = """{"features": {"geometry": {"coordinates": [16.252192
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH3 = "./AFIMG_j01_d20230617_t1140564_e1142209_b28903_c20230617115513873196_cspp_dev.txt"
-
 TEST_ACTIVE_FIRES_FILEPATH4 = "./AFIMG_j01_d20230618_t0942269_e0943514_b28916_c20230618095604331171_cspp_dev.txt"
+TEST_ACTIVE_FIRES_FILEPATH5 = "./AFIMG_j02_d20231211_t0152445_e0154074_b05616_c20231211020710860273_cspp_dev.txt"
 
 
 TEST_ACTIVE_FIRES_FILE_DATA = """
@@ -259,6 +259,27 @@ TEST_ACTIVE_FIRES_FILE_DATA4 = """
   67.27209473,   20.14731216,  348.89843750,  0.375,  0.375,    8,   11.79477501
 """
 
+# Here an example with one spurious detection, with high TB in I-band 4 and very low FRP:
+TEST_ACTIVE_FIRES_FILE_DATA5 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j02_d20231211_t0152445_e0154074_b05616_c20231211020710860273_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 2
+#
+  60.17847443,   -3.87098718,  295.43579102,  0.375,  0.375,    8,    0.82296646
+  57.90747833,   13.09044647,  324.07070923,  0.375,  0.375,    8,    0.11022940
+"""
+
 
 @pytest.fixture
 def fake_active_fires_file_data():
@@ -298,6 +319,16 @@ def fake_active_fires_ascii_file4(tmp_path):
     file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH4
     with open(file_path, 'w') as fpt:
         fpt.write(TEST_ACTIVE_FIRES_FILE_DATA4)
+
+    yield file_path
+
+
+@pytest.fixture
+def fake_active_fires_ascii_file5(tmp_path):
+    """Create a fake active fires ascii file."""
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH5
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_DATA5)
 
     yield file_path
 
