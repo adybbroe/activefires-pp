@@ -22,10 +22,10 @@
 
 """The activefires_pp package initialization."""
 
-
-from importlib.metadata import version, PackageNotFoundError
 try:
-    __version__ = version(__name__)
-except PackageNotFoundError:
-    # package is not installed
-    pass
+    from activefires_pp.version import version as __version__  # noqa
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "No module named activefires_pp.version. This could mean "
+        "you didn't install 'activefires_pp' properly. Try reinstalling ('pip "
+        "install activefires-pp').")
