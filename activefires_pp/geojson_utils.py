@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 - 2023 Adam Dybbroe
+# Copyright (c) 2022 - 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -95,6 +95,11 @@ def geojson_feature_collection_from_detections(detections, platform_name=None):
                 'confidence': int(detections.iloc[idx].conf),
                 'observation_time': json_serial(mean_granule_time)
                 }
+
+        try:
+            prop['anomaly'] = int(detections.iloc[idx].anomaly)
+        except AttributeError:
+            logger.debug("Failed adding the persistent anomaly attribute!")
 
         try:
             prop['tb_celcius'] = detections.iloc[idx].tb_celcius

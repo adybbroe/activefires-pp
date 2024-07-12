@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022, 2023 Adam Dybbroe
+# Copyright (c) 2021, 2022, 2023, 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -67,6 +67,6 @@ setup(name="activefires_pp",
       zip_safe=False,
       install_requires=requires,
       tests_require=test_requires,
-      python_requires='>=3.9',
+      python_requires='>=3.10',
       use_scm_version=True
       )

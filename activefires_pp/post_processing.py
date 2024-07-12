@@ -74,11 +74,28 @@ from activefires_pp.sanity_check_detections import remove_spurious_detections
 #
 COL_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res", "conf", "power"]
 
+# I-band output - CSPP >= 2.1:
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+# column 8: Persistent Anomaly
+COL_NAMES_CSPP21 = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res", "conf", "power", "anomaly"]
+
 NO_FIRES_TEXT = 'No fire detections for this granule'
 
 
 logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.WARNING)
+
+
+class CSPP_ASCII_FILE_FORMAT_ERROR(Exception):
+    """Exception to catch CSPP ascii files of unexpected format."""
+
+    pass
 
 
 class ActiveFiresShapefileFiltering(object):
@@ -116,7 +133,7 @@ class ActiveFiresShapefileFiltering(object):
             raise AttributeError("file pattern must be provided in order to be able to read from file!")
 
         self.metadata = self._get_metadata_from_filename(filepattern)
-        self.afdata = _read_data(self.input_filepath)
+        self.afdata = read_cspp_output_data(self.input_filepath)
         self._add_start_and_end_time_to_active_fires_data(localtime)
 
         return self.afdata
@@ -220,10 +237,27 @@ class ActiveFiresShapefileFiltering(object):
         return regional_masks
 
 
-def _read_data(filepath):
-    """Read the AF data."""
+def read_cspp_output_data(filepath):
+    """Read the CSPP AF output data - ascii format."""
+    column_names = _check_ascii_fileformat(filepath)
     with open(filepath, 'r') as fpt:
-        return pd.read_csv(fpt, index_col=None, header=None, comment='#', names=COL_NAMES)
+        return pd.read_csv(fpt, index_col=None, header=None, comment='#', names=column_names)
+
+
+def _check_ascii_fileformat(filepath):
+    """Open ascii file and check the number of columns to decide the format."""
+    with open(filepath, 'r') as fpt:
+        data = pd.read_csv(fpt, index_col=None, header=None, comment='#', nrows=1)
+
+    if len(data.columns) == 8:
+        # CSPP-AF 2.1 format
+        return COL_NAMES_CSPP21
+    elif len(data.columns) == 7:
+        # Old format
+        return COL_NAMES
+    else:
+        raise CSPP_ASCII_FILE_FORMAT_ERROR('Unexpected number of data columns in file! ' +
+                                           f'{len(data.columns)} (should be either 7 or 8)')
 
 
 def get_metadata_from_filename(infile_pattern, filepath):

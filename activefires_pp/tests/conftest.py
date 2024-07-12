@@ -76,48 +76,49 @@ TEST_YAML_TOKENS = """xauth_tokens:
 """
 
 # AFIMG_NOAA-20_20210619_005803_sweden.geojson
+# Added anomaly indicator - 2024-07-12
 TEST_GEOJSON_FILE_CONTENT_MONSTERAS = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.240452, 57.17329]},
-"properties": {"power": 4.19946575, "tb": 336.38024902, "confidence": 8,
+"properties": {"power": 4.19946575, "tb": 336.38024902, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.247334, 57.172443]},
-"properties": {"power": 5.85325146, "tb": 339.84768677, "confidence": 8,
+"properties": {"power": 5.85325146, "tb": 339.84768677, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.242519, 57.17498]},
-"properties": {"power": 3.34151864, "tb": 316.57772827, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 316.57772827, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.249384, 57.174122]},
-"properties": {"power": 3.34151864, "tb": 310.37808228, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 310.37808228, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.241102, 57.171574]},
-"properties": {"power": 3.34151864, "tb": 339.86465454, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 339.86465454, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.247967, 57.170712]},
-"properties": {"power": 3.34151864, "tb": 335.95074463, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 335.95074463, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.246538, 57.167309]},
-"properties": {"power": 3.10640526, "tb": 337.62503052, "confidence": 8,
+"properties": {"power": 3.10640526, "tb": 337.62503052, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.239674, 57.168167]},
-"properties": {"power": 3.10640526, "tb": 305.36495972, "confidence": 8,
+"properties": {"power": 3.10640526, "tb": 305.36495972, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245104, 57.163902]},
-"properties": {"power": 3.10640526, "tb": 336.21279907, "confidence": 8,
+"properties": {"power": 3.10640526, "tb": 336.21279907, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.251965, 57.16304]},
-"properties": {"power": 2.40693879, "tb": 306.66555786, "confidence": 8,
+"properties": {"power": 2.40693879, "tb": 306.66555786, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.250517, 57.159637]},
-"properties": {"power": 2.23312426, "tb": 325.92211914, "confidence": 8,
+"properties": {"power": 2.23312426, "tb": 325.92211914, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.24366, 57.160496]},
-"properties": {"power": 1.51176202, "tb": 317.16009521, "confidence": 8,
+"properties": {"power": 1.51176202, "tb": 317.16009521, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.242212, 57.157097]},
-"properties": {"power": 1.51176202, "tb": 303.77804565, "confidence": 8,
+"properties": {"power": 1.51176202, "tb": 303.77804565, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.249069, 57.156235]},
-"properties": {"power": 2.23312426, "tb": 310.37322998, "confidence": 8,
+"properties": {"power": 2.23312426, "tb": 310.37322998, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
@@ -153,6 +154,8 @@ TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c2
 TEST_ACTIVE_FIRES_FILEPATH3 = "./AFIMG_j01_d20230617_t1140564_e1142209_b28903_c20230617115513873196_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH4 = "./AFIMG_j01_d20230618_t0942269_e0943514_b28916_c20230618095604331171_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH5 = "./AFIMG_j02_d20231211_t0152445_e0154074_b05616_c20231211020710860273_cspp_dev.txt"
+TEST_ACTIVE_FIRES_FILEPATH_CSPP21_1 = "./AFIMG_j01_d20240712_t0720206_e0721452_b34447_c20240712073948953196_cspp_dev.txt"  # noqa
+TEST_ACTIVE_FIRES_FILEPATH_CSPP21_2 = "./AFIMG_j01_d20240712_t0720206_e0721452_b34447_c20240712073948953196_cspp_dev_wrongformat.txt"  # noqa
 
 
 TEST_ACTIVE_FIRES_FILE_DATA = """
@@ -280,16 +283,87 @@ TEST_ACTIVE_FIRES_FILE_DATA5 = """
   57.90747833,   13.09044647,  324.07070923,  0.375,  0.375,    8,    0.11022940
 """
 
+# Here an example with the new file format as of CSPP-2.1.0:
+TEST_ACTIVE_FIRES_FILE_DATA_CSPP21_1 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j01_d20240712_t0720206_e0721452_b34447_c20240712073948953196_cspp_dev.nc
+# version: CSPP Active Fires version: 2.1
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+# column 8: Persistent Anomaly
+#           0 - none
+#           1 - oil/gas
+#           2 - volcano
+#           3 - solar panel
+#           4 - urban (not in use)
+#           5 - unclassified
+#
+# number of fire pixels: 16
+#
+  64.26649475,   69.67490387,  330.21212769,  0.375,  0.375,    8,    2.35572743,    0
+  64.27099609,   69.67951202,  325.39312744,  0.375,  0.375,    8,    2.70757842,    0
+  64.26960754,   69.67189026,  343.07489014,  0.375,  0.375,    8,    7.53941059,    0
+  64.26821899,   69.66426849,  355.50091553,  0.375,  0.375,    8,    7.53941059,    0
+  64.27273560,   69.66888428,  337.91378784,  0.375,  0.375,    8,    7.53941059,    0
+  64.55986023,   69.31879425,  333.13845825,  0.375,  0.375,    8,    4.89373064,    0
+  64.55844879,   69.31111145,  326.01187134,  0.375,  0.375,    8,    5.49030447,    0
+  66.93852234,   80.74044037,  332.61676025,  0.375,  0.375,    8,    4.26173353,    1
+  66.67069244,   77.28248596,  329.25610352,  0.375,  0.375,    8,    6.94581461,    1
+  67.27344513,   83.20786285,  341.00994873,  0.375,  0.375,    8,    7.20385265,    0
+  67.28264618,   83.04086304,  339.51040649,  0.375,  0.375,    8,   14.37703133,    0
+  67.33503723,   83.13152313,  334.20611572,  0.375,  0.375,    8,    2.31650853,    0
+  66.19812775,   70.99553680,  331.75051880,  0.375,  0.375,    8,    5.67659807,    1
+  67.59332275,   83.24843597,  352.14266968,  0.375,  0.375,    8,   15.50455284,    0
+  67.64979553,   83.21275330,  341.54864502,  0.375,  0.375,    8,   11.85416698,    0
+  67.68718719,   81.37524414,  330.09078979,  0.375,  0.375,    8,    6.91587162,    0
+"""
+
+
+# Here an example with the new file format as of CSPP-2.1.0, but with an erroneous extra column:
+TEST_ACTIVE_FIRES_FILE_DATA_CSPP21_2 = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j01_d20240712_t0720206_e0721452_b34447_c20240712073948953196_cspp_dev.nc
+# version: CSPP Active Fires version: 2.1
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+# column 8: Persistent Anomaly
+#           0 - none
+#           1 - oil/gas
+#           2 - volcano
+#           3 - solar panel
+#           4 - urban (not in use)
+#           5 - unclassified
+#
+# number of fire pixels: 2
+#
+  64.26649475,   69.67490387,  330.21212769,  0.375,  0.375,    8,    2.35572743,    0, 99
+  64.27099609,   69.67951202,  325.39312744,  0.375,  0.375,    8,    2.70757842,    0, 99
+"""
+
 
 @pytest.fixture
 def fake_active_fires_file_data():
-    """Fake active fires output in a file - return an open stream with and the filepath."""
+    """Fake active fires output in a file - return an open stream with data and the filepath."""
     return io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA), TEST_ACTIVE_FIRES_FILEPATH
 
 
 @pytest.fixture
 def fake_active_fires_file_data2():
-    """Fake active fires output in a file - return an open stream with and the filepath."""
+    """Fake active fires output in a file - return an open stream with data and the filepath."""
     return io.StringIO(TEST_ACTIVE_FIRES_FILE_DATA2), TEST_ACTIVE_FIRES_FILEPATH2
 
 
@@ -329,6 +403,26 @@ def fake_active_fires_ascii_file5(tmp_path):
     file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH5
     with open(file_path, 'w') as fpt:
         fpt.write(TEST_ACTIVE_FIRES_FILE_DATA5)
+
+    yield file_path
+
+
+@pytest.fixture
+def fake_active_fires_ascii_file_cspp21_1(tmp_path):
+    """Create a fake active fires ascii file."""
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH_CSPP21_1
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_DATA_CSPP21_1)
+
+    yield file_path
+
+
+@pytest.fixture
+def fake_active_fires_ascii_file_cspp21_2(tmp_path):
+    """Create a fake active fires ascii file."""
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILEPATH_CSPP21_2
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_DATA_CSPP21_2)
 
     yield file_path
 
