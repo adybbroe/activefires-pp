@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022, 2023 Adam Dybbroe
+# Copyright (c) 2022, 2023, 2024 Adam Dybbroe
 
 # Author(s):
 
@@ -41,83 +41,53 @@ from activefires_pp.spatiotemporal_alarm_filtering import get_xauthentication_fi
 from activefires_pp.tests.conftest import TEST_GEOJSON_FILE_CONTENT_MONSTERAS
 
 
-# afimg_20220629_110913.geojson
-TEST_GEOJSON_FILE_CONTENT2 = """{"type": "FeatureCollection", "features":
-[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [20.629259, 65.48558]},
-"properties": {"power": 21.38915062, "tb": 343.66696167, "confidence": 8,
-"observation_time": "2022-06-29T13:09:55.350000", "platform_name": "Suomi-NPP"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [20.627005, 65.489014]},
-"properties": {"power": 26.42259789, "tb": 346.634552, "confidence": 8,
-"observation_time": "2022-06-29T13:09:55.350000", "platform_name": "Suomi-NPP"}}]}"""
-
-# afimg_20220629_110748.geojson
-TEST_GEOJSON_FILE_CONTENT3 = """{"type": "FeatureCollection", "features":
-[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [15.262635, 59.30434]},
-"properties": {"power": 4.96109343, "tb": 337.80944824, "confidence": 8,
-"observation_time": "2022-06-29T13:08:30.150000", "platform_name": "Suomi-NPP"}}]}"""
-
-# afimg_20220629_101926.geojson
-TEST_GEOJSON_FILE_CONTENT4 = """{"type": "FeatureCollection", "features":
-[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [20.659672, 65.496849]},
-"properties": {"power": 4.94186735, "tb": 334.15759277, "confidence": 8,
-"observation_time": "2022-06-29T12:20:08.800000", "platform_name": "NOAA-20"}}]}"""
-
-# afimg_20220629_092938.geojson
-TEST_GEOJSON_FILE_CONTENT5 = """{"type": "FeatureCollection", "features":
-[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [20.657578, 65.493927]},
-"properties": {"power": 9.46942616, "tb": 341.33267212, "confidence": 8,
-"observation_time": "2022-06-29T11:30:20.950000", "platform_name": "Suomi-NPP"}},
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [20.650656, 65.497543]},
-"properties": {"power": 9.46942616, "tb": 348.74557495, "confidence": 8,
-"observation_time": "2022-06-29T11:30:20.950000", "platform_name": "Suomi-NPP"}}]}"""
-
 TEST_MONSTERAS_FIRST_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.240452, 57.17329]},
-"properties": {"power": 4.19946575, "tb": 336.38024902, "confidence": 8,
+"properties": {"power": 4.19946575, "tb": 336.38024902, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.247334, 57.172443]},
-"properties": {"power": 5.85325146, "tb": 339.84768677, "confidence": 8,
+"properties": {"power": 5.85325146, "tb": 339.84768677, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.242519, 57.17498]},
-"properties": {"power": 3.34151864, "tb": 316.57772827, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 316.57772827, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.249384, 57.174122]},
-"properties": {"power": 3.34151864, "tb": 310.37808228, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 310.37808228, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.241102, 57.171574]},
-"properties": {"power": 3.34151864, "tb": 339.86465454, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 339.86465454, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.247967, 57.170712]},
-"properties": {"power": 3.34151864, "tb": 335.95074463, "confidence": 8,
+"properties": {"power": 3.34151864, "tb": 335.95074463, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.246538, 57.167309]},
-"properties": {"power": 3.10640526, "tb": 337.62503052, "confidence": 8,
+"properties": {"power": 3.10640526, "tb": 337.62503052, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.239674, 57.168167]},
-"properties": {"power": 3.10640526, "tb": 305.36495972, "confidence": 8,
+"properties": {"power": 3.10640526, "tb": 305.36495972, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 
 TEST_MONSTERAS_SECOND_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245104, 57.163902]},
-"properties": {"power": 3.10640526, "tb": 336.21279907, "confidence": 8,
+"properties": {"power": 3.10640526, "tb": 336.21279907, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.251965, 57.16304]},
-"properties": {"power": 2.40693879, "tb": 306.66555786, "confidence": 8,
+"properties": {"power": 2.40693879, "tb": 306.66555786, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.250517, 57.159637]},
-"properties": {"power": 2.23312426, "tb": 325.92211914, "confidence": 8,
+"properties": {"power": 2.23312426, "tb": 325.92211914, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.24366, 57.160496]},
-"properties": {"power": 1.51176202, "tb": 317.16009521, "confidence": 8,
+"properties": {"power": 1.51176202, "tb": 317.16009521, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.242212, 57.157097]},
-"properties": {"power": 1.51176202, "tb": 303.77804565, "confidence": 8,
+"properties": {"power": 1.51176202, "tb": 303.77804565, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 TEST_MONSTERAS_THIRD_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.249069, 57.156235]},
-"properties": {"power": 2.23312426, "tb": 310.37322998, "confidence": 8,
+"properties": {"power": 2.23312426, "tb": 310.37322998, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:58:45.700000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 
@@ -125,31 +95,31 @@ TEST_MONSTERAS_THIRD_COLLECTION = """{"type": "FeatureCollection", "features":
 TEST_MONSTERAS_PREVIOUS1_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature",
 "geometry": {"type": "Point", "coordinates": [16.246222, 57.175987]},
-"properties": {"power": 1.83814871, "tb": 302.3949585, "confidence": 8,
+"properties": {"power": 1.83814871, "tb": 302.3949585, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245924, 57.17054]},
-"properties": {"power": 1.83814871, "tb": 338.78729248, "confidence": 8,
+"properties": {"power": 1.83814871, "tb": 338.78729248, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.239649, 57.17067]},
-"properties": {"power": 1.83814871, "tb": 301.75921631, "confidence": 8,
+"properties": {"power": 1.83814871, "tb": 301.75921631, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245516, 57.1651]},
-"properties": {"power": 2.94999027, "tb": 324.5098877, "confidence": 8,
+"properties": {"power": 2.94999027, "tb": 324.5098877, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.251759, 57.164974]},
-"properties": {"power": 1.55109835, "tb": 308.91491699, "confidence": 8,
+"properties": {"power": 1.55109835, "tb": 308.91491699, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245028, 57.15966]},
-"properties": {"power": 2.94999027, "tb": 313.83581543, "confidence": 8,
+"properties": {"power": 2.94999027, "tb": 313.83581543, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.251282, 57.159531]},
-"properties": {"power": 1.55109835, "tb": 310.77600098, "confidence": 8,
+"properties": {"power": 1.55109835, "tb": 310.77600098, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP"}}]}"""
 
 # AFIMG_NOAA-20_20210618_124819_sweden.geojson
 TEST_MONSTERAS_PREVIOUS2_COLLECTION = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.252192, 57.15242]},
-"properties": {"power": 2.87395763, "tb": 330.10293579, "confidence": 8,
+"properties": {"power": 2.87395763, "tb": 330.10293579, "confidence": 8, "anomaly": 0,
 "observation_time": "2021-06-18T14:49:01.750000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 

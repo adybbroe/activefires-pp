@@ -47,6 +47,7 @@ from activefires_pp.config import read_config
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
+from activefires_pp.post_processing import COL_NAMES_CSPP21
 from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 
 
@@ -231,7 +232,7 @@ def test_store_geojson_file_sweref99_coordinates(tmp_path):
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-@patch('activefires_pp.post_processing._read_data')
+@patch('activefires_pp.post_processing.read_cspp_output_data')
 def test_get_feature_collection_from_firedata(readdata, setup_comm, gethostname,
                                               fake_active_fires_file_data2,
                                               fake_yamlconfig_file_post_processing):
@@ -404,10 +405,10 @@ def test_map_coordinates_in_feature_collection_sweref99(fake_yamlconfig_file_pos
 
 
 _TEST_ACTIVE_FIRES_FILE_DATA = """
-59.52483368,17.1681633,336.57437134,0.375,0.375,8,14.13167953
-60.13325882,16.18420029,329.47689819,0.375,0.375,8,5.3285923
+59.52483368,17.1681633,336.57437134,0.375,0.375,8,14.13167953,0
+60.13325882,16.18420029,329.47689819,0.375,0.375,8,5.3285923,1
 """
-_COLUMN_NAMES = ["latitude", "longitude", "tb", "along_scan_res", "along_track_res", "conf", "power"]
+_COLUMN_NAMES = COL_NAMES_CSPP21
 
 
 class TestStoreGeojsonData:
@@ -449,3 +450,9 @@ class TestStoreGeojsonData:
         assert isinstance(feature1['properties']['tb'], float)
         assert feature1['properties']['tb'] == 336.57437134
         assert feature1['properties']['power'] == 14.13167953
+        assert feature1['properties']['anomaly'] == 0
+
+        feature2 = jsondata['features'][1]
+        assert feature2['properties']['tb'] == 329.47689819
+        assert feature2['properties']['power'] == 5.3285923
+        assert feature2['properties']['anomaly'] == 1

@@ -25,16 +25,17 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Conda Environment
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
-          miniforge-variant: Mambaforge
           miniforge-version: latest
-          use-mamba: true
           python-version: ${{ matrix.python-version }}
           activate-environment: test-environment
+          channels: conda-forge
+          conda-remove-defaults: true
+          channel-priority: strict
 
       - name: Set cache environment variables
         shell: bash -l {0}
@@ -43,7 +44,7 @@ jobs:
           CONDA_PREFIX=$(python -c "import sys; print(sys.prefix)")
           echo "CONDA_PREFIX=$CONDA_PREFIX" >> $GITHUB_ENV
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ${{ env.CONDA_PREFIX }}
           key: ${{ matrix.os }}-${{matrix.python-version}}-conda-${{ hashFiles('continuous_integration/environment.yaml') }}-${{ env.DATE }}-${{matrix.experimental}}-${{ env.CACHE_NUMBER }}

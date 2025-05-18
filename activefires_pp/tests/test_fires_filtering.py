@@ -40,11 +40,12 @@ from activefires_pp.post_processing import COL_NAMES
 from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 from activefires_pp.utils import UnitConverter
 from activefires_pp.post_processing import geojson_feature_collection_from_detections
+from activefires_pp.post_processing import read_cspp_output_data
+from activefires_pp.post_processing import CSPP_ASCII_FILE_FORMAT_ERROR
 
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH2 = "./AFIMG_npp_d20230616_t1110054_e1111296_b60284_c20230616112418557033_cspp_dev.txt"
-TEST_ACTIVE_FIRES_FILEPATH3 = "./AFIMG_j01_d20230617_t1140564_e1142209_b28903_c20230617115513873196_cspp_dev.txt"
 
 
 TEST_ACTIVE_FIRES_FILE_DATA = """
@@ -164,7 +165,7 @@ FAKE_MASK11 = np.array([True, True])
 FAKE_MASK12 = np.array([False])
 
 
-@patch('activefires_pp.post_processing._read_data')
+@patch('activefires_pp.post_processing.read_cspp_output_data')
 def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_fires_file_data):
     """Test adding start and end times to the active fires data."""
     open_fstream, myfilepath = fake_active_fires_file_data
@@ -185,7 +186,7 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_f
     assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08'
 
 
-@patch('activefires_pp.post_processing._read_data')
+@patch('activefires_pp.post_processing.read_cspp_output_data')
 def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_active_fires_file_data):
     """Test adding start and end times to the active fires data."""
     open_fstream, myfilepath = fake_active_fires_file_data
@@ -448,7 +449,7 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethos
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-@patch('activefires_pp.post_processing._read_data')
+@patch('activefires_pp.post_processing.read_cspp_output_data')
 def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_comm, gethostname,
                                                                 fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
@@ -517,7 +518,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
 
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-@patch('activefires_pp.post_processing._read_data')
+@patch('activefires_pp.post_processing.read_cspp_output_data')
 def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, gethostname,
                                                          fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
@@ -590,3 +591,33 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, g
                                    "type": "Feature"}])
 
     TestCase().assertDictEqual(result, expected)
+
+
+def test_read_cspp_ascii_output_old(fake_active_fires_ascii_file2):
+    """Test read the CSPP AF ascii output from file - CSPP 1 format."""
+    afdata = read_cspp_output_data(fake_active_fires_ascii_file2)
+
+    expected = np.array([2.51202917, 3.39806151, 20.5928936, 20.5928936])
+    result = afdata['power'].values
+    np.testing.assert_allclose(result, expected)
+
+
+def test_read_cspp_ascii_output_cspp21(fake_active_fires_ascii_file_cspp21_1):
+    """Test read the CSPP AF ascii output from file - CSPP 2.1 format."""
+    afdata = read_cspp_output_data(fake_active_fires_ascii_file_cspp21_1)
+
+    expected = np.array([2.35572743,  2.70757842,  7.53941059,  7.53941059,  7.53941059,
+                         4.89373064,  5.49030447,  4.26173353,  6.94581461,  7.20385265,
+                         14.37703133,  2.31650853,  5.67659807, 15.50455284, 11.85416698,
+                         6.91587162])
+    result = afdata['power'].values
+    np.testing.assert_allclose(result, expected)
+
+
+def test_read_cspp_ascii_output_wrong_format(fake_active_fires_ascii_file_cspp21_2, caplog):
+    """Test read the CSPP AF ascii output from file - wrong format."""
+    with pytest.raises(CSPP_ASCII_FILE_FORMAT_ERROR) as exec_info:
+        _ = read_cspp_output_data(fake_active_fires_ascii_file_cspp21_2)
+
+    expected = "Unexpected number of data columns in file! 9 (should be either 7 or 8)"
+    assert str(exec_info.value) == expected
