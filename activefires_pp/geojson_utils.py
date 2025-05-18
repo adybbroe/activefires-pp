@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 - 2024 Adam Dybbroe
+# Copyright (c) 2022 - 2025 Adam Dybbroe
 
 # Author(s):
 
@@ -23,6 +23,7 @@
 """Geojson utilities."""
 
 import os
+import pathlib
 import pyproj
 import geojson
 from geojson import Feature, Point, FeatureCollection, dump
@@ -160,7 +161,12 @@ def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
 
 def store_geojson(output_filename, feature_collection):
     """Store the Geojson feature collection of fire detections on disk."""
-    path = os.path.dirname(output_filename)
+    if isinstance(output_filename, str):
+        output_filename = pathlib.Path(output_filename)
+    elif isinstance(output_filename, pathlib.PosixPath):
+        pass
+
+    path = output_filename.parent
     if not os.path.exists(path):
         logger.info("Create directory: %s", path)
         os.makedirs(path)
