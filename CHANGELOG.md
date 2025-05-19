@@ -1,3 +1,15 @@
+## Version v0.2.2 (2025/05/19)
+
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 24](https://github.com/adybbroe/activefires-pp/pull/24) - Upgrade PyPi publisher
+
+In this release 1 pull request was closed.
+
+
 ## Version v0.2.1 (2025/05/19)
 
 
