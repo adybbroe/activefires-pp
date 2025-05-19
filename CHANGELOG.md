@@ -1,4 +1,16 @@
-## Version <v0.2.0> (2024/04/18)
+## Version v0.2.1 (2025/05/19)
+
+
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 23](https://github.com/adybbroe/activefires-pp/pull/23) - Update to handle new CSPP-AF 2.1 ascii file format
+
+In this release 1 pull request was closed.
+
+
+## Version v0.2.0 (2024/04/18)
 
 ### Pull Requests Merged
 
@@ -10,7 +22,7 @@
 In this release 2 pull requests were closed.
 
 
-## Version <v0.1.10> (2023/12/14)
+## Version v0.1.10 (2023/12/14)
 
 ### Pull Requests Merged
 
@@ -28,9 +40,9 @@ In this release 2 pull requests were closed.
 In this release 5 pull requests were closed.
 
 
-## Version <v0.1.9> (2023/07/17)
+## Version v0.1.9 (2023/07/17)
 
-## Version <v0.1.8> (2023/07/14)
+## Version v0.1.8 (2023/07/14)
 
 
 ### Pull Requests Merged
@@ -47,7 +59,7 @@ In this release 5 pull requests were closed.
 In this release 3 pull requests were closed.
 
 
-## Version <v0.1.7> (2022/10/24)
+## Version v0.1.7 (2022/10/24)
 
 
 ### Pull Requests Merged
@@ -60,7 +72,7 @@ In this release 3 pull requests were closed.
 In this release 2 pull requests were closed.
 
 
-## Version <v0.1.6> (2022/07/15)
+## Version v0.1.6 (2022/07/15)
 
 ### Pull Requests Merged
 
@@ -73,7 +85,7 @@ In this release 2 pull requests were closed.
 * [PR 8](https://github.com/adybbroe/activefires-pp/pull/8) - Fix general local2utc time conversions
 
 In this release 2 pull requests were closed.
-## Version <v0.1.5> (2021/05/10)
+## Version v0.1.5 (2021/05/10)
 
 ### Pull Requests Merged
 
