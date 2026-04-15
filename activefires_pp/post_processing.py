@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2024 Adam.Dybbroe
+# Copyright (c) 2021 - 2026 Adam.Dybbroe
 
 # Author(s):
 
@@ -312,7 +312,10 @@ def get_mask_from_multipolygon(points, geometry, start_idx=1):
 
 
 def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
-    """Given geographical (lon,lat) points get a mask to apply when filtering."""
+    """Given geographical (lon,lat) points get a mask to apply when filtering.
+
+    Requirement: The shapefile should contain a list with one MULTIPOLYGON!
+    """
     lons, lats = lonlats
     logger.debug("Getting the global mask from file: shapefile file path = %s", str(shapefile))
     shape_geom = ShapeGeometry(shapefile)
