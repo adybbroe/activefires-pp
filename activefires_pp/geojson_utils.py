@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 - 2025 Adam Dybbroe
+# Copyright (c) 2022 - 2026 Adam Dybbroe
 
 # Author(s):
 
@@ -37,6 +37,23 @@ import numpy as np
 from activefires_pp.utils import json_serial
 
 logger = logging.getLogger(__name__)
+
+
+property_map = {
+    "power": "power",
+    "tb": "tb",
+    "confidence": lambda row: int(row.conf),
+    "observation_time": lambda row: json_serial(
+        row.starttime.to_pydatetime()
+        + (row.endtime.to_pydatetime() - row.starttime.to_pydatetime()) / 2
+    ),
+}
+
+optional_property_map = {
+    "anomaly": lambda row: int(row.anomaly),
+    "tb_celcius": "tb_celcius",
+    "id": "detection_id",
+}
 
 
 def read_geojson_data(filename):
@@ -78,7 +95,74 @@ def get_geojson_files_in_observation_time_order(path, pattern, time_interval):
     return files.tolist()
 
 
-def geojson_feature_collection_from_detections(detections, platform_name=None):
+def _resolve_property(row, source):
+    """Resolve one property from a row.
+
+    source may be:
+      - a column/attribute name (str)
+      - a callable taking row and returning a value
+    """
+    if callable(source):
+        return source(row)
+    return getattr(row, source)
+
+
+def geojson_feature_collection_from_detections(
+    detections,
+    property_map,
+    optional_property_map=None,
+    lon_col="longitude",
+    lat_col="latitude",
+    platform_name=None
+):
+    """Create a GeoJSON FeatureCollection from a dataframe."""
+    if detections.empty:
+        raise ValueError("No detections to save!")
+
+    optional_property_map = optional_property_map or {}
+    features = []
+
+    for row in detections.itertuples(index=False):
+        props = {}
+
+        # Required properties
+        for out_name, source in property_map.items():
+            props[out_name] = _resolve_property(row, source)
+
+        # Optional properties
+        for out_name, source in optional_property_map.items():
+            try:
+                props[out_name] = _resolve_property(row, source)
+            except AttributeError:
+                if logger:
+                    logger.debug("Optional property '%s' not available", out_name)
+            except Exception as exc:
+                if logger:
+                    logger.debug(
+                        "Failed computing optional property '%s': %s",
+                        out_name, exc
+                    )
+
+        # Static optional property
+        if platform_name is not None:
+            props["platform_name"] = platform_name
+        elif logger:
+            logger.debug("No platform name specified for output")
+
+        features.append(
+            Feature(
+                geometry=Point((
+                    float(getattr(row, lon_col)),
+                    float(getattr(row, lat_col)),
+                )),
+                properties=props,
+            )
+        )
+
+    return FeatureCollection(features)
+
+
+def OLDgeojson_feature_collection_from_detections(detections, platform_name=None):
     """Create the Geojson feature collection from fire detection data."""
     if len(detections) == 0:
         raise ValueError("No detections to save!")
