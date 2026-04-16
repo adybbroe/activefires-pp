@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2024 Adam Dybbroe
+# Copyright (c) 2021 - 2024, 2026 Adam Dybbroe
 
 # Author(s):
 
@@ -25,6 +25,8 @@
 import pytest
 from unittest.mock import patch
 from unittest import TestCase
+
+from pathlib import Path
 
 import pandas as pd
 from geojson import FeatureCollection
@@ -240,8 +242,9 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_get_output_filepath_from_projname(setup_comm, gethostname,
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
+def test_get_output_filepath_from_projname(check_borders, setup_comm, gethostname,
                                            fake_yamlconfig_file_post_processing):
     """Test getting the correct output file path from the projection name."""
     gethostname.return_value = "my.host.name"
@@ -260,9 +263,9 @@ def test_get_output_filepath_from_projname(setup_comm, gethostname,
                      'end_time': datetime(2021, 4, 14, 11, 28, 8)}
 
     outpath = afpp.get_output_filepath_from_projname('default', fake_metadata)
-    assert outpath == '/path/where/the/filtered/results/will/be/stored/AFIMG_j01_d20210414_t112643.geojson'
+    assert Path(outpath).name == 'AFIMG_j01_d20210414_t112643.geojson'
     outpath = afpp.get_output_filepath_from_projname('sweref99', fake_metadata)
-    assert outpath == '/path/where/the/filtered/results/will/be/stored/AFIMG_j01_d20210414_t112643_sweref99.geojson'
+    assert Path(outpath).name == 'AFIMG_j01_d20210414_t112643_sweref99.geojson'
 
     with pytest.raises(KeyError) as exec_info:
         outpath = afpp.get_output_filepath_from_projname('some_other_projection_name', fake_metadata)
@@ -272,8 +275,9 @@ def test_get_output_filepath_from_projname(setup_comm, gethostname,
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_regional_fires_filtering(setup_comm, gethostname,
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
+def test_regional_fires_filtering(check_borders, setup_comm, gethostname,
                                   fake_active_fires_file_data,
                                   fake_yamlconfig_file_post_processing):
     """Test the regional fires filtering."""
@@ -324,9 +328,10 @@ def test_regional_fires_filtering(setup_comm, gethostname,
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK1, FAKE_MASK2])
-def test_general_national_fires_filtering(get_global_mask, setup_comm,
+def test_general_national_fires_filtering(get_global_mask, check_borders, setup_comm,
                                           gethostname, fake_active_fires_file_data,
                                           fake_yamlconfig_file_post_processing):
     """Test the general/basic national fires filtering."""
@@ -364,9 +369,10 @@ def test_general_national_fires_filtering(get_global_mask, setup_comm,
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.get_global_mask_from_shapefile', side_effect=[FAKE_MASK11, FAKE_MASK12])
-def test_general_national_fires_filtering_spurious_detections(get_global_mask, setup_comm,
+def test_general_national_fires_filtering_spurious_detections(get_global_mask, check_borders, setup_comm,
                                                               gethostname, fake_active_fires_ascii_file5,
                                                               fake_yamlconfig_file_post_processing,
                                                               caplog):
@@ -411,8 +417,9 @@ def test_general_national_fires_filtering_spurious_detections(get_global_mask, s
 @pytest.mark.usefixtures("fake_national_borders_shapefile")
 @pytest.mark.usefixtures("fake_yamlconfig_file_post_processing")
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_checking_national_borders_shapefile_file_exists(setup_comm, gethostname,
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
+def test_checking_national_borders_shapefile_file_exists(check_borders, setup_comm, gethostname,
                                                          fake_yamlconfig_file_post_processing,
                                                          fake_national_borders_shapefile):
     """Test the checking of the national borders shapefile - borders shapefile exists."""
@@ -428,7 +435,7 @@ def test_checking_national_borders_shapefile_file_exists(setup_comm, gethostname
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
 def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethostname,
                                                               fake_yamlconfig_file_post_processing):
     """Test the checking of the national borders shapefile - borders shapefile does not exist."""
@@ -437,10 +444,9 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethos
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
-    afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
-                                     myborders_file, mymask_file)
     with pytest.raises(OSError) as exec_info:
-        afpp._check_borders_shapes_exists()
+        _ = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                      myborders_file, mymask_file)
 
     expected = "Shape file does not exist! Filename = /my/shape/file/with/country/borders"
     assert str(exec_info.value) == expected
@@ -448,9 +454,10 @@ def test_checking_national_borders_shapefile_file_nonexisting(setup_comm, gethos
 
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.read_cspp_output_data')
-def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_comm, gethostname,
+def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_borders, setup_comm, gethostname,
                                                                 fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
     gethostname.return_value = "my.host.name"
@@ -517,9 +524,10 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, setup_
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.read_cspp_output_data')
-def test_get_feature_collection_from_firedata_tb_celcius(readdata, setup_comm, gethostname,
+def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders, setup_comm, gethostname,
                                                          fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
     gethostname.return_value = "my.host.name"

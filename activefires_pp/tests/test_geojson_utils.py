@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022 - 2024 Adam Dybbroe
+# Copyright (c) 2022 - 2026 Adam Dybbroe
 
 # Author(s):
 
@@ -231,9 +231,10 @@ def test_store_geojson_file_sweref99_coordinates(tmp_path):
 
 @freeze_time('2023-06-16 11:24:00')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.read_cspp_output_data')
-def test_get_feature_collection_from_firedata(readdata, setup_comm, gethostname,
+def test_get_feature_collection_from_firedata(readdata, check_borders, setup_comm, gethostname,
                                               fake_active_fires_file_data2,
                                               fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""

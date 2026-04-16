@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022, 2023, 2024 Adam.Dybbroe
+# Copyright (c) 2022 - 2026 Adam.Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam.Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 
 import pytest
 import io
+from pathlib import Path
+
 
 TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
 subscribe_topics: /VIIRS/L2/Fires/PP/National
@@ -48,6 +50,16 @@ TEST_POST_PROCESSING_YAML_CONFIG_CONTENT = """# Publish/subscribe
 publish_topic: /VIIRS/L2/Fires/PP
 subscribe_topics: VIIRS/L2/AFI
 
+publisher_config:
+  publisher_settings:
+    nameservers: false
+    port: 1979
+  topic: /hi/there
+subscriber_config:
+  addresses:
+  - ipc://bla
+  nameserver: false
+
 af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
 
 output:
@@ -64,7 +76,7 @@ output:
 
 regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
-output_dir: /path/where/the/filtered/results/will/be/stored
+#output_dir: /path/where/the/filtered/results/will/be/stored
 
 timezone: Europe/Stockholm
 
@@ -156,7 +168,7 @@ TEST_ACTIVE_FIRES_FILEPATH4 = "./AFIMG_j01_d20230618_t0942269_e0943514_b28916_c2
 TEST_ACTIVE_FIRES_FILEPATH5 = "./AFIMG_j02_d20231211_t0152445_e0154074_b05616_c20231211020710860273_cspp_dev.txt"
 TEST_ACTIVE_FIRES_FILEPATH_CSPP21_1 = "./AFIMG_j01_d20240712_t0720206_e0721452_b34447_c20240712073948953196_cspp_dev.txt"  # noqa
 TEST_ACTIVE_FIRES_FILEPATH_CSPP21_2 = "./AFIMG_j01_d20240712_t0720206_e0721452_b34447_c20240712073948953196_cspp_dev_wrongformat.txt"  # noqa
-
+TEST_ACTIVE_FIRES_FILE_SYSTEM_TEST_CASE_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"  # noqa
 
 TEST_ACTIVE_FIRES_FILE_DATA = """
 # Active Fires I-band EDR
@@ -354,6 +366,42 @@ TEST_ACTIVE_FIRES_FILE_DATA_CSPP21_2 = """
   64.27099609,   69.67951202,  325.39312744,  0.375,  0.375,    8,    2.70757842,    0, 99
 """
 
+TEST_ACTIVE_FIRES_FILE_SYSTEM_TEST_CASE = """
+# Active Fires I-band EDR
+#
+# source: AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.nc
+# version: CSPP Active Fires version: cspp-active-fire-noaa_1.1.0
+#
+# column 1: latitude of fire pixel (degrees)
+# column 2: longitude of fire pixel (degrees)
+# column 3: I04 brightness temperature of fire pixel (K)
+# column 4: Along-scan fire pixel resolution (km)
+# column 5: Along-track fire pixel resolution (km)
+# column 6: detection confidence ([7,8,9]->[lo,med,hi])
+# column 7: fire radiative power (MW)
+#
+# number of fire pixels: 18
+#
+  59.14783859,   37.85886765,  331.58309937,  0.375,  0.375,    8,    4.67825794
+  59.05127335,   28.15227890,  349.83993530,  0.375,  0.375,    8,    7.10289335
+  59.05587006,   28.15146446,  326.76165771,  0.375,  0.375,    8,    7.10289335
+  59.46587372,   29.04332352,  327.60366821,  0.375,  0.375,    8,    5.01662874
+  59.59255981,   28.77226448,  345.88961792,  0.375,  0.375,    8,   13.13724804
+  59.58853149,   28.77531433,  339.56134033,  0.375,  0.375,    8,    8.76600266
+  59.59326553,   28.77456856,  352.21545410,  0.375,  0.375,    8,    8.76600266
+  59.59757233,   28.76391029,  328.43835449,  0.375,  0.375,    8,    5.08633661
+  58.35777283,   12.37761784,  327.17175293,  0.375,  0.375,    8,   17.58141518
+  60.30867004,   25.53105164,  349.98794556,  0.375,  0.375,    8,    6.93412018
+  55.01095581,   -2.28794742,  335.89736938,  0.375,  0.375,    8,    4.39908028
+  59.52483368,   17.16816330,  336.57437134,  0.375,  0.375,    8,   14.13167953
+  55.00822449,   -2.28098702,  344.50894165,  0.375,  0.375,    8,    4.16644764
+  60.13325882,   16.18420029,  329.47689819,  0.375,  0.375,    8,    5.32859230
+  61.30901337,   21.98561668,  341.69180298,  0.375,  0.375,    8,    8.87900448
+  58.29126740,    0.20132475,  331.47875977,  0.375,  0.375,    8,    3.64687872
+  57.42922211,   -3.47403550,  336.02111816,  0.375,  0.375,    8,    8.39092922
+  57.42747116,   -3.47912717,  353.80722046,  0.375,  0.375,    8,   12.13035393
+"""
+
 
 @pytest.fixture
 def fake_active_fires_file_data():
@@ -428,6 +476,32 @@ def fake_active_fires_ascii_file_cspp21_2(tmp_path):
 
 
 @pytest.fixture
+def fake_active_fires_ascii_file_system_test_case(tmp_path):
+    """Create a fake active fires ascii file for system testing.
+
+    With the sample test filter mask included in the project one out of three
+    fires over Sweden should pass the fake/dummy filter mask.
+    """
+    file_path = tmp_path / TEST_ACTIVE_FIRES_FILE_SYSTEM_TEST_CASE_FILEPATH
+    with open(file_path, 'w') as fpt:
+        fpt.write(TEST_ACTIVE_FIRES_FILE_SYSTEM_TEST_CASE)
+
+    yield file_path
+
+
+@pytest.fixture
+def sample_filtermask():
+    """Return the path to the sample shapefile defining a fake mask over Sweden."""
+    return Path(__file__).parent / "data" / "sample_filtermask" / "activefires_pp_test_mask.shp"
+
+
+@pytest.fixture
+def sample_sweden():
+    """Return the path to the sample shapefile fakely defining the borders of Sweden."""
+    return Path(__file__).parent / "data" / "sample_sweden" / "Sverige.shp"
+
+
+@pytest.fixture
 def fake_token_file(tmp_path):
     """Write fake token file."""
     file_path = tmp_path / '.sometokenfile.yaml'
@@ -463,6 +537,8 @@ def fake_yamlconfig_file_post_processing(tmp_path):
     file_path = tmp_path / 'test_af_post_processing_config.yaml'
     with open(file_path, 'w') as fpt:
         fpt.write(TEST_POST_PROCESSING_YAML_CONFIG_CONTENT)
+        outdir = tmp_path / 'geojson_output_dir'
+        fpt.write(f'output_dir: {outdir}\n')
 
     yield file_path
 
