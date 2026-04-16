@@ -24,7 +24,7 @@
 
 import pytest
 from unittest.mock import patch
-from datetime import datetime
+import datetime as dt
 import logging
 
 from posttroll.message import Message
@@ -60,7 +60,7 @@ def test_check_incoming_message_nc_file_exists(get_id_from_file,
     """
     gethostname.return_value = "my.host.name"
     path_exists.return_value = True
-    get_id_from_file.return_value = {'date': datetime.utcnow(), 'counter': 0}
+    get_id_from_file.return_value = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
@@ -99,7 +99,7 @@ def test_check_incoming_message_txt_file_exists(get_id_from_file,
     """
     gethostname.return_value = "my.host.name"
     path_exists.return_value = True
-    get_id_from_file.return_value = {'date': datetime.utcnow(), 'counter': 0}
+    get_id_from_file.return_value = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
@@ -256,8 +256,8 @@ def test_create_output_message(tmp_path):
 
     output_msg = _create_output_message(input_msg, output_topic, geojson_alarm, filename)
 
-    assert output_msg.data == {'start_time': datetime(2021, 4, 7, 0, 28, 17),
-                               'end_time': datetime(2021, 4, 7, 0, 29, 40),
+    assert output_msg.data == {'start_time': dt.datetime(2021, 4, 7, 0, 28, 17),
+                               'end_time': dt.datetime(2021, 4, 7, 0, 29, 40),
                                'orbit_number': 1,
                                'platform_name': 'NOAA-20',
                                'sensor': 'viirs',

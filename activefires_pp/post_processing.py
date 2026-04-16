@@ -27,7 +27,7 @@ from contextlib import closing
 from trollsift import Parser, globify
 import time
 import pandas as pd
-from datetime import datetime, timedelta
+import datetime as dt
 import numpy as np
 import os
 from six.moves.urllib.parse import urlparse
@@ -271,11 +271,11 @@ def get_metadata_from_filename(infile_pattern, filepath):
         return None
 
     # Fix the end time:
-    endtime = datetime(res['start_time'].year, res['start_time'].month,
-                       res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
-                       res['end_hour'].second)
+    endtime = dt.datetime(res['start_time'].year, res['start_time'].month,
+                          res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
+                          res['end_hour'].second)
     if endtime < res['start_time']:
-        endtime = endtime + timedelta(days=1)
+        endtime = endtime + dt.timedelta(days=1)
 
     res['end_time'] = endtime
 
@@ -374,7 +374,7 @@ class ActiveFiresPostprocessing():
 
     def _init_unit_converter(self):
         """Initialize the unit converter.."""
-        now = datetime_utc2local(datetime.now(), self.timezone)
+        now = datetime_utc2local(dt.datetime.now(), self.timezone)
         logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
 
         tic = time.time()
@@ -632,13 +632,13 @@ class ActiveFiresPostprocessing():
         if self.filepath_detection_id_cache and os.path.exists(self.filepath_detection_id_cache):
             self._fire_detection_id = self.get_id_from_file()
         else:
-            self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+            self._fire_detection_id = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
     def update_fire_detection_id(self):
         """Update the fire detection ID registry."""
-        now = datetime.utcnow()
+        now = dt.datetime.now(dt.timezone.utc)
         if self._fire_detection_id['date'].date() < now.date():
-            self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+            self._fire_detection_id = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
         self._fire_detection_id['counter'] = self._fire_detection_id['counter'] + 1
 
@@ -662,7 +662,7 @@ class ActiveFiresPostprocessing():
     def _get_id_from_string(self, idstr):
         """Get the detection id from string."""
         datestr, counter = idstr.split('-')
-        return {'date': datetime.strptime(datestr, '%Y%m%d'),
+        return {'date': dt.datetime.strptime(datestr, '%Y%m%d'),
                 'counter': int(counter)}
 
     def _create_id_string(self):
