@@ -161,54 +161,6 @@ def geojson_feature_collection_from_detections(
     return FeatureCollection(features)
 
 
-def OLDgeojson_feature_collection_from_detections(detections, platform_name=None):
-    """Create the Geojson feature collection from fire detection data."""
-    if len(detections) == 0:
-        raise ValueError("No detections to save!")
-
-    # Convert points to GeoJSON
-    features = []
-    for idx in range(len(detections)):
-        starttime = detections.iloc[idx].starttime
-        endtime = detections.iloc[idx].endtime
-        mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
-                                                         starttime.to_pydatetime()) / 2.
-
-        prop = {'power': detections.iloc[idx].power,
-                'tb': detections.iloc[idx].tb,
-                'confidence': int(detections.iloc[idx].conf),
-                'observation_time': json_serial(mean_granule_time)
-                }
-
-        try:
-            prop['anomaly'] = int(detections.iloc[idx].anomaly)
-        except AttributeError:
-            logger.debug("Failed adding the persistent anomaly attribute!")
-
-        try:
-            prop['tb_celcius'] = detections.iloc[idx].tb_celcius
-        except AttributeError:
-            logger.debug("Failed adding the TB in celcius!")
-            pass
-        try:
-            prop['id'] = detections.iloc[idx].detection_id
-        except AttributeError:
-            logger.debug("Failed adding the unique detection id!")
-            pass
-
-        if platform_name:
-            prop['platform_name'] = platform_name
-        else:
-            logger.debug("No platform name specified for output")
-
-        feat = Feature(
-            geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
-            properties=prop)
-        features.append(feat)
-
-    return FeatureCollection(features)
-
-
 def map_coordinates_in_feature_collection(feature_collection, epsg_str):
     """Map the Point coordinates of all data in Feature Collection."""
     outp = pyproj.Proj(epsg_str)
