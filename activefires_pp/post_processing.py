@@ -48,6 +48,8 @@ from activefires_pp.utils import get_local_timezone_offset
 from activefires_pp.config import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
+from activefires_pp.geojson_utils import PROPERTY_MAP
+from activefires_pp.geojson_utils import OPTIONAL_PROPERTY_MAP as OPT_PROPERTY_MAP
 from activefires_pp.geojson_utils import store_geojson
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
@@ -473,6 +475,8 @@ class ActiveFiresPostprocessing():
         # 2) Dump geojson data to disk
 
         feature_collection = geojson_feature_collection_from_detections(afdata,
+                                                                        PROPERTY_MAP,
+                                                                        optional_property_map=OPT_PROPERTY_MAP,
                                                                         platform_name=af_shapeff.platform_name)
 
         for proj_name in self.outfile_patterns_national:
@@ -539,6 +543,8 @@ class ActiveFiresPostprocessing():
 
             try:
                 feature_collection = geojson_feature_collection_from_detections(data_in_region,
+                                                                                PROPERTY_MAP,
+                                                                                optional_property_map=OPT_PROPERTY_MAP,
                                                                                 platform_name=fmda['platform'])
             except ValueError:
                 logger.warning("Something wrong happended storing regional " +
