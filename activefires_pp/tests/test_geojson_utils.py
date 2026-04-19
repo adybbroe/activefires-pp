@@ -42,6 +42,8 @@ from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.geojson_utils import get_geojson_files_in_observation_time_order
 from activefires_pp.geojson_utils import store_geojson_alarm
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
+from activefires_pp.geojson_utils import PROPERTY_MAP
+from activefires_pp.geojson_utils import OPTIONAL_PROPERTY_MAP as OPT_PROPERTY_MAP
 from activefires_pp.config import read_config
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
@@ -257,7 +259,10 @@ def test_get_feature_collection_from_firedata(readdata, setup_comm, gethostname,
 
     afdata = afpp.add_unique_day_id(afdata)
 
-    result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
+    result = geojson_feature_collection_from_detections(afdata,
+                                                        PROPERTY_MAP,
+                                                        optional_property_map=OPT_PROPERTY_MAP,
+                                                        platform_name='Suomi-NPP')
 
     # NB! The time of the afdata is here still in UTC!
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
@@ -430,6 +435,8 @@ class TestStoreGeojsonData:
         self.afdata['endtime'] = np.repeat(endtime, len(self.afdata)).astype(np.datetime64)
 
         self.feature_collection = geojson_feature_collection_from_detections(self.afdata,
+                                                                             PROPERTY_MAP,
+                                                                             optional_property_map=OPT_PROPERTY_MAP,
                                                                              platform_name='NOAA-20')
 
     def test_store_geojson_no_unit_conversion(self, tmp_path):
