@@ -38,8 +38,7 @@ from activefires_pp.utils import json_serial
 
 logger = logging.getLogger(__name__)
 
-
-property_map = {
+PROPERTY_MAP = {
     "power": "power",
     "tb": "tb",
     "confidence": lambda row: int(row.conf),
@@ -49,7 +48,7 @@ property_map = {
     ),
 }
 
-optional_property_map = {
+OPTIONAL_PROPERTY_MAP = {
     "anomaly": lambda row: int(row.anomaly),
     "tb_celcius": "tb_celcius",
     "id": "detection_id",
@@ -212,7 +211,7 @@ def OLDgeojson_feature_collection_from_detections(detections, platform_name=None
 
 def map_coordinates_in_feature_collection(feature_collection, epsg_str):
     """Map the Point coordinates of all data in Feature Collection."""
-    outp = pyproj.Proj(init=epsg_str)
+    outp = pyproj.Proj(epsg_str)
 
     mapped_features = []
     # Iterate through each feature of the feature collection
