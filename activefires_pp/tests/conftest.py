@@ -27,7 +27,8 @@ import io
 from pathlib import Path
 
 
-TEST_YAML_CONFIG_CONTENT = """# Publish/subscribe
+TEST_ALARMS_FILTERING_YAML_CONFIG_CONTENT = """# Publish/subscribe
+
 subscribe_topics: /VIIRS/L2/Fires/PP/National
 publish_topic: /VIIRS/L2/Fires/PP/SOSAlarm
 
@@ -47,18 +48,19 @@ time_and_space_thresholds:
 """
 
 TEST_POST_PROCESSING_YAML_CONFIG_CONTENT = """# Publish/subscribe
-publish_topic: /VIIRS/L2/Fires/PP
-subscribe_topics: VIIRS/L2/AFI
 
 publisher_config:
   publisher_settings:
     nameservers: false
     port: 1979
-  topic: /hi/there
+  topic: /VIIRS/L2/Fires/PP
 subscriber_config:
   addresses:
-  - ipc://bla
+    - ipc://bla
+  topics:
+    - /VIIRS/L2/AFI
   nameserver: false
+  addr_listener: true
 
 af_pattern_ibands: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt
 
@@ -526,7 +528,7 @@ def fake_yamlconfig_file(tmp_path):
     """Write fake yaml config file."""
     file_path = tmp_path / 'test_alarm_filtering_config.yaml'
     with open(file_path, 'w') as fpt:
-        fpt.write(TEST_YAML_CONFIG_CONTENT)
+        fpt.write(TEST_ALARMS_FILTERING_YAML_CONFIG_CONTENT)
 
     yield file_path
 

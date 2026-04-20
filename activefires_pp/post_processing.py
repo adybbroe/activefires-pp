@@ -342,15 +342,17 @@ class ActiveFiresPostprocessing():
 
         self.regional_filtermask = regional_filtermask
         self.configfile = configfile
-        self.options = {}
 
         self.config = read_config(self.configfile)
+
+        self.subscriber_config = self.config['subscriber_config']
+        self.publisher_config = self.config['publisher_config']
+        self.input_topics = self.subscriber_config['topics']
+        self.output_topic = self.publisher_config['topic']
 
         self.host = socket.gethostname()
         self.timezone = self.config.get('timezone', 'GMT')
 
-        self.input_topic = self.config['subscribe_topics']
-        self.output_topic = self.config['publish_topic']
         self.infile_pattern = self.config.get('af_pattern_ibands')
 
         self.outfile_patterns_national = self.config.get('output').get('national')
@@ -384,7 +386,8 @@ class ActiveFiresPostprocessing():
 
     def _start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
-        logger.debug("Starting up... Input topic: %s", self.input_topic)
+        for topic in self.input_topics:
+            logger.debug(f'Starting up... Input topic: {str(topic)}')
         self.loop = True
         signal.signal(signal.SIGTERM, self.signal_shutdown)
 
@@ -497,12 +500,9 @@ class ActiveFiresPostprocessing():
 
     def run_and_publish(self):
         """Run the AF post processing and start subcriber and publisher."""
-        subscriber_config = self.config['subscriber_config']
-        publisher_config = self.config['publisher_config']
-
-        with closing(create_publisher_from_dict_config(publisher_config["publisher_settings"])) as self.publisher:
+        with closing(create_publisher_from_dict_config(self.publisher_config["publisher_settings"])) as self.publisher:
             self.publisher.start()
-            with closing(create_subscriber_from_dict_config(subscriber_config)) as self.subscriber:
+            with closing(create_subscriber_from_dict_config(self.subscriber_config)) as self.subscriber:
                 for msg in self.subscriber.recv():
                     if not self.loop:
                         break

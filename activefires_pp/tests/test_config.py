@@ -49,8 +49,8 @@ def test_read_yaml_configuration_for_postprocessing(fake_yamlconfig_file_post_pr
     """Test read in the yaml configuration for fires post processing."""
     config = read_config(fake_yamlconfig_file_post_processing)
 
-    assert config['subscribe_topics'] == 'VIIRS/L2/AFI'
-    assert config['publish_topic'] == '/VIIRS/L2/Fires/PP'
+    assert config['subscriber_config']['topics'][0] == '/VIIRS/L2/AFI'
+    assert config['publisher_config']['topic'] == '/VIIRS/L2/Fires/PP'
     assert config['timezone'] == 'Europe/Stockholm'
     assert config['af_pattern_ibands'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa
     assert config['regional_shapefiles_format'] == 'omr_{region_code:s}_Buffer.{ext:s}'
