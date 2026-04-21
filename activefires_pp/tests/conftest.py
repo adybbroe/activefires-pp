@@ -78,7 +78,7 @@ output:
 
 regional_shapefiles_format: omr_{region_code:s}_Buffer.{ext:s}
 
-#output_dir: /path/where/the/filtered/results/will/be/stored
+output_dir: /path/where/the/filtered/results/will/be/stored
 
 timezone: Europe/Stockholm
 
