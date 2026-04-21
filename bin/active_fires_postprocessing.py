@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2022 Adam Dybbroe
+# Copyright (c) 2021 - 2026 Adam Dybbroe
 
 # Author(s):
 
@@ -20,10 +20,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Main module to run the Active Fires Postprocessing in real time.
+"""Main module to run the Active Fires Postprocessing in real time.
 
-
+It needs a few mandatory inputs, like
+  - the full path to a shapefile defining the national borders,
+  - the full path to a shapefile with the mask to be applied to filter out
+    unwanted detections (e.g. stationary heat sources),
+  - the full path to the yaml configuration file - see in the examples directory!
 """
 
 import logging
@@ -36,13 +39,14 @@ from activefires_pp.post_processing import ActiveFiresPostprocessing
 logger = logging.getLogger('active_fires_postprocessing')
 
 
-def main():
+def main(args=None):
     """Start and run the active-fires post-processing."""
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(args)
     parser.add_argument("-l", "--log-config",
                         help="Log config file to use instead of the standard logging.")
     parser.add_argument("-c", "--config",
-                        help="YAML config file to use.")
+                        help="YAML config file to use.",
+                        required=True)
     parser.add_argument("-b", "--shp_boarders",
                         help="Path to shapefile with national boarders",
                         required=True)
@@ -77,8 +81,7 @@ def main():
         logger.error('Active Fires postprocessing crashed: %s', str(err))
         sys.exit(1)
     try:
-        fire_pp.start()
-        fire_pp.join()
+        fire_pp.run_and_publish()
     except KeyboardInterrupt:
         logger.debug("Interrupting")
     finally:

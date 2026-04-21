@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2024 Adam.Dybbroe
+# Copyright (c) 2021-2024, 2026 Adam.Dybbroe
 
 # Author(s):
 
@@ -24,7 +24,7 @@
 
 import pytest
 from unittest.mock import patch
-from datetime import datetime
+import datetime as dt
 import logging
 
 from posttroll.message import Message
@@ -47,10 +47,11 @@ def get_fake_publisher(portnumber=1979):
 
 @patch('os.path.exists')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_id_from_file')
-def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exists,
-                                               get_id_from_file,
+def test_check_incoming_message_nc_file_exists(get_id_from_file,
+                                               check_borders, setup_comm, gethostname, path_exists,
                                                fake_yamlconfig_file_post_processing):
     """Test the check of incoming message content and getting the file path from the message.
 
@@ -59,7 +60,7 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
     """
     gethostname.return_value = "my.host.name"
     path_exists.return_value = True
-    get_id_from_file.return_value = {'date': datetime.utcnow(), 'counter': 0}
+    get_id_from_file.return_value = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
@@ -85,10 +86,11 @@ def test_check_incoming_message_nc_file_exists(setup_comm, gethostname, path_exi
 
 @patch('os.path.exists')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing.get_id_from_file')
-def test_check_incoming_message_txt_file_exists(setup_comm, gethostname, path_exists,
-                                                get_id_from_file,
+def test_check_incoming_message_txt_file_exists(get_id_from_file,
+                                                check_borders, setup_comm, gethostname, path_exists,
                                                 fake_yamlconfig_file_post_processing):
     """Test the check of incoming message content and getting the file path from the message.
 
@@ -97,7 +99,7 @@ def test_check_incoming_message_txt_file_exists(setup_comm, gethostname, path_ex
     """
     gethostname.return_value = "my.host.name"
     path_exists.return_value = True
-    get_id_from_file.return_value = {'date': datetime.utcnow(), 'counter': 0}
+    get_id_from_file.return_value = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
     myborders_file = "/my/shape/file/with/country/borders"
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
@@ -118,8 +120,9 @@ def test_check_incoming_message_txt_file_exists(setup_comm, gethostname, path_ex
 
 @patch('os.path.exists')
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_check_incoming_message_txt_file_does_not_exist(setup_comm, gethostname, path_exists,
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
+def test_check_incoming_message_txt_file_does_not_exist(check_borders, setup_comm, gethostname, path_exists,
                                                         fake_yamlconfig_file_post_processing):
     """Test the check of incoming message content and getting the file path from the message.
 
@@ -157,11 +160,12 @@ def test_prepare_posttroll_message_national(caplog, projname, expected,
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     with patch('socket.gethostname') as gethostname:
-        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
-            gethostname.return_value = "my.host.name"
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists'):
+            with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication'):
+                gethostname.return_value = "my.host.name"
 
-            afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
-                                             myboarders_file, mymask_file)
+                afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                                 myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
 
@@ -188,10 +192,11 @@ def test_prepare_posttroll_message_regional(caplog, fake_yamlconfig_file_post_pr
     mymask_file = "/my/shape/file/with/polygons/to/filter/out"
 
     with patch('socket.gethostname') as gethostname:
-        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication'):
-            gethostname.return_value = "my.host.name"
-            afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
-                                             myboarders_file, mymask_file)
+        with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists'):
+            with patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication'):
+                gethostname.return_value = "my.host.name"
+                afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
+                                                 myboarders_file, mymask_file)
 
     test_filepath = "/my/geojson/file/path"
     input_msg = Message.decode(rawstr=TEST_MSG)
@@ -208,8 +213,9 @@ def test_prepare_posttroll_message_regional(caplog, fake_yamlconfig_file_post_pr
 
 
 @patch('socket.gethostname')
-@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._setup_and_start_communication')
-def test_prepare_posttroll_message_no_fires(setup_comm, gethostname,
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
+@patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
+def test_prepare_posttroll_message_no_fires(check_borders, setup_comm, gethostname,
                                             fake_yamlconfig_file_post_processing):
     """Test setup the posttroll message."""
     gethostname.return_value = "my.host.name"
@@ -250,8 +256,8 @@ def test_create_output_message(tmp_path):
 
     output_msg = _create_output_message(input_msg, output_topic, geojson_alarm, filename)
 
-    assert output_msg.data == {'start_time': datetime(2021, 4, 7, 0, 28, 17),
-                               'end_time': datetime(2021, 4, 7, 0, 29, 40),
+    assert output_msg.data == {'start_time': dt.datetime(2021, 4, 7, 0, 28, 17),
+                               'end_time': dt.datetime(2021, 4, 7, 0, 29, 40),
                                'orbit_number': 1,
                                'platform_name': 'NOAA-20',
                                'sensor': 'viirs',

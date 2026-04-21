@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2022, 2023 Adam.Dybbroe
+# Copyright (c) 2021, 2022, 2023, 2026 Adam.Dybbroe
 
 # Author(s):
 
@@ -26,6 +26,7 @@ from glob import glob
 import os
 import cartopy.io.shapereader as shpreader
 import pycrs
+from pathlib import PosixPath
 
 
 class ShapeGeometry(object):
@@ -89,4 +90,7 @@ def _get_shapefile_paths(path, globstr='*.shp'):
 
 
 def _get_proj_filename_from_shapefile(filepath):
+    """Get the projection info from shapefile."""
+    if isinstance(filepath, PosixPath):
+        filepath = filepath.as_posix()
     return filepath.split('.shp')[0] + '.prj'

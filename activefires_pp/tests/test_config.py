@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2022, 2023, 2024 Adam.Dybbroe
+# Copyright (c) 2022 - 2026 Adam.Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam.Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """Test getting the yaml configurations from file."""
+
+from pathlib import Path
 
 from activefires_pp.config import read_config
 from activefires_pp.config import get_xauthentication_token
@@ -47,12 +49,12 @@ def test_read_yaml_configuration_for_postprocessing(fake_yamlconfig_file_post_pr
     """Test read in the yaml configuration for fires post processing."""
     config = read_config(fake_yamlconfig_file_post_processing)
 
-    assert config['subscribe_topics'] == 'VIIRS/L2/AFI'
-    assert config['publish_topic'] == '/VIIRS/L2/Fires/PP'
+    assert config['subscriber_config']['topics'][0] == '/VIIRS/L2/AFI'
+    assert config['publisher_config']['topic'] == '/VIIRS/L2/Fires/PP'
     assert config['timezone'] == 'Europe/Stockholm'
     assert config['af_pattern_ibands'] == 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa
     assert config['regional_shapefiles_format'] == 'omr_{region_code:s}_Buffer.{ext:s}'
-    assert config['output_dir'] == '/path/where/the/filtered/results/will/be/stored'
+    assert Path(config['output_dir']).name == 'geojson_output_dir'
 
     assert len(config['output']['national']['default']) == 1
     assert config['output']['national']['default'] == {'geojson_file_pattern':

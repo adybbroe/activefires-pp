@@ -23,21 +23,21 @@
 """Post processing on the Active Fire detections."""
 
 import socket
+from contextlib import closing
 from trollsift import Parser, globify
 import time
 import pandas as pd
-from datetime import datetime, timedelta
+import datetime as dt
 import numpy as np
 import os
 from six.moves.urllib.parse import urlparse
 
 import logging
 import signal
-from queue import Empty
-from threading import Thread
-from posttroll.listener import ListenerContainer
 from posttroll.message import Message
-from posttroll.publisher import NoisyPublisher
+from posttroll.publisher import create_publisher_from_dict_config
+from posttroll.subscriber import create_subscriber_from_dict_config
+
 import pyproj
 from matplotlib.path import Path
 import shapely
@@ -271,11 +271,11 @@ def get_metadata_from_filename(infile_pattern, filepath):
         return None
 
     # Fix the end time:
-    endtime = datetime(res['start_time'].year, res['start_time'].month,
-                       res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
-                       res['end_hour'].second)
+    endtime = dt.datetime(res['start_time'].year, res['start_time'].month,
+                          res['start_time'].day, res['end_hour'].hour, res['end_hour'].minute,
+                          res['end_hour'].second)
     if endtime < res['start_time']:
-        endtime = endtime + timedelta(days=1)
+        endtime = endtime + dt.timedelta(days=1)
 
     res['end_time'] = endtime
 
@@ -332,51 +332,51 @@ def get_global_mask_from_shapefile(shapefile, lonlats, start_geom_index=0):
     return get_mask_from_multipolygon(points, geometry, start_geom_index)
 
 
-class ActiveFiresPostprocessing(Thread):
+class ActiveFiresPostprocessing():
     """The active fires post processor."""
 
     def __init__(self, configfile, shp_borders, shp_mask, regional_filtermask=None):
         """Initialize the active fires post processor class."""
-        super().__init__()
         self.shp_borders = shp_borders
         self.shp_filtermask = shp_mask
 
         self.regional_filtermask = regional_filtermask
         self.configfile = configfile
-        self.options = {}
 
-        config = read_config(self.configfile)
-        self._set_options_from_config(config)
+        self.config = read_config(self.configfile)
+
+        self.subscriber_config = self.config['subscriber_config']
+        self.publisher_config = self.config['publisher_config']
+        self.input_topics = self.subscriber_config['topics']
+        self.output_topic = self.publisher_config['topic']
 
         self.host = socket.gethostname()
-        self.timezone = self.options.get('timezone', 'GMT')
+        self.timezone = self.config.get('timezone', 'GMT')
 
-        self.input_topic = self.options['subscribe_topics'][0]
-        self.output_topic = self.options['publish_topic']
-        self.infile_pattern = self.options.get('af_pattern_ibands')
+        self.infile_pattern = self.config.get('af_pattern_ibands')
 
-        self.outfile_patterns_national = config.get('output').get('national')
-        self.outfile_patterns_regional = config.get('output').get('regional')
+        self.outfile_patterns_national = self.config.get('output').get('national')
+        self.outfile_patterns_regional = self.config.get('output').get('regional')
 
-        self.output_dir = self.options.get('output_dir', '/tmp')
+        self.output_dir = self.config.get('output_dir', '/tmp')
 
-        self.filepath_detection_id_cache = self.options.get('filepath_detection_id_cache')
-
-        frmt = self.options['regional_shapefiles_format']
-        self.regional_shapefiles_globstr = globify(frmt)
+        self.filepath_detection_id_cache = self.config.get('filepath_detection_id_cache')
+        self.regional_shapefiles_globstr = globify(self.config['regional_shapefiles_format'])
 
         self._fire_detection_id = None
         self._initialize_fire_detection_id()
 
-        self.listener = None
+        self._init_unit_converter()
+        self._check_borders_shapes_exists()
+
+        self.subscriber = None
         self.publisher = None
         self.loop = False
-        self._setup_and_start_communication()
+        self._start_communication()
 
-    def _setup_and_start_communication(self):
-        """Set up the Posttroll communication and start the publisher."""
-        logger.debug("Starting up... Input topic: %s", self.input_topic)
-        now = datetime_utc2local(datetime.now(), self.timezone)
+    def _init_unit_converter(self):
+        """Initialize the unit converter.."""
+        now = datetime_utc2local(dt.datetime.now(), self.timezone)
         logger.debug("Output times for timezone: {zone} Now = {time}".format(zone=str(self.timezone), time=now))
 
         tic = time.time()
@@ -384,33 +384,12 @@ class ActiveFiresPostprocessing(Thread):
         self.unit_converter = UnitConverter(units)
         logger.debug("Unit conversion initialization with Pint took %f seconds.", time.time() - tic)
 
-        self._check_borders_shapes_exists()
-
-        self.listener = ListenerContainer(topics=[self.input_topic])
-        self.publisher = NoisyPublisher("active_fires_postprocessing")
-        self.publisher.start()
+    def _start_communication(self):
+        """Set up the Posttroll communication and start the publisher."""
+        for topic in self.input_topics:
+            logger.debug(f'Starting up... Input topic: {str(topic)}')
         self.loop = True
         signal.signal(signal.SIGTERM, self.signal_shutdown)
-
-    def _set_options_from_config(self, config):
-        """From the configuration on disk set the option dictionary, holding all metadata for processing."""
-        for item in config:
-            if not isinstance(config[item], dict):
-                self.options[item] = config[item]
-
-        if isinstance(self.options.get('subscribe_topics'), str):
-            subscribe_topics = self.options.get('subscribe_topics').split(',')
-            for item in subscribe_topics:
-                if len(item) == 0:
-                    subscribe_topics.remove(item)
-            self.options['subscribe_topics'] = subscribe_topics
-
-        if isinstance(self.options.get('publish_topics'), str):
-            publish_topics = self.options.get('publish_topics').split(',')
-            for item in publish_topics:
-                if len(item) == 0:
-                    publish_topics.remove(item)
-            self.options['publish_topics'] = publish_topics
 
     def signal_shutdown(self, *args, **kwargs):
         """Shutdown the Active Fires postprocessing."""
@@ -465,9 +444,10 @@ class ActiveFiresPostprocessing(Thread):
                 logger.debug("Sending message: %s", str(output_msg))
                 self.publisher.send(str(output_msg))
 
-    def do_postprocessing_on_message(self, msg, filename):
+    def postprocess_from_message(self, msg, filename):
         """Do the fires post processing on a message."""
         platform_name = msg.data.get('platform_name')
+
         af_shapeff = ActiveFiresShapefileFiltering(filename, platform_name=platform_name,
                                                    timezone=self.timezone)
         afdata = af_shapeff.get_af_data(self.infile_pattern)
@@ -479,6 +459,7 @@ class ActiveFiresPostprocessing(Thread):
             return
 
         afdata = self.fires_filtering(msg, af_shapeff)
+
         logger.debug("After fires_filtering...: Number of fire detections = %d", len(afdata))
         if len(afdata) == 0:
             logger.debug("No fires - so no regional filtering to be done!")
@@ -517,20 +498,20 @@ class ActiveFiresPostprocessing(Thread):
             logger.debug("Sending message: %s", str(region_msg))
             self.publisher.send(str(region_msg))
 
-    def run(self):
-        """Run the AF post processing."""
-        while self.loop:
-            try:
-                msg = self.listener.output_queue.get(timeout=1)
-                logger.debug("Message: %s", str(msg.data))
-            except Empty:
-                continue
-            else:
-                filename = self.check_incoming_message_and_get_filename(msg)
-                if not filename:
-                    continue
+    def run_and_publish(self):
+        """Run the AF post processing and start subcriber and publisher."""
+        with closing(create_publisher_from_dict_config(self.publisher_config["publisher_settings"])) as self.publisher:
+            self.publisher.start()
+            with closing(create_subscriber_from_dict_config(self.subscriber_config)) as self.subscriber:
+                for msg in self.subscriber.recv():
+                    if not self.loop:
+                        break
 
-                self.do_postprocessing_on_message(msg, filename)
+                    filename = self.check_incoming_message_and_get_filename(msg)
+                    if not filename:
+                        continue
+
+                    self.postprocess_from_message(msg, filename)
 
     def regional_fires_filtering_and_publishing(self, msg, regional_fmask, afsff_obj):
         """From the regional-fires-filter-mask and the fire detection data send regional messages."""
@@ -651,13 +632,13 @@ class ActiveFiresPostprocessing(Thread):
         if self.filepath_detection_id_cache and os.path.exists(self.filepath_detection_id_cache):
             self._fire_detection_id = self.get_id_from_file()
         else:
-            self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+            self._fire_detection_id = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
     def update_fire_detection_id(self):
         """Update the fire detection ID registry."""
-        now = datetime.utcnow()
+        now = dt.datetime.now(dt.timezone.utc)
         if self._fire_detection_id['date'].date() < now.date():
-            self._fire_detection_id = {'date': datetime.utcnow(), 'counter': 0}
+            self._fire_detection_id = {'date': dt.datetime.now(dt.timezone.utc), 'counter': 0}
 
         self._fire_detection_id['counter'] = self._fire_detection_id['counter'] + 1
 
@@ -681,7 +662,7 @@ class ActiveFiresPostprocessing(Thread):
     def _get_id_from_string(self, idstr):
         """Get the detection id from string."""
         datestr, counter = idstr.split('-')
-        return {'date': datetime.strptime(datestr, '%Y%m%d'),
+        return {'date': dt.datetime.strptime(datestr, '%Y%m%d'),
                 'counter': int(counter)}
 
     def _create_id_string(self):
@@ -715,18 +696,10 @@ class ActiveFiresPostprocessing(Thread):
     def close(self):
         """Shutdown the Active Fires postprocessing."""
         logger.info('Terminating Active Fires post processing.')
+        self.subscriber.close()
         self.loop = False
         logger.info('Dumping the latest detection id to disk: %s', str(self.filepath_detection_id_cache))
         self.save_id_to_file()
-        try:
-            self.listener.stop()
-        except Exception:
-            logger.exception("Couldn't stop listener.")
-        if self.publisher:
-            try:
-                self.publisher.stop()
-            except Exception:
-                logger.exception("Couldn't stop publisher.")
 
 
 def check_file_type_okay(file_type):
