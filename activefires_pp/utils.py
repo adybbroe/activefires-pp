@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2023 Adam Dybbroe
+# Copyright (c) 2021 - 2026 Adam Dybbroe
 
 # Author(s):
 
@@ -23,7 +23,7 @@
 """Utility functions for the Active Fires postprocessing."""
 
 import cartopy.io.shapereader as shpreader
-from datetime import date, datetime, timezone
+import datetime as dt
 from urllib.parse import urlparse
 import pathlib
 import logging
@@ -33,19 +33,31 @@ from pint import UnitRegistry
 LOG = logging.getLogger(__name__)
 
 
+def ensure_utc_aware(value):
+    """Return a timezone-aware datetime in UTC.
+
+    Naive datetimes are assumed to already represent UTC.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        return value.replace(tzinfo=dt.timezone.utc)
+    return value.astimezone(dt.timezone.utc)
+
+
 def datetime_utc2local(utc_dtime, tzone_str, is_dst=True):
     """Convert a UTC datetime to local time, using DST on default."""
     tzone = zoneinfo.ZoneInfo(tzone_str)
-    utc_dtime = utc_dtime.replace(tzinfo=timezone.utc)
+    utc_dtime = utc_dtime.replace(tzinfo=dt.timezone.utc)
     return utc_dtime.astimezone(tzone)
 
 
 def get_local_timezone_offset(timezone_str):
     """Get the local time zone offset as a timedelta object."""
-    utcnow = datetime.utcnow()
-    utcnow = utcnow.replace(tzinfo=timezone.utc)
+    utcnow = dt.datetime.utcnow()
+    utcnow = utcnow.replace(tzinfo=dt.timezone.utc)
     tzone = zoneinfo.ZoneInfo(timezone_str)
-    return utcnow.astimezone(tzone).replace(tzinfo=timezone.utc) - utcnow
+    return utcnow.astimezone(tzone).replace(tzinfo=dt.timezone.utc) - utcnow
 
 
 def get_geometry_from_shapefile(shapefile):
@@ -58,7 +70,7 @@ def get_geometry_from_shapefile(shapefile):
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code."""
-    if isinstance(obj, (datetime, date)):
+    if isinstance(obj, (dt.datetime, dt.date)):
         return obj.isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
 

@@ -36,6 +36,7 @@ import logging
 from datetime import datetime
 from freezegun import freeze_time
 
+from activefires_pp.geojson_utils import PROPERTY_MAP
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import COL_NAMES
@@ -481,7 +482,10 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_
 
     afdata = afdata[2::]  # Reduce to only contain the last detections!
     afdata = afpp.add_unique_day_id(afdata)
-    result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
+    result = geojson_feature_collection_from_detections(afdata, PROPERTY_MAP,
+                                                        optional_property_map={"id":
+                                                                               "detection_id"},
+                                                        platform_name='Suomi-NPP')
 
     # NB! The time of the afdata is here still in UTC!
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
@@ -555,7 +559,10 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
     afdata = afdata[2::]  # Reduce to only contain the last detections!
 
     afdata = afpp.add_tb_celcius(afdata)
-    result = geojson_feature_collection_from_detections(afdata, platform_name='Suomi-NPP')
+    result = geojson_feature_collection_from_detections(afdata, PROPERTY_MAP,
+                                                        optional_property_map={"tb_celcius":
+                                                                               "tb_celcius"},
+                                                        platform_name='Suomi-NPP')
 
     # NB! The time of the afdata is here still in UTC!
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],

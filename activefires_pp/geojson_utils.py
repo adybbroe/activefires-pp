@@ -38,6 +38,22 @@ from activefires_pp.utils import json_serial
 
 logger = logging.getLogger(__name__)
 
+PROPERTY_MAP = {
+    "power": "power",
+    "tb": "tb",
+    "confidence": lambda row: int(row.conf),
+    "observation_time": lambda row: json_serial(
+        row.starttime.to_pydatetime()
+        + (row.endtime.to_pydatetime() - row.starttime.to_pydatetime()) / 2
+    ),
+}
+
+OPTIONAL_PROPERTY_MAP = {
+    "anomaly": lambda row: int(row.anomaly),
+    "tb_celcius": "tb_celcius",
+    "id": "detection_id",
+}
+
 
 def read_geojson_data(filename):
     """Read Geo json data from file."""
@@ -78,57 +94,74 @@ def get_geojson_files_in_observation_time_order(path, pattern, time_interval):
     return files.tolist()
 
 
-def geojson_feature_collection_from_detections(detections, platform_name=None):
-    """Create the Geojson feature collection from fire detection data."""
-    if len(detections) == 0:
+def _resolve_property(row, source):
+    """Resolve one property from a row.
+
+    source may be:
+      - a column/attribute name (str)
+      - a callable taking row and returning a value
+    """
+    if callable(source):
+        return source(row)
+    return getattr(row, source)
+
+
+def geojson_feature_collection_from_detections(
+    detections,
+    property_map,
+    optional_property_map=None,
+    lon_col="longitude",
+    lat_col="latitude",
+    platform_name=None
+):
+    """Create a GeoJSON FeatureCollection from a dataframe."""
+    if detections.empty:
         raise ValueError("No detections to save!")
 
-    # Convert points to GeoJSON
+    optional_property_map = optional_property_map or {}
     features = []
-    for idx in range(len(detections)):
-        starttime = detections.iloc[idx].starttime
-        endtime = detections.iloc[idx].endtime
-        mean_granule_time = starttime.to_pydatetime() + (endtime.to_pydatetime() -
-                                                         starttime.to_pydatetime()) / 2.
 
-        prop = {'power': detections.iloc[idx].power,
-                'tb': detections.iloc[idx].tb,
-                'confidence': int(detections.iloc[idx].conf),
-                'observation_time': json_serial(mean_granule_time)
-                }
+    for row in detections.itertuples(index=False):
+        props = {}
 
-        try:
-            prop['anomaly'] = int(detections.iloc[idx].anomaly)
-        except AttributeError:
-            logger.debug("Failed adding the persistent anomaly attribute!")
+        # Required properties
+        for out_name, source in property_map.items():
+            props[out_name] = _resolve_property(row, source)
 
-        try:
-            prop['tb_celcius'] = detections.iloc[idx].tb_celcius
-        except AttributeError:
-            logger.debug("Failed adding the TB in celcius!")
-            pass
-        try:
-            prop['id'] = detections.iloc[idx].detection_id
-        except AttributeError:
-            logger.debug("Failed adding the unique detection id!")
-            pass
+        # Optional properties
+        for out_name, source in optional_property_map.items():
+            try:
+                props[out_name] = _resolve_property(row, source)
+            except AttributeError:
+                logger.debug("Optional property '%s' not available", out_name)
+            except Exception as exc:
+                logger.debug(
+                    "Failed computing optional property '%s': %s",
+                    out_name, exc
+                )
 
-        if platform_name:
-            prop['platform_name'] = platform_name
+        # Static optional property
+        if platform_name is not None:
+            props["platform_name"] = platform_name
         else:
             logger.debug("No platform name specified for output")
 
-        feat = Feature(
-            geometry=Point(map(float, [detections.iloc[idx].longitude, detections.iloc[idx].latitude])),
-            properties=prop)
-        features.append(feat)
+        features.append(
+            Feature(
+                geometry=Point((
+                    float(getattr(row, lon_col)),
+                    float(getattr(row, lat_col)),
+                )),
+                properties=props,
+            )
+        )
 
     return FeatureCollection(features)
 
 
 def map_coordinates_in_feature_collection(feature_collection, epsg_str):
     """Map the Point coordinates of all data in Feature Collection."""
-    outp = pyproj.Proj(init=epsg_str)
+    outp = pyproj.Proj(epsg_str)
 
     mapped_features = []
     # Iterate through each feature of the feature collection
@@ -161,11 +194,10 @@ def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
 
 def store_geojson(output_filename, feature_collection):
     """Store the Geojson feature collection of fire detections on disk."""
-    if isinstance(output_filename, str):
-        output_filename = pathlib.Path(output_filename)
-    elif isinstance(output_filename, pathlib.PosixPath):
-        pass
+    if not isinstance(output_filename, (str, os.PathLike)):
+        raise TypeError(f"output_filename {str(output_filename)} must be str or path-like")
 
+    output_filename = pathlib.Path(output_filename)
     path = output_filename.parent
     if not os.path.exists(path):
         logger.info("Create directory: %s", path)

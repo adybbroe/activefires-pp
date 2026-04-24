@@ -80,12 +80,11 @@ jobs:
           pytest --cov=activefires_pp activefires_pp/tests --cov-report=xml --cov-report=
 
       - name: Upload unittest coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v6
         with:
           flags: unittests
-          file: ./coverage.xml
+          files: ./coverage.xml
           env_vars: OS,PYTHON_VERSION,UNSTABLE
-          fail_ci_if_error: false
 
       - name: Coveralls Parallel
         uses: coverallsapp/github-action@v2
