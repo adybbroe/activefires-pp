@@ -1,5 +1,17 @@
-## Version v0.2.2 (2025/05/19)
+## Version v0.2.3 (2026/04/24)
 
+### Pull Requests Merged
+
+#### Features added
+
+* [PR 27](https://github.com/adybbroe/activefires-pp/pull/27) - Refactor geojson utils
+* [PR 26](https://github.com/adybbroe/activefires-pp/pull/26) - Adding a unit test around the post processing main method
+* [PR 25](https://github.com/adybbroe/activefires-pp/pull/25) - Add self-standing system test case
+
+In this release 3 pull requests were closed.
+
+
+## Version v0.2.2 (2025/05/19)
 
 ### Pull Requests Merged
 
@@ -11,7 +23,6 @@ In this release 1 pull request was closed.
 
 
 ## Version v0.2.1 (2025/05/19)
-
 
 ### Pull Requests Merged
 
