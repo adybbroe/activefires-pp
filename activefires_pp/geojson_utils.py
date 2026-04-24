@@ -133,19 +133,17 @@ def geojson_feature_collection_from_detections(
             try:
                 props[out_name] = _resolve_property(row, source)
             except AttributeError:
-                if logger:
-                    logger.debug("Optional property '%s' not available", out_name)
+                logger.debug("Optional property '%s' not available", out_name)
             except Exception as exc:
-                if logger:
-                    logger.debug(
-                        "Failed computing optional property '%s': %s",
-                        out_name, exc
-                    )
+                logger.debug(
+                    "Failed computing optional property '%s': %s",
+                    out_name, exc
+                )
 
         # Static optional property
         if platform_name is not None:
             props["platform_name"] = platform_name
-        elif logger:
+        else:
             logger.debug("No platform name specified for output")
 
         features.append(
@@ -196,11 +194,10 @@ def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
 
 def store_geojson(output_filename, feature_collection):
     """Store the Geojson feature collection of fire detections on disk."""
-    if isinstance(output_filename, str):
-        output_filename = pathlib.Path(output_filename)
-    elif isinstance(output_filename, pathlib.PosixPath):
-        pass
+    if not isinstance(output_filename, (str, os.PathLike)):
+        raise TypeError(f"output_filename {str(output_filename)} must be str or path-like")
 
+    output_filename = pathlib.Path(output_filename)
     path = output_filename.parent
     if not os.path.exists(path):
         logger.info("Create directory: %s", path)

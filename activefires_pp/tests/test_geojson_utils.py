@@ -27,7 +27,7 @@ from unittest import TestCase
 import io
 
 from freezegun import freeze_time
-from datetime import datetime
+import datetime as dt
 import pytest
 import logging
 import pandas as pd
@@ -63,6 +63,12 @@ TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]},
 "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8,
 "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
+
+DUMMY_FEATURE_COLLECTION = {"features": [{"geometry": {"coordinates": [2804994.83249444, 871459.9503322293],
+                                                       "type": "Point"},
+                                          "properties": {"confidence": 8},
+                                          "type": "Feature"}, ],
+                            "type": "FeatureCollection"}
 
 
 @pytest.fixture
@@ -148,8 +154,8 @@ def test_read_and_get_geojson_data_from_empty_file(caplog, fake_empty_geojson_fi
 
 def test_get_geojson_files_in_observation_time_order(fake_past_detections_dir):
     """Test getting the list of geojson files ordered by observation time - most recent file first."""
-    starttime = datetime(2021, 6, 18, 12, 0)
-    endtime = datetime(2021, 6, 19, 0, 30)
+    starttime = dt.datetime(2021, 6, 18, 12, 0)
+    endtime = dt.datetime(2021, 6, 19, 0, 30)
     # geojson_file_pattern_alarms: sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson
     pattern = "sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson"
 
@@ -157,15 +163,15 @@ def test_get_geojson_files_in_observation_time_order(fake_past_detections_dir):
     assert set(recent) == {'sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson',
                            'sos_20210619_000651_0.geojson'}
 
-    starttime = datetime(2021, 6, 18, 12, 0)
-    endtime = datetime(2021, 6, 19, 12, 0)
+    starttime = dt.datetime(2021, 6, 18, 12, 0)
+    endtime = dt.datetime(2021, 6, 19, 12, 0)
     recent = get_geojson_files_in_observation_time_order(fake_past_detections_dir, pattern, (starttime, endtime))
 
     assert set(recent) == {'sos_20210618_124819_0.geojson', 'sos_20210619_000651_1.geojson',
                            'sos_20210619_000651_0.geojson', 'sos_20210619_005803_0.geojson'}
 
-    starttime = datetime(2022, 6, 18, 12, 0)
-    endtime = datetime(2022, 6, 19, 12, 0)
+    starttime = dt.datetime(2022, 6, 18, 12, 0)
+    endtime = dt.datetime(2022, 6, 19, 12, 0)
     recent = get_geojson_files_in_observation_time_order(fake_past_detections_dir, pattern, (starttime, endtime))
     assert len(recent) == 0
 
@@ -196,6 +202,27 @@ def test_store_geojson_alarm(fake_past_detections_dir):
     assert json_test_data['features']['properties']['power'] == 2.23312426
     assert json_test_data['features']['properties']['related_detection'] is False
     assert json_test_data['features']['properties']['tb'] == 310.37322998
+
+
+def test_store_geojson_file_path_as_string(tmp_path):
+    """Test store Geojson file to disk."""
+    feature_collection = DUMMY_FEATURE_COLLECTION
+
+    output_path = tmp_path / 'test_fire_detections.geojson'
+    store_geojson(str(output_path), feature_collection)
+    assert output_path.exists()
+
+
+def test_store_geojson_file_path_as_list(tmp_path):
+    """Test store Geojson file to disk, when path is not a string or a pathlike object."""
+    feature_collection = DUMMY_FEATURE_COLLECTION
+
+    output_path = [tmp_path / 'test_fire_detections.geojson']
+    with pytest.raises(TypeError) as exec_info:
+        store_geojson(output_path, feature_collection)
+
+    exception_raised = exec_info.value
+    assert str(exception_raised) == f"output_filename {str(output_path)} must be str or path-like"
 
 
 def test_store_geojson_file_sweref99_coordinates(tmp_path):
@@ -229,6 +256,109 @@ def test_store_geojson_file_sweref99_coordinates(tmp_path):
                                    np.array([2804994.83249444, 871459.9503322293]), decimal=6)
     np.testing.assert_almost_equal(json_test_data['features'][1]['geometry']['coordinates'],
                                    np.array([2654228.542928629, 832840.571493448]), decimal=6)
+
+
+def test_geojson_feature_collection_from_detections_basic(caplog, fake_active_fires_file_data2):
+    """Test getting feature collection from pandas data frame with detections."""
+    open_fstream, myfilepath = fake_active_fires_file_data2
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+
+    my_property_map = {
+        "power": "power",
+        "tb": "tb",
+        "confidence": lambda row: int(row.conf),
+    }
+    my_optional_property_map = {
+        "anomaly": lambda row: int(row.anomaly),
+        "start_time": lambda row: dt.datetime.fromisoformat(row.tb),
+        "id": "detection_id",
+    }
+    with caplog.at_level(logging.DEBUG):
+        result = geojson_feature_collection_from_detections(afdata,
+                                                            my_property_map,
+                                                            optional_property_map=my_optional_property_map,
+                                                            platform_name='Suomi-NPP')
+
+    log_expected = "Optional property 'anomaly' not available"
+    assert log_expected in caplog.text
+    log_expected = "Optional property 'id' not available"
+    assert log_expected in caplog.text
+    log_expected = "Failed computing optional property 'start_time'"
+    assert log_expected in caplog.text
+
+    expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 2.51202917, "tb": 339.66326904},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [17.42075, 64.216942],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 3.39806151,
+                                                  "tb": 329.65161133},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [16.600952, 64.569046],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 20.5928936,
+                                                  "tb": 346.52050781},
+                                   "type": "Feature"},
+                                  {"geometry": {"coordinates": [16.5984, 64.572227],
+                                                "type": "Point"},
+                                   "properties": {"confidence": 8,
+                                                  "platform_name": "Suomi-NPP",
+                                                  "power": 20.5928936,
+                                                  "tb": 348.72860718},
+                                   "type": "Feature"}])
+
+    TestCase().assertDictEqual(result, expected)
+
+
+def test_geojson_feature_collection_from_detections_empty(fake_active_fires_file_data2):
+    """Test getting feature collection from pandas data frame with detections."""
+    open_fstream, myfilepath = fake_active_fires_file_data2
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+
+    my_property_map = {
+        "power": "power",
+        "tb": "tb",
+        "confidence": lambda row: int(row.conf),
+    }
+    # Empty the pandas dataframe - There are no power above 100 in this dataset:
+    afdata = afdata[afdata["power"] > 100]
+
+    with pytest.raises(ValueError) as exec_info:
+        _ = geojson_feature_collection_from_detections(afdata,
+                                                       my_property_map,
+                                                       optional_property_map=OPT_PROPERTY_MAP,
+                                                       platform_name='Suomi-NPP')
+
+    exception_raised = exec_info.value
+    assert str(exception_raised) == "No detections to save!"
+
+
+def test_geojson_feature_collection_from_detections_no_platform_name(caplog, fake_active_fires_file_data2):
+    """Test getting feature collection from pandas data frame with detections."""
+    open_fstream, myfilepath = fake_active_fires_file_data2
+    afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
+
+    my_property_map = {
+        "power": "power",
+        "tb": "tb",
+        "confidence": lambda row: int(row.conf),
+    }
+
+    with caplog.at_level(logging.DEBUG):
+        _ = geojson_feature_collection_from_detections(afdata,
+                                                       my_property_map,
+                                                       optional_property_map=OPT_PROPERTY_MAP,
+                                                       platform_name=None)
+
+    log_expected = "No platform name specified for output"
+    assert log_expected in caplog.text
 
 
 @freeze_time('2023-06-16 11:24:00')
@@ -427,8 +557,8 @@ class TestStoreGeojsonData:
         afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=_COLUMN_NAMES)
         self.afdata = afdata
 
-        starttime = datetime_utc2local(datetime.fromisoformat('2021-04-14 11:26:43.900'), 'GMT')
-        endtime = datetime_utc2local(datetime.fromisoformat('2021-04-14 11:28:08'), 'GMT')
+        starttime = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:26:43.900'), 'GMT')
+        endtime = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:28:08'), 'GMT')
 
         starttime = starttime.replace(tzinfo=None)
         endtime = endtime.replace(tzinfo=None)
