@@ -44,7 +44,6 @@ import shapely
 
 from activefires_pp.utils import datetime_utc2local
 from activefires_pp.utils import UnitConverter
-from activefires_pp.utils import get_local_timezone_offset
 from activefires_pp.config import read_config
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 
@@ -154,21 +153,12 @@ class ActiveFiresShapefileFiltering(object):
             starttime = datetime_utc2local(self.metadata['start_time'], 'GMT')
             endtime = datetime_utc2local(self.metadata['end_time'], 'GMT')
 
-        starttime = starttime.replace(tzinfo=None)
-        endtime = endtime.replace(tzinfo=None)
-
-        self.afdata['starttime'] = np.repeat(starttime, len(self.afdata)).astype(np.datetime64)
-        self.afdata['endtime'] = np.repeat(endtime, len(self.afdata)).astype(np.datetime64)
+        self.afdata['starttime'] = starttime
+        self.afdata['endtime'] = endtime
 
         logger.info('Start and end times: %s %s',
                     str(self.afdata['starttime'][0]),
                     str(self.afdata['endtime'][0]))
-
-    def _apply_timezone_offset(self, obstime):
-        """Apply the time zone offset to the datetime objects."""
-        obstime_offset = get_local_timezone_offset(self.timezone)
-        return np.repeat(obstime.replace(tzinfo=None) + obstime_offset,
-                         len(self.afdata)).astype(np.datetime64)
 
     def fires_shapefile_filtering(self, shapefile, start_geometries_index=1, inside=True):
         """Remove fires outside National borders or filter out potential false detections.
