@@ -29,6 +29,7 @@ import json
 import logging
 
 from activefires_pp.geojson_utils import read_geojson_data
+from activefires_pp.geojson_utils import get_only_feature
 from activefires_pp.spatiotemporal_alarm_filtering import create_alarms_from_fire_detections
 from activefires_pp.spatiotemporal_alarm_filtering import get_distance_between_two_points
 from activefires_pp.spatiotemporal_alarm_filtering import join_fire_detections
@@ -179,7 +180,8 @@ def test_split_large_fire_clusters():
     json_test_data = json.loads(TEST_MONSTERAS_THIRD_COLLECTION)
 
     fcolls = split_large_fire_clusters(json_test_data['features'], 1.2)
-    assert json_test_data['features'][0] == fcolls['only-one-cluster'][0]
+    feature = get_only_feature(json_test_data)
+    assert feature == fcolls['only-one-cluster'][0]
 
 
 def test_create_one_detection_from_collection():
@@ -216,10 +218,10 @@ def test_create_single_point_alarms_from_collections():
     alarms = create_single_point_alarms_from_collections(fcolls)
 
     assert len(alarms) == 2
-    assert alarms[0]['features']['geometry']['coordinates'] == [16.246222, 57.175987]
-    assert alarms[0]['features']['properties']['power'] == 1.83814871
-    assert alarms[1]['features']['geometry']['coordinates'] == [16.245516, 57.1651]
-    assert alarms[1]['features']['properties']['power'] == 2.94999027
+    assert alarms[0]['features'][0]['geometry']['coordinates'] == [16.246222, 57.175987]
+    assert alarms[0]['features'][0]['properties']['power'] == 1.83814871
+    assert alarms[1]['features'][0]['geometry']['coordinates'] == [16.245516, 57.1651]
+    assert alarms[1]['features'][0]['properties']['power'] == 2.94999027
 
 
 def test_create_alarms_from_fire_detections(fake_past_detections_dir):
@@ -233,39 +235,43 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, space_time_threshold)
     assert len(alarms) == 3
-    assert alarms[0]['features']['geometry']['coordinates'] == [16.247334, 57.172443]
-    assert alarms[0]['features']['properties']['power'] == 5.85325146
-    assert alarms[0]['features']['properties']['related_detection'] is True
-    assert alarms[0]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[0]['features']['properties']['tb'] == 339.84768677
-    assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
-    assert alarms[1]['features']['geometry']['coordinates'] == [16.245104, 57.163902]
-    assert alarms[1]['features']['properties']['power'] == 3.10640526
-    assert alarms[1]['features']['properties']['related_detection'] is True
-    assert alarms[1]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[1]['features']['properties']['tb'] == 336.21279907
-    assert alarms[1]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[0])
+    assert feature['geometry']['coordinates'] == [16.247334, 57.172443]
+    assert feature['properties']['power'] == 5.85325146
+    assert feature['properties']['related_detection'] is True
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 339.84768677
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
-    assert alarms[2]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert alarms[2]['features']['properties']['power'] == 2.23312426
-    assert alarms[2]['features']['properties']['related_detection'] is False
-    assert alarms[2]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[2]['features']['properties']['tb'] == 310.37322998
-    assert alarms[2]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[1])
+    assert feature['geometry']['coordinates'] == [16.245104, 57.163902]
+    assert feature['properties']['power'] == 3.10640526
+    assert feature['properties']['related_detection'] is True
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 336.21279907
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+
+    feature = get_only_feature(alarms[2])
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 310.37322998
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
     space_time_threshold = {'hour_threshold': 6.0,
                             'long_fires_threshold_km': 1.2}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, space_time_threshold)
-
     assert len(alarms) == 1
-    assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert alarms[0]['features']['properties']['power'] == 2.23312426
-    assert alarms[0]['features']['properties']['related_detection'] is False
-    assert alarms[0]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[0]['features']['properties']['tb'] == 310.37322998
-    assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[0])
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 310.37322998
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
     space_time_threshold = {'hour_threshold': 6.0,
                             'long_fires_threshold_km': 0.6}
@@ -273,19 +279,21 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
                                                 pattern, space_time_threshold)
 
     assert len(alarms) == 2
-    assert alarms[0]['features']['geometry']['coordinates'] == [16.242212, 57.157097]
-    assert alarms[0]['features']['properties']['power'] == 1.51176202
-    assert alarms[0]['features']['properties']['related_detection'] is False
-    assert alarms[0]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[0]['features']['properties']['tb'] == 303.77804565
-    assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[0])
+    assert feature['geometry']['coordinates'] == [16.242212, 57.157097]
+    assert feature['properties']['power'] == 1.51176202
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 303.77804565
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
-    assert alarms[1]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert alarms[1]['features']['properties']['power'] == 2.23312426
-    assert alarms[1]['features']['properties']['related_detection'] is False
-    assert alarms[1]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[1]['features']['properties']['tb'] == 310.37322998
-    assert alarms[1]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[1])
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 310.37322998
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
     space_time_threshold = {'hour_threshold': 16.0,
                             'long_fires_threshold_km': 1.2}
@@ -293,24 +301,26 @@ def test_create_alarms_from_fire_detections(fake_past_detections_dir):
                                                 pattern, space_time_threshold)
 
     assert len(alarms) == 1
-    assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert alarms[0]['features']['properties']['power'] == 2.23312426
-    assert alarms[0]['features']['properties']['related_detection'] is False
-    assert alarms[0]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[0]['features']['properties']['tb'] == 310.37322998
-    assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[0])
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 310.37322998
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
     space_time_threshold = {}
     alarms = create_alarms_from_fire_detections(json_test_data, fake_past_detections_dir,
                                                 pattern, space_time_threshold)
 
     assert len(alarms) == 1
-    assert alarms[0]['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert alarms[0]['features']['properties']['power'] == 2.23312426
-    assert alarms[0]['features']['properties']['related_detection'] is False
-    assert alarms[0]['features']['properties']['platform_name'] == 'NOAA-20'
-    assert alarms[0]['features']['properties']['tb'] == 310.37322998
-    assert alarms[0]['features']['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
+    feature = get_only_feature(alarms[0])
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['platform_name'] == 'NOAA-20'
+    assert feature['properties']['tb'] == 310.37322998
+    assert feature['properties']['observation_time'] == '2021-06-19T02:58:45.700000+02:00'
 
 
 def test_alarm_filter_runner_init_no_env(monkeypatch):
@@ -509,3 +519,25 @@ def test_get_distance_between_two_points_input_invalid():
 
     expected = "Latitude must be in the [-90; 90] range."
     assert str(exec_info.value) in expected
+
+
+def test_single_point_alarm_is_valid_feature_collection():
+    """Test that a single detection alarm is a valid FeatureCollection."""
+    json_test_data = json.loads(
+        TEST_MONSTERAS_PREVIOUS1_COLLECTION
+    )
+
+    collections = split_large_fire_clusters(
+        json_test_data["features"],
+        1.2,
+    )
+
+    alarms = create_single_point_alarms_from_collections(
+        collections
+    )
+
+    for alarm in alarms:
+        assert alarm["type"] == "FeatureCollection"
+        assert isinstance(alarm["features"], list)
+        assert len(alarm["features"]) == 1
+        assert alarm["features"][0]["type"] == "Feature"

@@ -32,6 +32,7 @@ import logging
 from trollsift import Parser, globify
 import pytz
 from datetime import datetime
+from collections.abc import Mapping
 
 import numpy as np
 from activefires_pp.utils import json_serial
@@ -180,8 +181,10 @@ def map_coordinates_in_feature_collection(feature_collection, epsg_str):
 def store_geojson_alarm(fires_alarms_dir, file_parser, idx, alarm):
     """Store the fire alarm to a geojson file."""
     utc = pytz.timezone('utc')
-    start_time = datetime.fromisoformat(alarm["features"]["properties"]["observation_time"])
-    platform_name = alarm["features"]["properties"]["platform_name"]
+
+    feature = get_only_feature(alarm)
+    start_time = datetime.fromisoformat(feature["properties"]["observation_time"])
+    platform_name = feature["properties"]["platform_name"]
     start_time = start_time.astimezone(utc).replace(tzinfo=None)
     fname = file_parser.compose({'start_time': start_time, 'id': idx,
                                  'platform_name': platform_name})
@@ -205,3 +208,55 @@ def store_geojson(output_filename, feature_collection):
 
     with open(output_filename, 'w') as fpt:
         dump(feature_collection, fpt)
+
+
+def normalize_geojson_geometry(value):
+    """Return a mapping or GeoJSON object suitable for Feature.geometry."""
+    if isinstance(value, str):
+        try:
+            value = geojson.loads(value)
+        except ValueError as exc:
+            raise TypeError(
+                "Geometry was a string, but it was not valid GeoJSON text. "
+                f"Beginning of value: {value[:120]!r}"
+            ) from exc
+
+    geo_interface = getattr(value, "__geo_interface__", None)
+
+    if geo_interface is not None:
+        if not isinstance(geo_interface, Mapping):
+            raise TypeError(
+                "__geo_interface__ must return a mapping, but returned "
+                f"{type(geo_interface).__name__}: "
+                f"{geo_interface!r}"
+            )
+
+        value = geo_interface
+
+    if not isinstance(value, Mapping):
+        raise TypeError(
+            "Expected a GeoJSON mapping, GeoJSON object, or object with a "
+            "mapping-valued __geo_interface__; received "
+            f"{type(value).__name__}: {value!r}"
+        )
+
+    return value
+
+
+def get_only_feature(feature_collection):
+    """Return the sole Feature from a one-feature FeatureCollection."""
+    features = feature_collection["features"]
+
+    if not isinstance(features, list):
+        raise TypeError(
+            "FeatureCollection['features'] must be a list, "
+            f"not {type(features).__name__}"
+        )
+
+    if len(features) != 1:
+        raise ValueError(
+            "Expected exactly one feature, "
+            f"but found {len(features)}"
+        )
+
+    return features[0]

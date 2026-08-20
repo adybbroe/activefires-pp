@@ -245,13 +245,13 @@ def test_create_output_message(tmp_path):
     input_msg = Message.decode(rawstr=TEST_MSG)
     filename = tmp_path / 'test_geojson_alarm_file.geojson'
     output_topic = '/VIIRS/L2/Fires/PP/SOSAlarm'
-    geojson_alarm = {"features": {"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
+    geojson_alarm = {"features": [{"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
                                   "properties": {"confidence": 8,
                                                  "observation_time": "2021-06-19T02:58:45.700000+02:00",
                                                  "platform_name": "NOAA-20",
                                                  "power": 2.23312426,
                                                  "related_detection": False,
-                                                 "tb": 310.37322998}, "type": "Feature"},
+                                                 "tb": 310.37322998}, "type": "Feature"}, ],
                      "type": "FeatureCollection"}
 
     output_msg = _create_output_message(input_msg, output_topic, geojson_alarm, filename)

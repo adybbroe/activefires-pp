@@ -147,20 +147,11 @@ TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
 "observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
 
 # Past alarms:
-PAST_ALARMS_MONSTERAS1 = """{"type": "FeatureCollection", "features":
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.246222, 57.175987]},
-"properties": {"power": 1.83814871, "tb": 302.3949585, "confidence": 8,
-"observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}}"""
+PAST_ALARMS_MONSTERAS1 = """{"type": "FeatureCollection", "features":[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.246222, 57.175987]},"properties": {"power": 1.83814871, "tb": 302.3949585, "confidence": 8,"observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}]}"""  # noqa
 
-PAST_ALARMS_MONSTERAS2 = """{"type": "FeatureCollection", "features":
-{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245516, 57.1651]},
-"properties": {"power": 2.94999027, "tb": 324.5098877, "confidence": 8,
-"observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}}"""
+PAST_ALARMS_MONSTERAS2 = """{"type": "FeatureCollection", "features":[{"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.245516, 57.1651]},"properties": {"power": 2.94999027, "tb": 324.5098877, "confidence": 8,"observation_time": "2021-06-19T02:07:33.050000+02:00", "platform_name": "Suomi-NPP", "related_detection": true}}]}"""  # noqa
 
-PAST_ALARMS_MONSTERAS3 = """{"features": {"geometry": {"coordinates": [16.252192, 57.15242], "type": "Point"},
-"properties": {"confidence": 8, "observation_time": "2021-06-18T14:49:01.750000+02:00",
-"platform_name": "NOAA-20", "related_detection": false, "power": 2.87395763, "tb": 330.10293579},
-"type": "Feature"}, "type": "FeatureCollection"}"""
+PAST_ALARMS_MONSTERAS3 = """{"features": [{"geometry": {"coordinates": [16.252192, 57.15242], "type": "Point"},"properties": {"confidence": 8, "observation_time": "2021-06-18T14:49:01.750000+02:00","platform_name": "NOAA-20", "related_detection": false, "power": 2.87395763, "tb": 330.10293579},"type": "Feature"}], "type": "FeatureCollection"}"""  # noqa
 
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"

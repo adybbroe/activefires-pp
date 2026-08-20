@@ -39,6 +39,7 @@ from trollsift import Parser
 from activefires_pp.geojson_utils import store_geojson
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
 from activefires_pp.geojson_utils import read_geojson_data
+from activefires_pp.geojson_utils import get_only_feature
 from activefires_pp.geojson_utils import get_geojson_files_in_observation_time_order
 from activefires_pp.geojson_utils import store_geojson_alarm
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
@@ -181,12 +182,13 @@ def test_store_geojson_alarm(fake_past_detections_dir):
     sos_alarms_file_pattern = 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
     file_parser = Parser(sos_alarms_file_pattern)
     idx = 0
-    alarm = {"features": {"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
-                          "properties": {"confidence": 8, "observation_time": "2021-06-19T02:58:45.700000+02:00",
-                                         "platform_name": "NOAA-20",
-                                         "power": 2.23312426,
-                                         "related_detection": False,
-                                         "tb": 310.37322998}, "type": "Feature"},
+    alarm = {"features": [{"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
+                           "properties": {"confidence": 8,
+                                          "observation_time": "2021-06-19T02:58:45.700000+02:00",
+                                          "platform_name": "NOAA-20",
+                                          "power": 2.23312426,
+                                          "related_detection": False,
+                                          "tb": 310.37322998}, "type": "Feature"}, ],
              "type": "FeatureCollection"}
 
     result_filename = store_geojson_alarm(fake_past_detections_dir, file_parser, idx, alarm)
@@ -195,13 +197,14 @@ def test_store_geojson_alarm(fake_past_detections_dir):
 
     json_test_data = read_geojson_data(result_filename)
 
-    assert json_test_data['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert json_test_data['features']['properties']['confidence'] == 8
-    assert json_test_data['features']['properties']['observation_time'] == "2021-06-19T02:58:45.700000+02:00"
-    assert json_test_data['features']['properties']['platform_name'] == "NOAA-20"
-    assert json_test_data['features']['properties']['power'] == 2.23312426
-    assert json_test_data['features']['properties']['related_detection'] is False
-    assert json_test_data['features']['properties']['tb'] == 310.37322998
+    feature = get_only_feature(json_test_data)
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['confidence'] == 8
+    assert feature['properties']['observation_time'] == "2021-06-19T02:58:45.700000+02:00"
+    assert feature['properties']['platform_name'] == "NOAA-20"
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['tb'] == 310.37322998
 
 
 def test_store_geojson_file_path_as_string(tmp_path):
