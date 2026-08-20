@@ -440,7 +440,7 @@ def get_single_point_fires_as_collections(fires, long_fires_threshold):
     return create_single_point_alarms_from_collections(features)
 
 
-def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_file_pattern,
+def check_if_fire_should_trigger_alarm(feature, past_alarms_dir, sos_alarms_file_pattern,
                                        time_space_thresholds):
     """Check if fire point should trigger an alarm.
 
@@ -451,7 +451,7 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
     """
     utc = pytz.timezone('utc')
 
-    end_time = datetime.fromisoformat(gjson_data[0]["properties"]["observation_time"])
+    end_time = datetime.fromisoformat(feature["properties"]["observation_time"])
     end_time = end_time.astimezone(utc).replace(tzinfo=None)
 
     hour_thr = time_space_thresholds.get('hour_threshold', 16)
@@ -470,7 +470,7 @@ def check_if_fire_should_trigger_alarm(gjson_data, past_alarms_dir, sos_alarms_f
         LOG.info("Directory empty - no history present - alarm should be triggered!")
         return True
 
-    lonlat_current_position = gjson_data[0]["geometry"]["coordinates"]
+    lonlat_current_position = feature["geometry"]["coordinates"]
     shall_trigger_alarm = True
     for filename in reversed(files_in_observation_time_order):
         obstime, dist = distance_and_time_from_geojson_position(lonlat_current_position,
