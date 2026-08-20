@@ -225,13 +225,14 @@ class AlarmFilterRunner(Thread):
             # Write alarm to a geojson file in the fire_alarms_dir destination:
             # 1) Create the filename
             # 2) Wite to a file
+            alarm_feature = get_only_feature(alarm)
             output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
             try:
-                post_alarm(alarm['features'], self.restapi_url, self._xauth_token)
+                post_alarm(alarm_feature, self.restapi_url, self._xauth_token)
                 LOG.info('Alarm sent - status OK')
             except (HTTPError, ConnectionError):
                 LOG.exception('Failed sending alarm!')
-                LOG.error('Data: %s', str(alarm['features']))
+                LOG.error("Data: %s", alarm_feature)
 
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
             LOG.debug("Sending message: %s", str(output_message))
@@ -269,21 +270,26 @@ def create_alarms_from_fire_detections(fire_data, past_detections_dir, sos_alarm
 
     # Now go through the gathered fires and split long/large clusters of
     # detections in smaller parts, and create potential alarms:
-
     alarms_list = []
     for key in gathered_fires:
         LOG.debug("Key: %s" % key)
         fire_alarms = get_single_point_fires_as_collections(gathered_fires[key], long_fires_threshold)
 
         alarm_should_be_triggered = False
+
         for fire_alarm in fire_alarms:
-            # Check against the most recent alarms:
-            alarm_should_be_triggered = check_if_fire_should_trigger_alarm(fire_alarm, past_detections_dir,
-                                                                           sos_alarms_file_pattern,
-                                                                           time_space_thresholds)
+            alarm_feature = get_only_feature(fire_alarm)
+
+            alarm_should_be_triggered = check_if_fire_should_trigger_alarm(
+                alarm_feature,
+                past_detections_dir,
+                sos_alarms_file_pattern,
+                time_space_thresholds,
+            )
+
             if alarm_should_be_triggered:
-                lonlat = fire_alarm['features'][0]['geometry']['coordinates']
-                power = fire_alarm['features'][0]['properties']['power']
+                lonlat = alarm_feature["geometry"]["coordinates"]
+                power = alarm_feature["properties"]["power"]
                 LOG.info("Alarm should be triggered: Power=%f Location=(%f,%f)", power, lonlat[0], lonlat[1])
                 alarms_list.append(fire_alarm)
 
