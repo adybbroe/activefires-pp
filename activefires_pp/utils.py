@@ -52,14 +52,6 @@ def datetime_utc2local(utc_dtime, tzone_str, is_dst=True):
     return utc_dtime.astimezone(tzone)
 
 
-def get_local_timezone_offset(timezone_str):
-    """Get the local time zone offset as a timedelta object."""
-    utcnow = dt.datetime.utcnow()
-    utcnow = utcnow.replace(tzinfo=dt.timezone.utc)
-    tzone = zoneinfo.ZoneInfo(timezone_str)
-    return utcnow.astimezone(tzone).replace(tzinfo=dt.timezone.utc) - utcnow
-
-
 def get_geometry_from_shapefile(shapefile):
     """Read shapefile and return geometry as a multipolygon."""
     records = shpreader.Reader(shapefile).records()

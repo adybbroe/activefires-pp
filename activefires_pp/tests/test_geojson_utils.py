@@ -39,6 +39,7 @@ from trollsift import Parser
 from activefires_pp.geojson_utils import store_geojson
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
 from activefires_pp.geojson_utils import read_geojson_data
+from activefires_pp.geojson_utils import get_only_feature
 from activefires_pp.geojson_utils import get_geojson_files_in_observation_time_order
 from activefires_pp.geojson_utils import store_geojson_alarm
 from activefires_pp.geojson_utils import map_coordinates_in_feature_collection
@@ -56,13 +57,13 @@ from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 TEST_GEOJSON_FILE_CONTENT = """{"type": "FeatureCollection", "features":
 [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.562864, 67.341919]},
 "properties": {"power": 1.62920368, "tb": 325.2354126, "confidence": 8,
-"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}},
+"observation_time": "2022-06-29T14:01:08.850000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.56245, 67.347328]},
 "properties": {"power": 3.40044808, "tb": 329.46963501, "confidence": 8,
-"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}},
+"observation_time": "2022-06-29T14:01:08.850000+02:00", "platform_name": "NOAA-20"}},
 {"type": "Feature", "geometry": {"type": "Point", "coordinates": [23.555086, 67.343231]},
 "properties": {"power": 6.81757641, "tb": 334.62347412, "confidence": 8,
-"observation_time": "2022-06-29T14:01:08.850000", "platform_name": "NOAA-20"}}]}"""
+"observation_time": "2022-06-29T14:01:08.850000+02:00", "platform_name": "NOAA-20"}}]}"""
 
 DUMMY_FEATURE_COLLECTION = {"features": [{"geometry": {"coordinates": [2804994.83249444, 871459.9503322293],
                                                        "type": "Point"},
@@ -128,7 +129,7 @@ def test_read_and_get_geojson_data_from_file(fake_geojson_file):
     assert 'properties' in feature1.keys()
     assert feature1['type'] == 'Feature'
     assert feature1['geometry'] == {"coordinates": [23.562864, 67.341919], "type": "Point"}
-    assert feature1['properties'] == {"confidence": 8, "observation_time": "2022-06-29T14:01:08.850000",
+    assert feature1['properties'] == {"confidence": 8, "observation_time": "2022-06-29T14:01:08.850000+02:00",
                                       "platform_name": "NOAA-20", "power": 1.62920368, "tb": 325.2354126}
 
 
@@ -181,12 +182,13 @@ def test_store_geojson_alarm(fake_past_detections_dir):
     sos_alarms_file_pattern = 'sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson'
     file_parser = Parser(sos_alarms_file_pattern)
     idx = 0
-    alarm = {"features": {"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
-                          "properties": {"confidence": 8, "observation_time": "2021-06-19T02:58:45.700000+02:00",
-                                         "platform_name": "NOAA-20",
-                                         "power": 2.23312426,
-                                         "related_detection": False,
-                                         "tb": 310.37322998}, "type": "Feature"},
+    alarm = {"features": [{"geometry": {"coordinates": [16.249069, 57.156235], "type": "Point"},
+                           "properties": {"confidence": 8,
+                                          "observation_time": "2021-06-19T02:58:45.700000+02:00",
+                                          "platform_name": "NOAA-20",
+                                          "power": 2.23312426,
+                                          "related_detection": False,
+                                          "tb": 310.37322998}, "type": "Feature"}, ],
              "type": "FeatureCollection"}
 
     result_filename = store_geojson_alarm(fake_past_detections_dir, file_parser, idx, alarm)
@@ -195,13 +197,14 @@ def test_store_geojson_alarm(fake_past_detections_dir):
 
     json_test_data = read_geojson_data(result_filename)
 
-    assert json_test_data['features']['geometry']['coordinates'] == [16.249069, 57.156235]
-    assert json_test_data['features']['properties']['confidence'] == 8
-    assert json_test_data['features']['properties']['observation_time'] == "2021-06-19T02:58:45.700000+02:00"
-    assert json_test_data['features']['properties']['platform_name'] == "NOAA-20"
-    assert json_test_data['features']['properties']['power'] == 2.23312426
-    assert json_test_data['features']['properties']['related_detection'] is False
-    assert json_test_data['features']['properties']['tb'] == 310.37322998
+    feature = get_only_feature(json_test_data)
+    assert feature['geometry']['coordinates'] == [16.249069, 57.156235]
+    assert feature['properties']['confidence'] == 8
+    assert feature['properties']['observation_time'] == "2021-06-19T02:58:45.700000+02:00"
+    assert feature['properties']['platform_name'] == "NOAA-20"
+    assert feature['properties']['power'] == 2.23312426
+    assert feature['properties']['related_detection'] is False
+    assert feature['properties']['tb'] == 310.37322998
 
 
 def test_store_geojson_file_path_as_string(tmp_path):
@@ -231,7 +234,7 @@ def test_store_geojson_file_sweref99_coordinates(tmp_path):
                                                      "type": "Point"},
                                         "properties": {"confidence": 8,
                                                        "id": "20230616-1",
-                                                       "observation_time": "2023-06-16T11:10:47.200000",
+                                                       "observation_time": "2023-06-16T11:10:47.200000+02:00",
                                                        "platform_name": "Suomi-NPP",
                                                        "power": 2.51202917,
                                                        "tb": 339.66326904},
@@ -240,7 +243,7 @@ def test_store_geojson_file_sweref99_coordinates(tmp_path):
                                                          "type": "Point"},
                                             "properties": {"confidence": 8,
                                                            "id": "20230616-2",
-                                                           "observation_time": "2023-06-16T11:10:47.200000",
+                                                           "observation_time": "2023-06-16T11:10:47.200000+02:00",
                                                            "platform_name": "Suomi-NPP",
                                                            "power": 3.39806151,
                                                            "tb": 329.65161133},
@@ -399,7 +402,7 @@ def test_get_feature_collection_from_firedata(readdata, check_borders, setup_com
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-1',
                                                   "power": 2.51202917, "tb": 339.66326904},
@@ -407,7 +410,7 @@ def test_get_feature_collection_from_firedata(readdata, check_borders, setup_com
                                   {"geometry": {"coordinates": [17.42075, 64.216942],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-2',
                                                   "power": 3.39806151,
@@ -416,7 +419,7 @@ def test_get_feature_collection_from_firedata(readdata, check_borders, setup_com
                                   {"geometry": {"coordinates": [16.600952, 64.569046],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-3',
                                                   "power": 20.5928936,
@@ -425,7 +428,7 @@ def test_get_feature_collection_from_firedata(readdata, check_borders, setup_com
                                   {"geometry": {"coordinates": [16.5984, 64.572227],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-4',
                                                   "power": 20.5928936,
@@ -557,13 +560,11 @@ class TestStoreGeojsonData:
         afdata = pd.read_csv(fstream, index_col=None, header=None, comment='#', names=_COLUMN_NAMES)
         self.afdata = afdata
 
-        starttime = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:26:43.900'), 'GMT')
-        endtime = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:28:08'), 'GMT')
+        starttime = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:26:43.900+00:00'), 'Europe/Stockholm')
+        endtime = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:28:08+00:00'), 'Europe/Stockholm')
 
-        starttime = starttime.replace(tzinfo=None)
-        endtime = endtime.replace(tzinfo=None)
-        self.afdata['starttime'] = np.repeat(starttime, len(self.afdata)).astype(np.datetime64)
-        self.afdata['endtime'] = np.repeat(endtime, len(self.afdata)).astype(np.datetime64)
+        self.afdata['starttime'] = starttime
+        self.afdata['endtime'] = endtime
 
         self.feature_collection = geojson_feature_collection_from_detections(self.afdata,
                                                                              PROPERTY_MAP,
@@ -589,6 +590,8 @@ class TestStoreGeojsonData:
         assert feature1['properties']['tb'] == 336.57437134
         assert feature1['properties']['power'] == 14.13167953
         assert feature1['properties']['anomaly'] == 0
+
+        assert feature1['properties']['observation_time'] == "2021-04-14T13:27:25.950000+02:00"
 
         feature2 = jsondata['features'][1]
         assert feature2['properties']['tb'] == 329.47689819

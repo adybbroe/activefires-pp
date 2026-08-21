@@ -33,7 +33,7 @@ from geojson import FeatureCollection
 import numpy as np
 import io
 import logging
-from datetime import datetime
+import datetime as dt
 from freezegun import freeze_time
 
 from activefires_pp.geojson_utils import PROPERTY_MAP
@@ -45,6 +45,7 @@ from activefires_pp.utils import UnitConverter
 from activefires_pp.post_processing import geojson_feature_collection_from_detections
 from activefires_pp.post_processing import read_cspp_output_data
 from activefires_pp.post_processing import CSPP_ASCII_FILE_FORMAT_ERROR
+from activefires_pp.utils import datetime_utc2local
 
 
 TEST_ACTIVE_FIRES_FILEPATH = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
@@ -185,8 +186,8 @@ def test_add_start_and_end_time_to_active_fires_data_utc(readdata, fake_active_f
     assert 'endtime' in af_shpfile_filter.afdata
     assert af_shpfile_filter.afdata['starttime'].shape == (18,)
 
-    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
-    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 11:26:43.900000+00:00'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08+00:00'
 
 
 @patch('activefires_pp.post_processing.read_cspp_output_data')
@@ -205,10 +206,11 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     assert 'starttime' in af_shpfile_filter.afdata
     assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 13:26:43.900000'
-    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 13:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 13:26:43.900000+02:00'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 13:28:08+02:00'
 
     af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Iceland')
+
     with patch('os.path.exists') as mypatch:
         mypatch.return_value = True
         af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=True)
@@ -216,8 +218,8 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     assert 'starttime' in af_shpfile_filter.afdata
     assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 11:26:43.900000'
-    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 11:26:43.900000+00:00'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 11:28:08+00:00'
 
     af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Helsinki')
     with patch('os.path.exists') as mypatch:
@@ -227,8 +229,8 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     assert 'starttime' in af_shpfile_filter.afdata
     assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 14:26:43.900000'
-    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 14:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 14:26:43.900000+03:00'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 14:28:08+03:00'
 
     af_shpfile_filter = ActiveFiresShapefileFiltering(filepath=myfilepath, timezone='Europe/Lisbon')
     with patch('os.path.exists') as mypatch:
@@ -238,8 +240,8 @@ def test_add_start_and_end_time_to_active_fires_data_localtime(readdata, fake_ac
     assert 'starttime' in af_shpfile_filter.afdata
     assert 'endtime' in af_shpfile_filter.afdata
 
-    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 12:26:43.900000'
-    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 12:28:08'
+    assert str(af_shpfile_filter.afdata['starttime'][0]) == '2021-04-14 12:26:43.900000+01:00'
+    assert str(af_shpfile_filter.afdata['endtime'][0]) == '2021-04-14 12:28:08+01:00'
 
 
 @patch('socket.gethostname')
@@ -257,11 +259,11 @@ def test_get_output_filepath_from_projname(check_borders, setup_comm, gethostnam
                                      myborders_file, mymask_file)
 
     fake_metadata = {'platform': 'j01',
-                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
-                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'start_time': dt.datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': dt.datetime(1900, 1, 1, 11, 28, 8, 400000),
                      'orbit': '17637',
-                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
-                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+                     'processing_time': dt.datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': dt.datetime(2021, 4, 14, 11, 28, 8)}
 
     outpath = afpp.get_output_filepath_from_projname('default', fake_metadata)
     assert Path(outpath).name == 'AFIMG_j01_d20210414_t112643.geojson'
@@ -296,21 +298,20 @@ def test_regional_fires_filtering(check_borders, setup_comm, gethostname,
 
     afdata = pd.read_csv(open_fstream, index_col=None, header=None, comment='#', names=COL_NAMES)
 
-    starttime = datetime.fromisoformat('2021-04-14 11:26:43.900')
-    endtime = datetime.fromisoformat('2021-04-14 11:28:08')
-
-    afdata['starttime'] = np.repeat(starttime, len(afdata)).astype(np.datetime64)
-    afdata['endtime'] = np.repeat(endtime, len(afdata)).astype(np.datetime64)
+    afdata['starttime'] = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:26:43.900+00:00'),
+                                             'Europe/Stockholm')
+    afdata['endtime'] = datetime_utc2local(dt.datetime.fromisoformat('2021-04-14 11:28:08+00:00'),
+                                           'Europe/Stockholm')
 
     afdata = afpp.add_unique_day_id(afdata)
 
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j01',
-                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
-                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'start_time': dt.datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': dt.datetime(1900, 1, 1, 11, 28, 8, 400000),
                      'orbit': '17637',
-                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
-                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+                     'processing_time': dt.datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': dt.datetime(2021, 4, 14, 11, 28, 8)}
     afdata.attrs = fake_metadata
 
     af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name='NOAA-20')
@@ -348,11 +349,11 @@ def test_general_national_fires_filtering(get_global_mask, check_borders, setup_
 
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j01',
-                     'start_time': datetime(2021, 4, 14, 11, 26, 43, 900000),
-                     'end_hour': datetime(1900, 1, 1, 11, 28, 8, 400000),
+                     'start_time': dt.datetime(2021, 4, 14, 11, 26, 43, 900000),
+                     'end_hour': dt.datetime(1900, 1, 1, 11, 28, 8, 400000),
                      'orbit': '17637',
-                     'processing_time': datetime(2021, 4, 14, 11, 41, 30, 392094),
-                     'end_time': datetime(2021, 4, 14, 11, 28, 8)}
+                     'processing_time': dt.datetime(2021, 4, 14, 11, 41, 30, 392094),
+                     'end_time': dt.datetime(2021, 4, 14, 11, 28, 8)}
     afdata.attrs = fake_metadata
 
     af_shapeff = ActiveFiresShapefileFiltering(afdata=afdata, platform_name='NOAA-20')
@@ -387,11 +388,11 @@ def test_general_national_fires_filtering_spurious_detections(get_global_mask, c
     afdata = af_shpfile_filter.get_af_data(filepattern=AF_FILE_PATTERN, localtime=False)
     # Add metadata to the pandas dataframe:
     fake_metadata = {'platform': 'j02',
-                     'start_time': datetime(2023, 12, 11, 1, 52, 44, 500000),
-                     'end_hour': datetime(1900, 1, 1, 1, 54, 7, 400000),
+                     'start_time': dt.datetime(2023, 12, 11, 1, 52, 44, 500000),
+                     'end_hour': dt.datetime(1900, 1, 1, 1, 54, 7, 400000),
                      'orbit': '5616',
-                     'processing_time': datetime(2023, 12, 11, 2, 7, 10, 860273),
-                     'end_time': datetime(2023, 12, 11, 1, 54, 7)}
+                     'processing_time': dt.datetime(2023, 12, 11, 2, 7, 10, 860273),
+                     'end_time': dt.datetime(2023, 12, 11, 1, 54, 7)}
     afdata.attrs = fake_metadata
 
     afpp = ActiveFiresPostprocessing(fake_yamlconfig_file_post_processing,
@@ -487,11 +488,10 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_
                                                                                "detection_id"},
                                                         platform_name='Suomi-NPP')
 
-    # NB! The time of the afdata is here still in UTC!
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-1',
                                                   "power": 2.51202917, "tb": 339.66326904},
@@ -499,7 +499,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_
                                   {"geometry": {"coordinates": [17.42075, 64.216942],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-2',
                                                   "power": 3.39806151,
@@ -508,7 +508,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_
                                   {"geometry": {"coordinates": [16.600952, 64.569046],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-3',
                                                   "power": 20.5928936,
@@ -517,7 +517,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_
                                   {"geometry": {"coordinates": [16.5984, 64.572227],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "id": '20230616-4',
                                                   "power": 20.5928936,
@@ -564,12 +564,11 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                                                                "tb_celcius"},
                                                         platform_name='Suomi-NPP')
 
-    # NB! The time of the afdata is here still in UTC!
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
                                                 "type": "Point"},
                                    "properties": {
                                        "confidence": 8,
-                                       "observation_time": "2023-06-16T11:10:47.200000",
+                                       "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                        "platform_name": "Suomi-NPP",
                                        "power": 2.51202917,
                                        "tb": 339.66326904,
@@ -579,7 +578,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                                 "type": "Point"},
                                    "properties": {
                                        "confidence": 8,
-                                       "observation_time": "2023-06-16T11:10:47.200000",
+                                       "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                        "platform_name": "Suomi-NPP",
                                        "power": 3.39806151,
                                        "tb": 329.65161133,
@@ -589,7 +588,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                                 "type": "Point"},
                                    "properties": {
                                        "confidence": 8,
-                                       "observation_time": "2023-06-16T11:10:47.200000",
+                                       "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                        "platform_name": "Suomi-NPP",
                                        "power": 20.5928936,
                                        "tb": 346.52050781,
@@ -598,7 +597,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                   {"geometry": {"coordinates": [16.5984, 64.572227],
                                                 "type": "Point"},
                                    "properties": {"confidence": 8,
-                                                  "observation_time": "2023-06-16T11:10:47.200000",
+                                                  "observation_time": "2023-06-16T11:10:47.200000+00:00",
                                                   "platform_name": "Suomi-NPP",
                                                   "power": 20.5928936,
                                                   "tb": 348.72860718,
