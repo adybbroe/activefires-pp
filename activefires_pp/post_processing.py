@@ -459,7 +459,7 @@ class ActiveFiresPostprocessing():
 
         afdata = self.add_unique_day_id(afdata)
         self.save_id_to_file()
-        afdata = self.add_tb_celcius(afdata)
+        afdata = self.add_tb_celsius(afdata)
 
         # 1) Create geojson feature collection
         # 2) Dump geojson data to disk
@@ -679,14 +679,14 @@ class ActiveFiresPostprocessing():
         data_frame.insert(col, 'detection_id', id_list)
         return data_frame
 
-    def add_tb_celcius(self, data_frame):
-        """Add a column with TB in Celcius to the fire detection data frame."""
-        def kelvin2celcius(x):
+    def add_tb_celsius(self, data_frame):
+        """Add a column with TB in Celsius to the fire detection data frame."""
+        def kelvin2celsius(x):
             tb_c = self.unit_converter.convert('temperature', x)
             return tb_c.magnitude
 
         col = data_frame.columns.get_loc('tb')
-        data_frame.insert(2, "tb_celcius", data_frame.iloc[:, col].apply(kelvin2celcius))
+        data_frame.insert(2, "tb_celsius", data_frame.iloc[:, col].apply(kelvin2celsius))
         return data_frame
 
     def close(self):
