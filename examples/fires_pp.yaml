@@ -37,8 +37,8 @@ timezone: Europe/Stockholm
 # geojson-national:
 #   - kelvin:
 #       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}.geojson
-#   - celcius:
-#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celcius.geojson
+#   - celsius:
+#       file_pattern: AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S}_celsius.geojson
 #       unit: degC
 
 # geojson-regional:

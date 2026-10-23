@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021, 2023, 2024 Adam.Dybbroe
+# Copyright (c) 2021-2026 Adam Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c21856.ad.smhi.se>
+#   Adam Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """The log handling."""
 
@@ -38,11 +38,12 @@ log_levels = {
 
 def setup_logging(cmd_args):
     """Set up logging."""
-    if cmd_args.log_config is not None:
-        with open(cmd_args.log_config) as fd:
-            log_dict = yaml.safe_load(fd.read())
-            logging.config.dictConfig(log_dict)
-            return
+    if hasattr(cmd_args, 'log_config'):
+        if cmd_args.log_config is not None:
+            with open(cmd_args.log_config) as fd:
+                log_dict = yaml.safe_load(fd.read())
+                logging.config.dictConfig(log_dict)
+                return
 
     root = logging.getLogger('')
     root.setLevel(log_levels[cmd_args.verbosity])

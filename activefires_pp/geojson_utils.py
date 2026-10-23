@@ -51,7 +51,7 @@ PROPERTY_MAP = {
 
 OPTIONAL_PROPERTY_MAP = {
     "anomaly": lambda row: int(row.anomaly),
-    "tb_celcius": "tb_celcius",
+    "tb_celsius": "tb_celsius",
     "id": "detection_id",
 }
 

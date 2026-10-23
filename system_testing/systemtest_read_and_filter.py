@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021 - 2026 Adam.Dybbroe
+# Copyright (c) 2021-2026 Adam.Dybbroe
 
 # Author(s):
 
-#   Adam Dybbroe <Firstname.Lastname@smhi.se>
+#   Adam Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,14 +24,18 @@
 
 
 import argparse
+import logging
 
+from activefires_pp.logger import setup_logging
 from activefires_pp.post_processing import store_geojson
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
+from activefires_pp.utils import json_serial
 
+
+logger = logging.getLogger(__name__)
 
 TESTFILE = "./AFIMG_j01_d20210414_t1126439_e1128084_b17637_c20210414114130392094_cspp_dev.txt"
-
 INFILE_PATTERN = 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa
 
 
@@ -44,6 +48,10 @@ def get_arguments():
     parser.add_argument("-f", "--shp_filtermask",
                         help="Path to shapefile with mask to filter false alarms",
                         required=True)
+    parser.add_argument("-v", "--verbose", dest="verbosity", action="count", default=0,
+                        help="Verbosity (between 1 and 2 occurrences with more leading to more "
+                        "verbose logging). WARN=0, INFO=1, "
+                        "DEBUG=2. This is overridden by the log config file if specified.")
 
     return parser.parse_args()
 
@@ -51,6 +59,7 @@ def get_arguments():
 if __name__ == "__main__":
 
     cmd_args = get_arguments()
+    setup_logging(cmd_args)
 
     af_shapeff = ActiveFiresShapefileFiltering(TESTFILE)
     afdata = af_shapeff.get_af_data(INFILE_PATTERN)
@@ -61,7 +70,25 @@ if __name__ == "__main__":
     af_shapeff.fires_shapefile_filtering(cmd_args.shp_filtermask, start_geometries_index=0, inside=False)
     afdata_ff = af_shapeff.get_af_data()
 
+    local_properties = {
+        "power": "power",
+        "tb": "tb",
+        "confidence": lambda row: int(row.conf),
+        "observation_time": lambda row: json_serial(
+            row.starttime.to_pydatetime()
+            + (row.endtime.to_pydatetime() - row.starttime.to_pydatetime()) / 2
+        ),
+    }
+
+    local_optional_properties = {
+        "anomaly": lambda row: int(row.anomaly),
+        "tb_celsius": lambda row: row.tb - 273.15,
+        "id": "detection_id",
+    }
+
     feature_collection = geojson_feature_collection_from_detections(afdata_ff,
+                                                                    local_properties,
+                                                                    optional_property_map=local_optional_properties,
                                                                     platform_name=af_shapeff.platform_name)
 
     out_filepath = './test_output.geojson'

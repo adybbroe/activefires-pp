@@ -531,7 +531,7 @@ def test_get_feature_collection_from_firedata_with_detection_id(readdata, check_
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
 @patch('activefires_pp.post_processing.read_cspp_output_data')
-def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders, setup_comm, gethostname,
+def test_get_feature_collection_from_firedata_tb_celsius(readdata, check_borders, setup_comm, gethostname,
                                                          fake_yamlconfig_file_post_processing):
     """Test get the Geojson Feature Collection from fire detection."""
     gethostname.return_value = "my.host.name"
@@ -558,10 +558,10 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
 
     afdata = afdata[2::]  # Reduce to only contain the last detections!
 
-    afdata = afpp.add_tb_celcius(afdata)
+    afdata = afpp.add_tb_celsius(afdata)
     result = geojson_feature_collection_from_detections(afdata, PROPERTY_MAP,
-                                                        optional_property_map={"tb_celcius":
-                                                                               "tb_celcius"},
+                                                        optional_property_map={"tb_celsius":
+                                                                               "tb_celsius"},
                                                         platform_name='Suomi-NPP')
 
     expected = FeatureCollection([{"geometry": {"coordinates": [17.259052, 62.658012],
@@ -572,7 +572,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                        "platform_name": "Suomi-NPP",
                                        "power": 2.51202917,
                                        "tb": 339.66326904,
-                                       "tb_celcius": 66.51326904000001},
+                                       "tb_celsius": 66.51326904000001},
                                    "type": "Feature"},
                                   {"geometry": {"coordinates": [17.42075, 64.216942],
                                                 "type": "Point"},
@@ -582,7 +582,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                        "platform_name": "Suomi-NPP",
                                        "power": 3.39806151,
                                        "tb": 329.65161133,
-                                       "tb_celcius": 56.50161133},
+                                       "tb_celsius": 56.50161133},
                                    "type": "Feature"},
                                   {"geometry": {"coordinates": [16.600952, 64.569046],
                                                 "type": "Point"},
@@ -592,7 +592,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                        "platform_name": "Suomi-NPP",
                                        "power": 20.5928936,
                                        "tb": 346.52050781,
-                                       "tb_celcius": 73.37050781000005},
+                                       "tb_celsius": 73.37050781000005},
                                    "type": "Feature"},
                                   {"geometry": {"coordinates": [16.5984, 64.572227],
                                                 "type": "Point"},
@@ -601,7 +601,7 @@ def test_get_feature_collection_from_firedata_tb_celcius(readdata, check_borders
                                                   "platform_name": "Suomi-NPP",
                                                   "power": 20.5928936,
                                                   "tb": 348.72860718,
-                                                  "tb_celcius": 75.57860718},
+                                                  "tb_celsius": 75.57860718},
                                    "type": "Feature"}])
 
     TestCase().assertDictEqual(result, expected)
