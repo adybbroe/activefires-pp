@@ -23,6 +23,7 @@
 """Unit testing the core post processing part of the project."""
 
 
+import json
 import logging
 import datetime as dt
 from pathlib import Path
@@ -76,6 +77,33 @@ def test_run_postprocessing(caplog,
                 assert len(published_messages) == 2
                 message = Message(rawstr=published_messages[0])
                 assert message.data['start_time'] == dt.datetime(2021, 4, 14, 11, 26, 43, 900000)
+                assert message.subject == '/VIIRS/L2/Fires/PP/National'
+                assert message.data['format'] == 'geojson'
+                assert message.data['product'] == 'afimg'
+
+                with open(message.data['uri'], encoding='utf-8') as fpt:
+                    feature_collection = json.load(fpt)
+
+                assert feature_collection['type'] == 'FeatureCollection'
+                assert len(feature_collection['features']) == 1
+
+                feature = feature_collection['features'][0]
+                assert feature['geometry'] == {
+                    'type': 'Point',
+                    'coordinates': [17.168163, 59.524834],
+                }
+
+                properties = feature['properties']
+                assert properties['power'] == 14.13167953
+                assert properties['tb'] == 336.57437134
+                assert properties['confidence'] == 8
+                assert abs(properties['tb_celsius'] - 63.42437134) < 1e-8
+                assert properties['platform_name'] == 'NOAA-20'
+
+                observation_time = dt.datetime.fromisoformat(properties['observation_time'])
+                assert observation_time.astimezone(dt.timezone.utc) == dt.datetime(
+                    2021, 4, 14, 11, 27, 25, 950000, tzinfo=dt.timezone.utc
+                )
 
 
 def test_example_postprocessing_config_matches_runner_interface():
