@@ -13,7 +13,7 @@ jobs:
         python-version: ["3.12", "3.13", "3.14"]
         experimental: [false]
         include:
-          - python-version: "3.12"
+          - python-version: "3.14"
             os: "ubuntu-latest"
             experimental: true
 
@@ -84,7 +84,7 @@ jobs:
             --cov-report=xml
 
       - name: Upload unittest coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           flags: unittests
           files: ./coverage.xml
