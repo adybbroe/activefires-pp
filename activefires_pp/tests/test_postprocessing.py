@@ -25,12 +25,14 @@
 
 import logging
 import datetime as dt
+from pathlib import Path
 
 from posttroll.message import Message
 from posttroll.testing import patched_publisher, patched_subscriber_recv
 
 from activefires_pp.post_processing import ActiveFiresPostprocessing
 from activefires_pp.post_processing import get_metadata_from_filename
+from activefires_pp.config import read_config
 
 EDRFILE_PATTERN = 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa
 
@@ -74,3 +76,22 @@ def test_run_postprocessing(caplog,
                 assert len(published_messages) == 2
                 message = Message(rawstr=published_messages[0])
                 assert message.data['start_time'] == dt.datetime(2021, 4, 14, 11, 26, 43, 900000)
+
+
+def test_example_postprocessing_config_matches_runner_interface():
+    """The shipped example config should match keys consumed by the runner."""
+    config_path = Path(__file__).parents[2] / "examples" / "fires_pp.yaml"
+    config = read_config(config_path)
+
+    subscriber_config = config["subscriber_config"]
+    publisher_config = config["publisher_config"]
+
+    assert isinstance(subscriber_config["topics"], list)
+    assert subscriber_config["topics"]
+    assert all(isinstance(topic, str) for topic in subscriber_config["topics"])
+
+    assert isinstance(publisher_config["topic"], str)
+    assert publisher_config["topic"]
+
+    assert "national" in config["output"]
+    assert "regional" in config["output"]
