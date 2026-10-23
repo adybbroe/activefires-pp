@@ -94,6 +94,10 @@ class AlarmFilterRunner(Thread):
         self._xauth_token = get_xauthentication_token(_xauth_filepath)
 
         self.fire_alarms_dir = Path(self.options['fire_alarms_dir'])
+        default_staging_dir = self.fire_alarms_dir.with_name(f"{self.fire_alarms_dir.name}_staging")
+        self.fire_alarms_staging_dir = Path(
+            self.options.get('fire_alarms_staging_dir', default_staging_dir)
+        )
 
         self.listener = None
         self.publisher = None
@@ -219,20 +223,33 @@ class AlarmFilterRunner(Thread):
         return geojson_alarms
 
     def send_alarms(self, geojson_alarms, msg):
-        """Send the alarms: Create geojson file with alarm data, post it and publish message."""
+        """Stage, deliver and record alarms that were successfully posted.
+
+        Alarm GeoJSON files are first written to a staging directory. A staged
+        file is promoted atomically to ``fire_alarms_dir`` only after the REST
+        API call succeeds. Failed delivery attempts are intentionally left in
+        staging for debugging and are not considered alarm history by future
+        spatio-temporal filtering.
+        """
         p__ = Parser(self.sos_alarms_file_pattern)
+        self.fire_alarms_staging_dir.mkdir(parents=True, exist_ok=True)
+        self.fire_alarms_dir.mkdir(parents=True, exist_ok=True)
+
         for idx, alarm in enumerate(geojson_alarms):
-            # Write alarm to a geojson file in the fire_alarms_dir destination:
-            # 1) Create the filename
-            # 2) Wite to a file
             alarm_feature = get_only_feature(alarm)
-            output_filename = store_geojson_alarm(self.fire_alarms_dir, p__, idx, alarm)
+            staged_filename = store_geojson_alarm(self.fire_alarms_staging_dir, p__, idx, alarm)
+
             try:
                 post_alarm(alarm_feature, self.restapi_url, self._xauth_token)
-                LOG.info('Alarm sent - status OK')
             except (HTTPError, ConnectionError):
-                LOG.exception('Failed sending alarm!')
+                LOG.exception('Failed sending alarm! Staged file retained: %s', staged_filename)
                 LOG.error("Data: %s", alarm_feature)
+                continue
+
+            LOG.info('Alarm sent - status OK')
+            output_filename = self.fire_alarms_dir / staged_filename.name
+            staged_filename.replace(output_filename)
+            LOG.info('Alarm stored in delivery history: %s', output_filename)
 
             output_message = _create_output_message(msg, self.output_topic, alarm, output_filename)
             LOG.debug("Sending message: %s", str(output_message))
