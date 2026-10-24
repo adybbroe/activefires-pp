@@ -211,3 +211,35 @@ def test_get_mask_from_multipolygon(multipolygon_shapefile):
     retv_mask = get_mask_from_multipolygon(points, geometry)
 
     np.testing.assert_equal(retv_mask, expected)
+
+
+def test_get_mask_from_multipolygon_respects_polygon_holes():
+    """Points strictly inside polygon holes should be outside the mask."""
+    outer = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
+    hole = [(4.0, 4.0), (6.0, 4.0), (6.0, 6.0), (4.0, 6.0)]
+    geometry = MultiPolygon([Polygon(outer, holes=[hole])])
+    points = np.array([
+        [2.0, 2.0],  # polygon interior
+        [5.0, 5.0],  # hole interior
+        [12.0, 5.0],  # outside polygon
+    ])
+
+    mask = get_mask_from_multipolygon(points, geometry)
+
+    np.testing.assert_equal(mask, np.array([True, False, False]))
+
+
+def test_get_mask_from_multipolygon_includes_polygon_boundary():
+    """Polygon boundary points count as inside for spatial filtering."""
+    geometry = MultiPolygon([Polygon([(0.0, 0.0), (10.0, 0.0),
+                                      (10.0, 10.0), (0.0, 10.0)])])
+    points = np.array([
+        [0.0, 5.0],  # edge
+        [0.0, 0.0],  # vertex
+        [5.0, 5.0],  # interior
+        [-0.001, 5.0],  # outside
+    ])
+
+    mask = get_mask_from_multipolygon(points, geometry)
+
+    np.testing.assert_equal(mask, np.array([True, True, True, False]))
