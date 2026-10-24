@@ -49,8 +49,8 @@ from activefires_pp.config import read_config
 
 from activefires_pp.post_processing import ActiveFiresShapefileFiltering
 from activefires_pp.post_processing import ActiveFiresPostprocessing
-from activefires_pp.post_processing import COL_NAMES
-from activefires_pp.post_processing import COL_NAMES_CSPP21
+from activefires_pp.processing import COL_NAMES
+from activefires_pp.processing import COL_NAMES_CSPP21
 from activefires_pp.tests.test_utils import AF_FILE_PATTERN
 
 
@@ -368,7 +368,7 @@ def test_geojson_feature_collection_from_detections_no_platform_name(caplog, fak
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
-@patch('activefires_pp.post_processing.read_cspp_output_data')
+@patch('activefires_pp.processing.read_cspp_output_data')
 def test_get_feature_collection_from_firedata(readdata, check_borders, setup_comm, gethostname,
                                               fake_active_fires_file_data2,
                                               fake_yamlconfig_file_post_processing):

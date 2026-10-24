@@ -27,8 +27,8 @@ import argparse
 import logging
 
 from activefires_pp.logger import setup_logging
-from activefires_pp.post_processing import store_geojson
-from activefires_pp.post_processing import ActiveFiresShapefileFiltering
+from activefires_pp.geojson_utils import store_geojson
+from activefires_pp.processing import ActiveFiresProcessor, ProcessingOptions
 from activefires_pp.geojson_utils import geojson_feature_collection_from_detections
 from activefires_pp.utils import json_serial
 
@@ -61,14 +61,13 @@ if __name__ == "__main__":
     cmd_args = get_arguments()
     setup_logging(cmd_args)
 
-    af_shapeff = ActiveFiresShapefileFiltering(TESTFILE)
-    afdata = af_shapeff.get_af_data(INFILE_PATTERN)
-
-    af_shapeff.fires_shapefile_filtering(cmd_args.shp_boarders)
-    afdata_sweden = af_shapeff.get_af_data()
-
-    af_shapeff.fires_shapefile_filtering(cmd_args.shp_filtermask, start_geometries_index=0, inside=False)
-    afdata_ff = af_shapeff.get_af_data()
+    options = ProcessingOptions(
+        national_boundary=cmd_args.shp_boarders,
+        filter_mask=cmd_args.shp_filtermask,
+        infile_pattern=INFILE_PATTERN,
+    )
+    result = ActiveFiresProcessor(options).process(TESTFILE)
+    afdata_ff = result.detections
 
     local_properties = {
         "power": "power",
@@ -89,7 +88,7 @@ if __name__ == "__main__":
     feature_collection = geojson_feature_collection_from_detections(afdata_ff,
                                                                     local_properties,
                                                                     optional_property_map=local_optional_properties,
-                                                                    platform_name=af_shapeff.platform_name)
+                                                                    platform_name=result.platform_name)
 
     out_filepath = './test_output.geojson'
     store_geojson(out_filepath, feature_collection)
