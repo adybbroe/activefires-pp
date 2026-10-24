@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2023 Adam.Dybbroe
+# Copyright (c) 2021-2023, 2026 Adam.Dybbroe
 
 # Author(s):
 
@@ -33,7 +33,9 @@ import pyproj
 
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 from activefires_pp.geometries_from_shapefiles import _get_proj_filename_from_shapefile
-from activefires_pp.post_processing import get_mask_from_multipolygon
+from activefires_pp.processing import get_mask_from_multipolygon
+from activefires_pp.processing import get_global_mask_from_shapefile
+
 
 TEST_CRS_PROJ = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
                  '+y_0=0.0 +lon_0=15.0 +lat_0=0.0 +units=m +axis=enu +no_defs')
@@ -190,8 +192,6 @@ def multipolygon_shapefile(tmp_path):
                          )
 def test_get_global_mask_from_shapefile(multipolygon_shapefile, lonlats, expected_ll):
     """From a shapefile test get a mask defining which points are inside the geometries."""
-    from activefires_pp.post_processing import get_global_mask_from_shapefile
-
     retv_mask = get_global_mask_from_shapefile(multipolygon_shapefile,
                                                (lonlats[0], lonlats[1]))
 
@@ -211,3 +211,35 @@ def test_get_mask_from_multipolygon(multipolygon_shapefile):
     retv_mask = get_mask_from_multipolygon(points, geometry)
 
     np.testing.assert_equal(retv_mask, expected)
+
+
+def test_get_mask_from_multipolygon_respects_polygon_holes():
+    """Points strictly inside polygon holes should be outside the mask."""
+    outer = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
+    hole = [(4.0, 4.0), (6.0, 4.0), (6.0, 6.0), (4.0, 6.0)]
+    geometry = MultiPolygon([Polygon(outer, holes=[hole])])
+    points = np.array([
+        [2.0, 2.0],  # polygon interior
+        [5.0, 5.0],  # hole interior
+        [12.0, 5.0],  # outside polygon
+    ])
+
+    mask = get_mask_from_multipolygon(points, geometry)
+
+    np.testing.assert_equal(mask, np.array([True, False, False]))
+
+
+def test_get_mask_from_multipolygon_includes_polygon_boundary():
+    """Polygon boundary points count as inside for spatial filtering."""
+    geometry = MultiPolygon([Polygon([(0.0, 0.0), (10.0, 0.0),
+                                      (10.0, 10.0), (0.0, 10.0)])])
+    points = np.array([
+        [0.0, 5.0],  # edge
+        [0.0, 0.0],  # vertex
+        [5.0, 5.0],  # interior
+        [-0.001, 5.0],  # outside
+    ])
+
+    mask = get_mask_from_multipolygon(points, geometry)
+
+    np.testing.assert_equal(mask, np.array([True, True, True, False]))

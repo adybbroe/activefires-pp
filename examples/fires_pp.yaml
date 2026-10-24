@@ -7,7 +7,8 @@ publisher_config:
 subscriber_config:
   addresses:
     - ipc://bla
-  topic: /VIIRS/L2/AFI
+  topics:
+    - /VIIRS/L2/AFI
   nameserver: false
   addr_listener: true
 

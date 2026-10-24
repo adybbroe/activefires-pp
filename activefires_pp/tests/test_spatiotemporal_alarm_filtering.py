@@ -23,10 +23,12 @@
 """Testing the spatio-temporal alarm filtering."""
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import pathlib
 import json
 import logging
+from types import SimpleNamespace
+from requests.exceptions import ConnectionError
 
 from activefires_pp.geojson_utils import read_geojson_data
 from activefires_pp.geojson_utils import get_only_feature
@@ -38,6 +40,7 @@ from activefires_pp.spatiotemporal_alarm_filtering import create_one_detection_f
 from activefires_pp.spatiotemporal_alarm_filtering import create_single_point_alarms_from_collections
 from activefires_pp.spatiotemporal_alarm_filtering import AlarmFilterRunner
 from activefires_pp.spatiotemporal_alarm_filtering import get_xauthentication_filepath_from_environment
+from activefires_pp.spatiotemporal_alarm_filtering import check_if_fire_should_trigger_alarm
 
 from activefires_pp.tests.conftest import TEST_GEOJSON_FILE_CONTENT_MONSTERAS
 
@@ -159,6 +162,36 @@ def test_join_fire_detections_large_fire(fake_geojson_file_many_detections):
         assert joined_detections[collection_id][idx]['properties'] == expected
 
 
+def test_join_fire_detections_is_order_independent_for_anchor_grouping():
+    """A non-transitive chain should be grouped identically for any row order."""
+    features = [
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0000, 57.0000]},
+         "properties": {"power": 1.0}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0100, 57.0000]},
+         "properties": {"power": 2.0}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0200, 57.0000]},
+         "properties": {"power": 3.0}},
+    ]
+
+    # Adjacent points are about 0.61 km apart, while the end points are about
+    # 1.21 km apart.  The strongest detection is therefore grouped with its
+    # direct neighbour, while the far end remains a separate cluster.
+    expected_clusters = {
+        frozenset({(16.0100, 57.0000), (16.0200, 57.0000)}),
+        frozenset({(16.0000, 57.0000)}),
+    }
+
+    for ordering in ([0, 1, 2], [0, 2, 1], [2, 0, 1], [2, 1, 0]):
+        fire_data = {"type": "FeatureCollection", "features": [features[idx] for idx in ordering]}
+        clusters = join_fire_detections(fire_data)
+
+        actual_clusters = {
+            frozenset(tuple(feature["geometry"]["coordinates"]) for feature in cluster)
+            for cluster in clusters.values()
+        }
+        assert actual_clusters == expected_clusters
+
+
 def test_split_large_fire_clusters():
     """Test the splitting of large fire clusters."""
     json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
@@ -208,6 +241,32 @@ def test_create_one_detection_from_collection():
     alarm_feature = create_one_detection_from_collection(test_two_points_fire_same_power)
     assert alarm_feature['properties']['power'] == 3.10640526
     assert alarm_feature['geometry']['coordinates'] == [16.246538, 57.167309]
+
+
+def test_create_one_detection_from_collection_without_valid_frp(caplog):
+    """Invalid FRP values should not cause an unbound-local crash."""
+    features = [
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0, 57.0]},
+         "properties": {"power": float("nan")}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.1, 57.1]},
+         "properties": {"power": 0.0}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.2, 57.2]},
+         "properties": {"power": -1.0}},
+    ]
+
+    with caplog.at_level(logging.WARNING):
+        alarm_feature = create_one_detection_from_collection(features)
+
+    assert alarm_feature is features[0]
+    assert alarm_feature["geometry"]["coordinates"] == [16.0, 57.0]
+    assert alarm_feature["properties"]["related_detection"] is True
+    assert "No positive finite FRP found" in caplog.text
+
+
+def test_create_one_detection_from_empty_collection():
+    """An empty cluster should fail explicitly rather than with an implementation error."""
+    with pytest.raises(ValueError, match="empty collection"):
+        create_one_detection_from_collection([])
 
 
 def test_create_single_point_alarms_from_collections():
@@ -334,8 +393,6 @@ def test_alarm_filter_runner_init_no_env(monkeypatch):
     assert str(exec_info.value) == expected
 
 
-# @pytest.mark.usefixtures("fake_yamlconfig_file")
-# @pytest.mark.usefixtures("fake_token_file")
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 def test_alarm_filter_runner_init(setup_comm,
                                   monkeypatch, fake_yamlconfig_file,
@@ -348,6 +405,7 @@ def test_alarm_filter_runner_init(setup_comm,
     assert alarm_runner.configfile == str(fake_yamlconfig_file)
     assert type(alarm_runner.fire_alarms_dir) is pathlib.PosixPath
     assert str(alarm_runner.fire_alarms_dir) == "/path/where/the/filtered/alarms/will/be/stored"
+    assert str(alarm_runner.fire_alarms_staging_dir) == "/path/where/the/filtered/alarms/will/be/stored_staging"
     assert alarm_runner.input_topic == '/VIIRS/L2/Fires/PP/National'
     assert alarm_runner.output_topic == '/VIIRS/L2/Fires/PP/SOSAlarm'
     assert alarm_runner.listener is None
@@ -364,6 +422,116 @@ def test_alarm_filter_runner_init(setup_comm,
                                     'time_and_space_thresholds': {'hour_threshold': 6,
                                                                   'long_fires_threshold_km': 1.2,
                                                                   'spatial_threshold_km': 0.8}}
+
+
+def _alarm_for_delivery_tests():
+    """Return one alarm with a timestamp suitable for history lookup tests."""
+    return {
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [16.249069, 57.156235]},
+            "properties": {
+                "power": 2.23312426,
+                "tb": 310.37322998,
+                "confidence": 8,
+                "observation_time": "2021-06-19T02:58:45.700000+02:00",
+                "platform_name": "NOAA-20",
+                "related_detection": False,
+            },
+        }],
+    }
+
+
+def _alarm_runner_for_delivery_tests(tmp_path):
+    """Create a minimal runner instance without starting communication."""
+    runner = object.__new__(AlarmFilterRunner)
+    runner.sos_alarms_file_pattern = "sos_{start_time:%Y%m%d_%H%M%S}_{id:d}.geojson"
+    runner.fire_alarms_dir = tmp_path / "history"
+    runner.fire_alarms_staging_dir = tmp_path / "staging"
+    runner.restapi_url = "https://example.invalid/alarms"
+    runner._xauth_token = "token"
+    runner.output_topic = "/VIIRS/L2/Fires/PP/SOSAlarm"
+    runner.publisher = Mock()
+    return runner
+
+
+def _store_alarm_for_delivery_test(directory, parser, idx, alarm):
+    """Store an alarm using a filename that the history parser can read."""
+    del parser
+    directory = pathlib.Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    filename = directory / f"sos_20210619_005845_{idx}.geojson"
+    filename.write_text(json.dumps(alarm), encoding="utf-8")
+    return filename
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.store_geojson_alarm', side_effect=_store_alarm_for_delivery_test)
+@patch('activefires_pp.spatiotemporal_alarm_filtering.post_alarm')
+def test_successful_alarm_is_promoted_to_history(post_alarm, store_alarm, tmp_path):
+    """Successfully delivered alarms should become suppression history."""
+    runner = _alarm_runner_for_delivery_tests(tmp_path)
+    alarm = _alarm_for_delivery_tests()
+    msg = SimpleNamespace(data={"product": "afimg"})
+
+    runner.send_alarms([alarm], msg)
+
+    history_file = runner.fire_alarms_dir / "sos_20210619_005845_0.geojson"
+    staged_file = runner.fire_alarms_staging_dir / history_file.name
+    assert history_file.exists()
+    assert not staged_file.exists()
+    post_alarm.assert_called_once()
+    runner.publisher.send.assert_called_once()
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.store_geojson_alarm', side_effect=_store_alarm_for_delivery_test)
+@patch('activefires_pp.spatiotemporal_alarm_filtering.post_alarm', side_effect=ConnectionError('delivery failed'))
+def test_failed_alarm_remains_in_staging(post_alarm, store_alarm, tmp_path):
+    """Failed alarm deliveries should be retained for debugging, not history."""
+    runner = _alarm_runner_for_delivery_tests(tmp_path)
+    alarm = _alarm_for_delivery_tests()
+    msg = SimpleNamespace(data={"product": "afimg"})
+
+    runner.send_alarms([alarm], msg)
+
+    staged_file = runner.fire_alarms_staging_dir / "sos_20210619_005845_0.geojson"
+    history_file = runner.fire_alarms_dir / staged_file.name
+    assert staged_file.exists()
+    assert not history_file.exists()
+    post_alarm.assert_called_once()
+    runner.publisher.send.assert_not_called()
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.store_geojson_alarm', side_effect=_store_alarm_for_delivery_test)
+@patch('activefires_pp.spatiotemporal_alarm_filtering.post_alarm', side_effect=ConnectionError('delivery failed'))
+def test_failed_alarm_does_not_suppress_following_detection(post_alarm, store_alarm, tmp_path):
+    """A failed delivery must not suppress a later detection at the same place."""
+    runner = _alarm_runner_for_delivery_tests(tmp_path)
+    alarm = _alarm_for_delivery_tests()
+    msg = SimpleNamespace(data={"product": "afimg"})
+    runner.send_alarms([alarm], msg)
+
+    feature = get_only_feature(alarm)
+    thresholds = {"hour_threshold": 6.0, "spatial_threshold_km": 0.8}
+    assert check_if_fire_should_trigger_alarm(
+        feature, runner.fire_alarms_dir, runner.sos_alarms_file_pattern, thresholds
+    ) is True
+
+
+@patch('activefires_pp.spatiotemporal_alarm_filtering.store_geojson_alarm', side_effect=_store_alarm_for_delivery_test)
+@patch('activefires_pp.spatiotemporal_alarm_filtering.post_alarm')
+def test_successful_alarm_suppresses_following_detection(post_alarm, store_alarm, tmp_path):
+    """A successfully delivered alarm should suppress a nearby repeat detection."""
+    runner = _alarm_runner_for_delivery_tests(tmp_path)
+    alarm = _alarm_for_delivery_tests()
+    msg = SimpleNamespace(data={"product": "afimg"})
+    runner.send_alarms([alarm], msg)
+
+    feature = get_only_feature(alarm)
+    thresholds = {"hour_threshold": 6.0, "spatial_threshold_km": 0.8}
+    assert check_if_fire_should_trigger_alarm(
+        feature, runner.fire_alarms_dir, runner.sos_alarms_file_pattern, thresholds
+    ) is False
 
 
 @pytest.mark.usefixtures("fake_token_file")
