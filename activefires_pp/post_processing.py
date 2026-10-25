@@ -28,7 +28,7 @@ from trollsift import Parser, globify
 import time
 import datetime as dt
 import os
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 
 import logging
 import signal
