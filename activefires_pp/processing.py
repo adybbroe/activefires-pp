@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import pyproj
 import shapely
-from matplotlib.path import Path
 from trollsift import Parser
 
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
@@ -233,12 +232,7 @@ class ActiveFiresShapefileFiltering(object):
 
             regional_masks[test_omr] = {'mask': None, 'attributes': attr}
 
-            if isinstance(geometry, shapely.geometry.multipolygon.MultiPolygon):
-                regional_masks[test_omr]['mask'] = get_mask_from_multipolygon(points, geometry)
-            else:
-                shape = geometry
-                pth = Path(shape.exterior.coords)
-                regional_masks[test_omr]['mask'] = pth.contains_points(points)
+            regional_masks[test_omr]['mask'] = get_mask_from_multipolygon(points, geometry)
 
             if sum(regional_masks[test_omr]['mask']) == len(points):
                 all_inside_test_omr = True
@@ -304,19 +298,34 @@ def store(output_filename, detections):
     return None
 
 
+def _get_mask_from_polygon(points, geometry):
+    """Return mask for points covered by a Polygon.
+
+    ``covers`` treats the polygon boundary as inside while respecting interior
+    rings, so points strictly inside holes are excluded.
+    """
+    return np.array([geometry.covers(shapely.geometry.Point(point[0], point[1])) for point in points], dtype=bool)
+
+
 def get_mask_from_multipolygon(points, geometry, start_idx=1):
-    """Get mask for points from a shapely Multipolygon."""
+    """Get mask for points covered by a Polygon or MultiPolygon.
+
+    Polygon boundaries are considered inside. Interior rings (holes) are
+    respected. ``start_idx`` retains the historical iteration behaviour for
+    MultiPolygons.
+    """
+    if isinstance(geometry, shapely.geometry.polygon.Polygon):
+        return _get_mask_from_polygon(points, geometry)
+
     shape = geometry.geoms[0]
-    pth = Path(shape.exterior.coords)
-    mask = pth.contains_points(points)
+    mask = _get_mask_from_polygon(points, shape)
 
     if sum(mask) == len(points):
         return mask
 
     constituent_part = geometry.geoms[start_idx:]
     for shape in constituent_part.geoms:
-        pth = Path(shape.exterior.coords)
-        mask = np.logical_or(mask, pth.contains_points(points))
+        mask = np.logical_or(mask, _get_mask_from_polygon(points, shape))
         if sum(mask) == len(points):
             break
 
