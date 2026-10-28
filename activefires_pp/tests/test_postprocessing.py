@@ -32,7 +32,7 @@ from posttroll.message import Message
 from posttroll.testing import patched_publisher, patched_subscriber_recv
 
 from activefires_pp.post_processing import ActiveFiresPostprocessing
-from activefires_pp.post_processing import get_metadata_from_filename
+from activefires_pp.processing import get_metadata_from_filename
 from activefires_pp.config import read_config
 
 EDRFILE_PATTERN = 'AFIMG_{platform:s}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_hour:%H%M%S%f}_b{orbit:s}_c{processing_time:%Y%m%d%H%M%S%f}_cspp_dev.txt'  # noqa

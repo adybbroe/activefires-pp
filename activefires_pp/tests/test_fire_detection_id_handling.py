@@ -156,7 +156,7 @@ def test_add_unique_day_id_to_detections_newday_no_cache(check_borders, setup_co
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
-@patch('activefires_pp.post_processing.read_cspp_output_data')
+@patch('activefires_pp.processing.read_cspp_output_data')
 def test_store_fire_detection_id_on_disk(readdata, check_borders, setup_comm,
                                          gethostname, tmp_path,
                                          fake_yamlconfig_file_post_processing):
@@ -184,7 +184,7 @@ def test_store_fire_detection_id_on_disk(readdata, check_borders, setup_comm,
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
-@patch('activefires_pp.post_processing.read_cspp_output_data')
+@patch('activefires_pp.processing.read_cspp_output_data')
 def test_initialize_fire_detection_id_nofile(readdata, check_borders, setup_comm, gethostname, tmp_path,
                                              fake_yamlconfig_file_post_processing):
     """Test initialize the fire detection id with no cache on disk."""
@@ -205,7 +205,7 @@ def test_initialize_fire_detection_id_nofile(readdata, check_borders, setup_comm
 @patch('socket.gethostname')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._start_communication')
 @patch('activefires_pp.post_processing.ActiveFiresPostprocessing._check_borders_shapes_exists')
-@patch('activefires_pp.post_processing.read_cspp_output_data')
+@patch('activefires_pp.processing.read_cspp_output_data')
 def test_get_fire_detection_id_from_file(readdata, check_borders, setup_comm, gethostname, tmp_path,
                                          fake_yamlconfig_file_post_processing):
     """Test rtrieve the detection id from file."""

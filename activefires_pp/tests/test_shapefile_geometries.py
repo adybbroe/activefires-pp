@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2021-2023 Adam.Dybbroe
+# Copyright (c) 2021-2023, 2026 Adam.Dybbroe
 
 # Author(s):
 
@@ -33,7 +33,9 @@ import pyproj
 
 from activefires_pp.geometries_from_shapefiles import ShapeGeometry
 from activefires_pp.geometries_from_shapefiles import _get_proj_filename_from_shapefile
-from activefires_pp.post_processing import get_mask_from_multipolygon
+from activefires_pp.processing import get_mask_from_multipolygon
+from activefires_pp.processing import get_global_mask_from_shapefile
+
 
 TEST_CRS_PROJ = ('+proj=utm +ellps=GRS80 +a=6378137.0 +rf=298.257222101 +pm=0 +x_0=500000.0 ' +
                  '+y_0=0.0 +lon_0=15.0 +lat_0=0.0 +units=m +axis=enu +no_defs')
@@ -190,8 +192,6 @@ def multipolygon_shapefile(tmp_path):
                          )
 def test_get_global_mask_from_shapefile(multipolygon_shapefile, lonlats, expected_ll):
     """From a shapefile test get a mask defining which points are inside the geometries."""
-    from activefires_pp.post_processing import get_global_mask_from_shapefile
-
     retv_mask = get_global_mask_from_shapefile(multipolygon_shapefile,
                                                (lonlats[0], lonlats[1]))
 
