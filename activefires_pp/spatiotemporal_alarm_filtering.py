@@ -39,6 +39,7 @@ are:
 
 import os
 import logging
+import math
 import signal
 from queue import Empty
 from threading import Thread
@@ -349,30 +350,58 @@ def gather_neighbours_to_new_collection(start_id, features, feature_collections,
     return features
 
 
-def join_fire_detections(gdata):
-    """Go through detections and gather detections that are close.
+def join_fire_detections(gdata, thr_dist=0.8):
+    """Gather detections into deterministic groups around a seed detection.
 
-    1) Take the first feature (fire detection)
-    2) Identify its neighbours (close fires, with a distance less than some
-       threshold, say 800 meters)
-    3) Gather those features into the first collection of neighbours
-    4) Go through the rest and see if any are close to the collection,
-       if there is one, add it to the collection, and repeat.
-    5) If there are any features left in the list go to step 1 above, and
-       repeat.
+    Each group contains the seed and all remaining detections within
+    ``thr_dist`` of that seed.  The seed is chosen as the remaining detection
+    with the highest finite FRP.  This preserves the historical, non-transitive
+    clustering semantics while making cluster membership independent of input
+    feature order.
 
+    If several detections have the same FRP, latitude and longitude provide a
+    deterministic tie-breaker.
     """
-    num_features = len(gdata['features'])
-    features = dict(zip(range(num_features), gdata['features']))
-
+    features = gdata['features']
+    remaining = set(range(len(features)))
     feature_collections = {}
-    start_index = 0
-    while num_features > 0:
-        features = gather_neighbours_to_new_collection(start_index, features, feature_collections)
-        if len(features.keys()) == 0:
-            break
-        start_index = min(features.keys())
-        num_features = len(features.keys())
+
+    def seed_sort_key(feature_index):
+        feature = features[feature_index]
+        power = feature.get('properties', {}).get('power')
+        try:
+            power = float(power)
+        except (TypeError, ValueError):
+            power = float('-inf')
+        if not math.isfinite(power):
+            power = float('-inf')
+
+        lon, lat = feature['geometry']['coordinates']
+        return power, lat, -lon
+
+    while remaining:
+        seed_index = max(remaining, key=seed_sort_key)
+        seed = features[seed_index]
+        lon0, lat0 = seed['geometry']['coordinates']
+
+        collection_indices = [seed_index]
+        for feature_index in sorted(remaining - {seed_index}):
+            lon, lat = features[feature_index]['geometry']['coordinates']
+            km_dist = distance.distance((lat0, lon0), (lat, lon)).kilometers
+            if km_dist < thr_dist:
+                collection_indices.append(feature_index)
+
+        for feature_index in collection_indices:
+            remaining.remove(feature_index)
+
+        # Preserve the historical order of detections within a cluster.  For
+        # the normal operational input order this also preserves existing
+        # collection identifiers and equal-FRP tie behaviour downstream.
+        collection_indices.sort()
+        first_point = features[collection_indices[0]]
+        lon, lat = first_point['geometry']['coordinates']
+        collection_id = "%d_%d" % (lon * 100000, lat * 100000)
+        feature_collections[collection_id] = [features[idx] for idx in collection_indices]
 
     return feature_collections
 
@@ -418,12 +447,24 @@ def split_large_fire_clusters(features, large_fires_threshold):
 
 
 def create_one_detection_from_collection(features):
-    """From a collection of close fire detections create one detection using the maximum FRP as locator."""
-    max_frp = 0.0
+    """From close detections create one alarm using the maximum valid FRP as locator."""
+    if not features:
+        raise ValueError("Cannot create an alarm from an empty collection")
+
+    feature2save = None
+    max_frp = float("-inf")
     for feat in features:
-        if feat["properties"]["power"] > max_frp:
-            max_frp = feat["properties"]["power"]
+        power = feat.get("properties", {}).get("power")
+        if isinstance(power, (int, float)) and math.isfinite(power) and power > 0 and power > max_frp:
+            max_frp = power
             feature2save = feat
+
+    if feature2save is None:
+        # VIIRS FRP is expected to be positive and finite.  Keep processing
+        # robust for future products or malformed input, but make the unusual
+        # condition visible in the log.
+        feature2save = features[0]
+        LOG.warning("No positive finite FRP found in fire cluster; using the first detection as alarm locator")
 
     lonlat = feature2save["geometry"]["coordinates"]
     LOG.info("Fire detection with maxmimum FRP in the cluster found: power = %f location = (%f, %f)",

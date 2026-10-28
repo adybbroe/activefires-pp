@@ -162,6 +162,36 @@ def test_join_fire_detections_large_fire(fake_geojson_file_many_detections):
         assert joined_detections[collection_id][idx]['properties'] == expected
 
 
+def test_join_fire_detections_is_order_independent_for_anchor_grouping():
+    """A non-transitive chain should be grouped identically for any row order."""
+    features = [
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0000, 57.0000]},
+         "properties": {"power": 1.0}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0100, 57.0000]},
+         "properties": {"power": 2.0}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0200, 57.0000]},
+         "properties": {"power": 3.0}},
+    ]
+
+    # Adjacent points are about 0.61 km apart, while the end points are about
+    # 1.21 km apart.  The strongest detection is therefore grouped with its
+    # direct neighbour, while the far end remains a separate cluster.
+    expected_clusters = {
+        frozenset({(16.0100, 57.0000), (16.0200, 57.0000)}),
+        frozenset({(16.0000, 57.0000)}),
+    }
+
+    for ordering in ([0, 1, 2], [0, 2, 1], [2, 0, 1], [2, 1, 0]):
+        fire_data = {"type": "FeatureCollection", "features": [features[idx] for idx in ordering]}
+        clusters = join_fire_detections(fire_data)
+
+        actual_clusters = {
+            frozenset(tuple(feature["geometry"]["coordinates"]) for feature in cluster)
+            for cluster in clusters.values()
+        }
+        assert actual_clusters == expected_clusters
+
+
 def test_split_large_fire_clusters():
     """Test the splitting of large fire clusters."""
     json_test_data = json.loads(TEST_MONSTERAS_FIRST_COLLECTION)
@@ -211,6 +241,32 @@ def test_create_one_detection_from_collection():
     alarm_feature = create_one_detection_from_collection(test_two_points_fire_same_power)
     assert alarm_feature['properties']['power'] == 3.10640526
     assert alarm_feature['geometry']['coordinates'] == [16.246538, 57.167309]
+
+
+def test_create_one_detection_from_collection_without_valid_frp(caplog):
+    """Invalid FRP values should not cause an unbound-local crash."""
+    features = [
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.0, 57.0]},
+         "properties": {"power": float("nan")}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.1, 57.1]},
+         "properties": {"power": 0.0}},
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": [16.2, 57.2]},
+         "properties": {"power": -1.0}},
+    ]
+
+    with caplog.at_level(logging.WARNING):
+        alarm_feature = create_one_detection_from_collection(features)
+
+    assert alarm_feature is features[0]
+    assert alarm_feature["geometry"]["coordinates"] == [16.0, 57.0]
+    assert alarm_feature["properties"]["related_detection"] is True
+    assert "No positive finite FRP found" in caplog.text
+
+
+def test_create_one_detection_from_empty_collection():
+    """An empty cluster should fail explicitly rather than with an implementation error."""
+    with pytest.raises(ValueError, match="empty collection"):
+        create_one_detection_from_collection([])
 
 
 def test_create_single_point_alarms_from_collections():
@@ -337,8 +393,6 @@ def test_alarm_filter_runner_init_no_env(monkeypatch):
     assert str(exec_info.value) == expected
 
 
-# @pytest.mark.usefixtures("fake_yamlconfig_file")
-# @pytest.mark.usefixtures("fake_token_file")
 @patch('activefires_pp.spatiotemporal_alarm_filtering.AlarmFilterRunner._setup_and_start_communication')
 def test_alarm_filter_runner_init(setup_comm,
                                   monkeypatch, fake_yamlconfig_file,
