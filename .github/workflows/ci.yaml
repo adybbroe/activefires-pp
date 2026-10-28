@@ -10,10 +10,10 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
         experimental: [false]
         include:
-          - python-version: "3.14"
+          - python-version: "3.15"
             os: "ubuntu-latest"
             experimental: true
 
@@ -72,7 +72,7 @@ jobs:
       - name: Install activefires-pp
         shell: bash -l {0}
         run: |
-          pip install --no-deps -e .
+          python -m pip install --no-deps -e .
 
       - name: Run tests with coverage
         shell: bash -l {0}
@@ -93,7 +93,7 @@ jobs:
       - name: Coveralls Parallel
         uses: coverallsapp/github-action@v2
         with:
-          flag-name: run-${{ matrix.test_number }}
+          flag-name: ${{ matrix.os }}-py${{ matrix.python-version }}
           parallel: true
         if: runner.os == 'Linux'
 
@@ -105,3 +105,30 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           parallel-finished: true
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade build twine
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distribution metadata
+        run: python -m twine check dist/*
+
+      - name: Smoke test wheel installation
+        shell: bash
+        run: |
+          python -m venv /tmp/activefires-wheel-test
+          /tmp/activefires-wheel-test/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/activefires-wheel-test/bin/python -c "import activefires_pp"

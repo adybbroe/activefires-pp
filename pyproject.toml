@@ -1,6 +1,73 @@
 [build-system]
-requires = ["setuptools>=60", "wheel", "setuptools_scm[toml]>=8.0"]
+requires = ["setuptools>=77", "setuptools_scm[toml]>=8.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "activefires_pp"
+dynamic = ["version"]
+description = "Post-processing of and notifications on Satellite active fire detections"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+authors = [
+    {name = "Adam Dybbroe", email = "adam.dybroe@smhi.se"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "cartopy",
+    "fiona",
+    "geojson",
+    "geopy",
+    "matplotlib",
+    "netifaces",
+    "numpy",
+    "pandas",
+    "pint",
+    "posttroll",
+    "pycrs",
+    "pyproj",
+    "pytz",
+    "PyYAML",
+    "requests",
+    "shapely",
+    "trollsift",
+]
+
+[project.optional-dependencies]
+test = [
+    "freezegun",
+    "geopandas",
+    "mock",
+    "pytest",
+    "pytest-cov",
+    "responses",
+]
+
+[project.urls]
+Homepage = "https://github.com/adybbroe/activefires-pp"
+Repository = "https://github.com/adybbroe/activefires-pp"
+
+[tool.setuptools]
+script-files = [
+    "bin/active_fires_postprocessing.py",
+    "bin/active_fires_notifier.py",
+    "bin/active_fires_spatiotemporal_alarm_filtering.py",
+]
+
+[tool.setuptools.packages.find]
+include = ["activefires_pp*"]
 
 [tool.setuptools_scm]
 write_to = "activefires_pp/version.py"
@@ -10,5 +77,5 @@ sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 profile = "black"
 skip_gitignore = true
 default_section = "THIRDPARTY"
-known_first_party = "activefires-pp"
+known_first_party = "activefires_pp"
 line_length = 120

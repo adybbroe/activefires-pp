@@ -2,34 +2,33 @@ name: test-environment
 channels:
   - conda-forge
 dependencies:
-  - distributed
-  - toolz
-  - sphinx
-  - matplotlib
-  - pyyaml
-  - pyproj
-  - coveralls
-  - coverage
-  - codecov
-  - behave
-  - mock
-  - numpy
-  - geojson
-  - shapely
-  - pycrs
+  # Runtime dependencies. Keep these in sync with project.dependencies in
+  # pyproject.toml so CI can install the project with --no-deps.
   - cartopy
   - fiona
-  - geopandas
+  - geojson
   - geopy
+  - matplotlib
+  - netifaces
+  - numpy
   - pandas
-  - freezegun
-  - responses
-  - requests
-  - openssl
-  - pytz
   - pint
+  - pycrs
+  - pyproj
+  - pytz
+  - pyyaml
+  - requests
+  - shapely
+  - six
+
+  # Test and CI dependencies.
+  - freezegun
+  - geopandas
+  - mock
   - pytest
   - pytest-cov
+  - responses
+  - coveralls
   - pip
   - pip:
     - trollsift
