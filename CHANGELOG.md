@@ -1,3 +1,26 @@
+## Version v0.3.0 (2026/11/12)
+
+### Pull Requests Merged
+
+#### Bugs fixed
+
+* [PR 36](https://github.com/adybbroe/activefires-pp/pull/36) - Handle polygon holes and boundaries correctly in fire filtering - Refactor/05 spatial geometry
+* [PR 35](https://github.com/adybbroe/activefires-pp/pull/35) - Make alarm clustering deterministic and harden FRP handling - Refactor/04 alarm clustering
+* [PR 33](https://github.com/adybbroe/activefires-pp/pull/33) - Only persist successfully delivered fire alarms
+
+#### Features added
+
+* [PR 37](https://github.com/adybbroe/activefires-pp/pull/37) - Modernize packaging metadata and add package build checks
+* [PR 36](https://github.com/adybbroe/activefires-pp/pull/36) - Handle polygon holes and boundaries correctly in fire filtering - Refactor/05 spatial geometry
+* [PR 35](https://github.com/adybbroe/activefires-pp/pull/35) - Make alarm clustering deterministic and harden FRP handling - Refactor/04 alarm clustering
+* [PR 34](https://github.com/adybbroe/activefires-pp/pull/34) - Extract shared active-fire processing API - Refactor/03 shared processing
+* [PR 33](https://github.com/adybbroe/activefires-pp/pull/33) - Only persist successfully delivered fire alarms
+* [PR 32](https://github.com/adybbroe/activefires-pp/pull/32) - Establish processing regression baseline and CI coverage - Refactor/01 regression baseline
+* [PR 29](https://github.com/adybbroe/activefires-pp/pull/29) - Timezone aware output
+
+In this release 10 pull requests were closed.
+
+
 ## Version v0.2.3 (2026/04/24)
 
 ### Pull Requests Merged
